@@ -1,9 +1,48 @@
 # PXL ERP — Table Column Specifications
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 > Money fields use `numeric(18,4)`. Rates use `numeric(10,6)`. All timestamps are `timestamptz`. All PKs are `uuid DEFAULT gen_random_uuid()`.
 > Standard audit columns are listed once and assumed on all tables marked with Audit or Soft Delete in the inventory.
+
+---
+
+## v3 Architecture Review Changes Applied (Enhancement Round)
+
+- **Accounting Schedules (Section 23)**: 9 new tables added — amortization_schedules, amortization_schedule_lines, amortization_runs, amortization_run_details, revenue_recognition_schedules, revenue_recognition_schedule_lines, revenue_recognition_runs, revenue_recognition_run_details, auto_reversal_runs
+- **journal_entries columns added**: `auto_reversal_flag`, `auto_reversal_date`, `auto_reversal_run_id`, `is_auto_reversal`, `amortization_run_detail_id`, `revenue_recognition_run_detail_id`; `je_type` CHECK expanded to include 'amortization','revenue_recognition','auto_reversal'
+- **recurring_journal_templates spec added** (was previously SPEC REQUIRED): Full column spec including `auto_reverse` flag and `auto_reversal_days_offset`
+- **recurring_journal_template_lines spec added**: Lines spec now included
+
+## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
+
+- **COA overhaul**: Added `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`, `control_account_type`, `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` to `chart_of_accounts`. FS mapping architecture decision: Phase 1 uses COA-embedded fields only — no separate mapping tables.
+- **account_types expanded**: Added `cost_of_sales`, `other_income`, `other_expense`, `contra_liability`, `contra_equity` to code enum
+- **vat_direction / vat_classification split** on ALL line tables: two separate columns per line table
+- **Party classification split**: `customers.vat_status` → split into `vat_registration_status` + `party_special_class`; same for suppliers. 'government','peza','boi','foreign_entity' moved OUT of vat_status into party_special_class. `vat_entries.vat_classification = 'government'` is DERIVED at posting from party_special_class — NOT stored on transaction lines.
+- **companies.tax_type**: CHECK corrected from ('vat','non_vat','exempt') to ('vat','non_vat'). 'exempt' is NOT a taxpayer type.
+- **customer_tax_profiles + supplier_tax_profiles**: Both versioned with effective_from/effective_to
+- **Income tax tables**: `itr_computation_runs` (renamed from itr_working_papers) added to Section 19; `nolco_tracking` and `income_tax_computation_lines` in Section 20; `itr_computation_runs.computation_run_id` references added
+- **Cross-reference index**: Section 21 added — maps all 200 inventory tables to their canonical spec location (doc 03 vs doc 06/07/08). Tables with NO spec in any document are flagged as SPEC REQUIRED.
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Options | Recommended |
+|---|---|---|---|
+| OD-V3-01 | `fs_line_mapping` text column — keep as display label alongside structured columns or drop? | Keep / Drop | Keep as optional display label for now |
+| OD-V3-02 | `is_osd_gross_revenue` flag on COA — compute OSD at filing time from account totals or line level? | Filing level / Line level | Filing level (simpler) |
+| OD-V3-03 | `control_account_type` enforcement — DB trigger or app-layer? | DB trigger / App layer | App layer Phase 1 |
+| OD-V3-04 | Doc 03 currently lacks full column specs for ~120 tables inventoried in doc 02. Tables with specs in docs 06/07/08 are cross-referenced. Tables with NO spec anywhere are listed in Section 21 as SPEC REQUIRED. Resolve before database freeze. | Full consolidation in doc 03 / Cross-reference + flag | Cross-reference + flag for Phase 1; consolidate in Phase 2 sprint |
+
+## v3 Cross-Document Consistency Validation
+
+- `vat_entries.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') ✓ — 'government' derived at posting from party_special_class, not stored on transaction lines
+- `sales_invoice_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt') ✓ — 'government' removed from line table
+- `vendor_bill_lines.vat_classification` includes 'capital_goods','services' ✓
+- `companies.tax_type` CHECK corrected to ('vat','non_vat') — 'exempt' removed ✓
+- `customer_tax_profiles` versioning: UNIQUE constraint updated ✓; same applied to `supplier_tax_profiles` ✓
+- `itr_computation_runs.itr_filing_id` → `income_tax_return_filings.id` ✓
+- `income_tax_computation_lines.computation_run_id` → `itr_computation_runs.id` ✓ (updated from itr_filing_id)
 
 ---
 
@@ -96,8 +135,8 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | rdo_code | text | NULL | — | Revenue District Office code |
 | bir_registered_address | text | NOT NULL | — | Address on BIR registration |
 | industry_classification | text | NULL | — | PSIC industry code |
-| tax_type | text | NOT NULL | — | CHECK IN ('vat','non_vat','exempt') |
-| business_type | text | NOT NULL | — | CHECK IN ('corporation','partnership','sole_proprietorship','cooperative') |
+| tax_type | text | NOT NULL | — | CHECK IN ('vat','non_vat') — **[DEPRECATED: use company_compliance_profiles.taxpayer_type. v3: 'exempt' REMOVED from CHECK — 'exempt' is a transaction-level VAT classification, not a taxpayer type]** |
+| business_type | text | NOT NULL | — | CHECK IN ('corporation','partnership','sole_proprietorship','cooperative') — **[DEPRECATED: use company_compliance_profiles.legal_type]** |
 | sec_registration_no | text | NULL | — | SEC registration number |
 | dti_registration_no | text | NULL | — | DTI registration (sole props) |
 | logo_url | text | NULL | — | Supabase Storage URL |
@@ -324,18 +363,31 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | account_code | text | NOT NULL | — | e.g., '1010-001' |
 | account_name | text | NOT NULL | — | |
 | account_type_id | uuid | NOT NULL | — | FK → account_types.id |
-| parent_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| level | integer | NOT NULL | 1 | Hierarchy level (1=group) |
-| is_detail_account | boolean | NOT NULL | true | Only detail accounts can have JE lines |
+| parent_account_id | uuid | NULL | — | FK → chart_of_accounts.id (self-ref hierarchy) |
+| level | integer | NOT NULL | 1 | Hierarchy level (1=group, higher=detail) |
+| is_detail_account | boolean | NOT NULL | true | Only detail accounts receive JE lines |
 | normal_balance | text | NOT NULL | — | CHECK IN ('debit','credit') |
-| is_cash_equivalent | boolean | NOT NULL | false | For Cash Flow statement |
-| fs_line_mapping | text | NULL | — | Financial statement line reference |
-| vat_account_type | text | NULL | — | 'input_vat','output_vat','vat_payable', etc. |
+| **FS Mapping Columns (v3 addition)** | | | | |
+| fs_section | text | NULL | — | CHECK IN ('current_assets','non_current_assets','current_liabilities','non_current_liabilities','equity','revenue','cost_of_sales','operating_expenses','other_income','other_expenses') — maps to FS statement section |
+| fs_group | text | NULL | — | Sub-group label within section (e.g., 'cash_and_equivalents','trade_receivables','inventories','ppe_net') for grouping lines on FS |
+| fs_line_mapping | text | NULL | — | Human-readable FS line label (e.g., 'Cash on Hand', 'Trade Receivables – Net') — display alias |
+| fs_sort_order | integer | NULL | — | Display sort order within fs_group on financial statements |
+| cash_flow_category | text | NULL | — | CHECK IN ('operating','investing','financing') — NULL = not on direct cash flow statement |
+| is_cash_equivalent | boolean | NOT NULL | false | TRUE = include in 'Cash and Cash Equivalents' opening balance of cash flow |
+| **Control Account Columns (v3 addition)** | | | | |
+| control_account_type | text | NULL | — | CHECK IN ('AR_CONTROL','AP_CONTROL','INVENTORY_CONTROL','OUTPUT_VAT_CONTROL','INPUT_VAT_CONTROL','EWT_PAYABLE_CONTROL','PT_PAYABLE_CONTROL','FWT_PAYABLE_CONTROL','INCOME_TAX_PAYABLE_CONTROL') — maps to system_account_config keys; prevents direct JE posting at app layer |
+| vat_account_type | text | NULL | — | 'input_vat','output_vat','vat_payable','input_vat_deferred','input_vat_capital_goods' — VAT sub-classification |
+| **Income Tax Classification Columns (v3 addition)** | | | | |
+| is_mcit_gross_income | boolean | NOT NULL | false | Revenue accounts forming MCIT gross income base (2% of gross income vs regular corporate tax, whichever is higher) |
+| is_osd_gross_revenue | boolean | NOT NULL | false | Revenue accounts forming OSD computation base (40% of gross revenue replaces itemized deductions) |
+| tax_deductibility | text | NOT NULL | 'fully_deductible' | CHECK IN ('fully_deductible','partially_deductible','non_deductible','not_applicable') — for income tax itemized deduction classification |
 | is_active | boolean | NOT NULL | true | |
 | import_batch_id | uuid | NULL | — | FK → import_batches.id |
 | *+ standard audit columns* | | | | |
 
 **Constraints:** `UNIQUE(company_id, account_code)`
+**Indexes:** `idx_coa_company_id`, `idx_coa_account_code`, `idx_coa_fs_section`, `idx_coa_parent_account_id`
+**v3 Note:** `fs_section` + `fs_group` + `fs_sort_order` are the structured replacement for the old bare-text `fs_line_mapping`. `fs_line_mapping` is retained as an optional display label. The combination enables programmatic FS generation without hardcoded account ranges.
 
 ---
 
@@ -343,11 +395,23 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | Column | Type | Null | Default | Description |
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
-| code | text | NOT NULL | — | 'asset','liability','equity','revenue','expense','contra_asset','contra_revenue' |
-| name | text | NOT NULL | — | |
+| code | text | NOT NULL | — | CHECK IN ('asset','liability','equity','revenue','cost_of_sales','expense','other_income','other_expense','contra_asset','contra_liability','contra_equity','contra_revenue','contra_expense') — **v3: added cost_of_sales, other_income, other_expense, contra_liability, contra_equity** |
+| name | text | NOT NULL | — | Display name |
 | normal_balance | text | NOT NULL | — | CHECK IN ('debit','credit') |
-| fs_category | text | NOT NULL | — | 'balance_sheet','income_statement' |
+| fs_category | text | NOT NULL | — | CHECK IN ('balance_sheet','income_statement','cost_of_sales_section','other_income_expense_section') — **v3: expanded for P&L sub-sections** |
 | sort_order | integer | NOT NULL | 0 | Display order |
+
+**v3 Note — account_type code semantics:**
+- `revenue` — Operating revenue (Sales, Service Income)
+- `cost_of_sales` — Cost of Goods Sold / Cost of Services (separate P&L section)
+- `expense` — Operating expenses (SG&A, payroll, depreciation)
+- `other_income` — Non-operating income (interest income, gain on sale)
+- `other_expense` — Non-operating expense (interest expense, bank charges)
+- `contra_asset` — Accumulated depreciation, allowance for doubtful accounts
+- `contra_revenue` — Sales returns, discounts
+- `contra_liability` — Bond discount, deferred revenue reversal
+- `contra_equity` — Treasury stock
+- `contra_expense` — Purchase returns
 
 ---
 
@@ -397,9 +461,10 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | customer_code | text | NOT NULL | — | Unique customer code |
 | customer_name | text | NOT NULL | — | Registered business name |
 | trade_name | text | NULL | — | |
-| customer_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') |
+| customer_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') — entity legal form |
 | tin | text | NULL | — | TIN (required for VAT customers and SLSP) |
-| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government','peza','boi','foreign_entity') |
+| vat_registration_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat') — Is the customer VAT-registered? **[v3: renamed from vat_status; removed government/peza/boi/foreign_entity which move to party_special_class]** |
+| party_special_class | text | NULL | NULL | CHECK IN ('government','peza','boi','foreign_entity') — Special entity classification for compliance routing. NULL = regular entity. **[v3 addition]** — Government → posting engine sets vat_entries.vat_classification='government' for 2550M disclosure; PEZA/foreign_entity → triggers zero-rated review |
 | payment_terms_id | uuid | NULL | — | FK → payment_terms.id |
 | ar_account_id | uuid | NULL | — | FK → chart_of_accounts.id (override) |
 | sales_account_id | uuid | NULL | — | FK → chart_of_accounts.id (default revenue) |
@@ -421,17 +486,43 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | customer_id | uuid | NOT NULL | — | FK → customers.id |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| tin | text | NOT NULL | — | Customer TIN |
-| bir_registered_address | text | NULL | — | |
-| bir_rdo_code | text | NULL | — | |
+| company_id | uuid | NOT NULL | — | FK → companies.id (scoped: same customer may have different profiles per withholding company) |
+| tin | text | NOT NULL | — | Customer TIN snapshot for this period |
+| bir_registered_address | text | NULL | — | Address snapshot |
+| bir_rdo_code | text | NULL | — | RDO code snapshot |
 | vat_registration_no | text | NULL | — | |
-| is_ewt_agent | boolean | NOT NULL | false | |
+| is_ewt_agent | boolean | NOT NULL | false | Customer withholds EWT from payments to us |
 | default_ewt_atc_id | uuid | NULL | — | FK → atc_codes.id |
-| effective_date | date | NOT NULL | — | When this profile takes effect |
+| effective_from | date | NOT NULL | — | Date this profile takes effect **[v3: renamed from effective_date]** |
+| effective_to | date | NULL | — | NULL = currently active; set when profile changes **[v3 addition — Principle 11]** |
 | *+ standard audit columns* | | | | |
 
-**Constraints:** `UNIQUE(customer_id)` — one tax profile per customer
+**Constraints:** `UNIQUE(company_id, customer_id, effective_from)` — one profile per customer per effective date per company
+**Partial Unique Index:** `WHERE effective_to IS NULL` — enforces only one active profile per (company_id, customer_id)
+**v3 Change:** Removed `UNIQUE(customer_id)`. Customers can have multiple versioned profiles. Historical transactions use the profile active on their `document_date`. This mirrors `company_compliance_profiles` versioning per Principle 11.
+
+---
+
+### `supplier_tax_profiles`
+Mirror of `customer_tax_profiles` for suppliers. Versioned per Principle 11. **[v3: Previously missing from doc 03 — added]**
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| supplier_id | uuid | NOT NULL | — | FK → suppliers.id |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| tin | text | NOT NULL | — | Supplier TIN snapshot for this period |
+| bir_registered_address | text | NULL | — | Address snapshot |
+| bir_rdo_code | text | NULL | — | RDO code snapshot |
+| vat_registration_no | text | NULL | — | COR number if VAT-registered |
+| is_ewt_subject | boolean | NOT NULL | true | Subject to EWT on payments made to this supplier |
+| default_ewt_atc_id | uuid | NULL | — | FK → atc_codes.id (default ATC for EWT) |
+| effective_from | date | NOT NULL | — | Date this profile takes effect |
+| effective_to | date | NULL | — | NULL = currently active |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, supplier_id, effective_from)`
+**Partial Unique Index:** `WHERE effective_to IS NULL` — one active profile per (company_id, supplier_id)
 
 ---
 
@@ -443,9 +534,10 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | supplier_code | text | NOT NULL | — | Unique supplier code |
 | supplier_name | text | NOT NULL | — | Registered business name |
 | trade_name | text | NULL | — | |
-| supplier_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') |
+| supplier_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') — entity legal form |
 | tin | text | NULL | — | TIN (required for 2307) |
-| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government','peza','boi','foreign_entity') |
+| vat_registration_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat') — Is the supplier VAT-registered? **[v3: renamed from vat_status; removed government/peza/boi/foreign_entity]** |
+| party_special_class | text | NULL | NULL | CHECK IN ('government','peza','boi','foreign_entity') — Special entity classification. **[v3 addition]** — Government supplier → 5% CWT on VAT received applies |
 | payment_terms_id | uuid | NULL | — | FK → payment_terms.id |
 | ap_account_id | uuid | NULL | — | FK → chart_of_accounts.id (override) |
 | expense_account_id | uuid | NULL | — | FK → chart_of_accounts.id (default) |
@@ -565,13 +657,16 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | discount_amount | numeric(18,4) | NOT NULL | 0 | |
 | net_amount | numeric(18,4) | NOT NULL | — | After discount, before VAT |
 | vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output','zero_rated','exempt','government') |
-| vat_rate | numeric(10,6) | NOT NULL | 0 | Snapshot of rate |
+| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output') — always output for sales; direction is immutable on this table **[v3 fix: removed misplaced classification values]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','government') — nature of the VAT treatment **[v3 addition: separate column from direction]** |
+| vat_rate | numeric(10,6) | NOT NULL | 0 | Snapshot of rate at time of posting |
 | vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | net_amount + vat_amount |
 | revenue_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
 | warehouse_id | uuid | NULL | — | FK → warehouses.id (for inventory items) |
 | *+ standard audit columns* | | | | |
+
+**v3 Note:** `vat_direction` is always 'output' on sales lines. `vat_classification` drives the SLSP category, the zero-rated export documentation requirement, and the government customer treatment.
 
 ---
 
@@ -615,7 +710,8 @@ Cash sales — immediate collection, no AR created.
 | discount_amount | numeric(18,4) | NOT NULL | 0 | |
 | net_amount | numeric(18,4) | NOT NULL | — | |
 | vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output','zero_rated','exempt','government') |
+| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output') — always output for cash sales **[v3 fix]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','government') **[v3 addition]** |
 | vat_rate | numeric(10,6) | NOT NULL | 0 | |
 | vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | |
@@ -702,16 +798,19 @@ AR collection — applied against sales invoices.
 | unit_cost | numeric(18,4) | NOT NULL | — | |
 | net_amount | numeric(18,4) | NOT NULL | — | Before VAT |
 | input_vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input','input_deferred','capital_goods','exempt','zero_rated') |
+| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input') — always input for purchase lines **[v3 fix: removed misplaced classification values]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','capital_goods','services') — determines input VAT treatment and amortization **[v3 addition]** |
 | input_vat_rate | numeric(10,6) | NOT NULL | 0 | Snapshot |
 | input_vat_amount | numeric(18,4) | NOT NULL | 0 | |
-| total_amount | numeric(18,4) | NOT NULL | — | net_amount + vat_amount |
+| total_amount | numeric(18,4) | NOT NULL | — | net_amount + input_vat_amount |
 | ewt_atc_id | uuid | NULL | — | FK → atc_codes.id |
 | ewt_rate | numeric(10,6) | NOT NULL | 0 | |
 | ewt_amount | numeric(18,4) | NOT NULL | 0 | |
 | expense_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
 | warehouse_id | uuid | NULL | — | FK → warehouses.id |
 | *+ standard audit columns* | | | | |
+
+**v3 Note:** `vat_classification = 'capital_goods'` triggers special input VAT treatment (60-month amortization for amounts > PHP 1M per BIR rules). `vat_classification = 'services'` (input VAT on services) has distinct RELIEF reporting treatment. The posting engine must read `vat_classification` to route to the correct GL account (INPUT_VAT vs INPUT_VAT_CAPITAL_GOODS vs INPUT_VAT_DEFERRED).
 
 ---
 
@@ -751,7 +850,8 @@ Cash purchases — immediate payment, no AP created.
 | unit_cost | numeric(18,4) | NOT NULL | — | |
 | net_amount | numeric(18,4) | NOT NULL | — | |
 | input_vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input','input_deferred','capital_goods','exempt','zero_rated') |
+| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input') — always input for cash purchases **[v3 fix]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','capital_goods','services') **[v3 addition]** |
 | input_vat_rate | numeric(10,6) | NOT NULL | 0 | |
 | input_vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | |
@@ -917,7 +1017,7 @@ Records FIFO cost layer depletion when inventory is reduced.
 | posting_date | date | NOT NULL | — | |
 | fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
 | fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
-| je_type | text | NOT NULL | — | CHECK IN ('manual','system','reversal','opening','recurring','adjustment') |
+| je_type | text | NOT NULL | — | CHECK IN ('manual','system','reversal','opening','recurring','adjustment','amortization','revenue_recognition','auto_reversal') |
 | source_document_type | text | NULL | — | 'sales_invoice','vendor_bill','cash_sale','cash_purchase', etc. |
 | source_document_id | uuid | NULL | — | FK to source |
 | description | text | NOT NULL | — | |
@@ -925,14 +1025,21 @@ Records FIFO cost layer depletion when inventory is reduced.
 | total_credit | numeric(18,4) | NOT NULL | 0 | |
 | status | text | NOT NULL | 'draft' | CHECK IN ('draft','posted','reversed') |
 | is_auto_generated | boolean | NOT NULL | false | True if system-generated from posting |
-| reversal_of_je_id | uuid | NULL | — | FK → journal_entries.id |
-| reversed_by_je_id | uuid | NULL | — | FK → journal_entries.id |
+| reversal_of_je_id | uuid | NULL | — | FK → journal_entries.id (if this JE reverses another) |
+| reversed_by_je_id | uuid | NULL | — | FK → journal_entries.id (if this JE was reversed by another) |
 | recurring_template_id | uuid | NULL | — | FK → recurring_journal_templates.id |
+| auto_reversal_flag | boolean | NOT NULL | false | If true, system will auto-create a reversal JE on auto_reversal_date |
+| auto_reversal_date | date | NULL | — | Date to create the auto-reversal (typically 1st day of next period) |
+| auto_reversal_run_id | uuid | NULL | — | FK → auto_reversal_runs.id (set when reversal is processed) |
+| is_auto_reversal | boolean | NOT NULL | false | True if this JE was system-generated as an auto-reversal of another JE |
+| amortization_run_detail_id | uuid | NULL | — | FK → amortization_run_details.id (if generated by amortization run) |
+| revenue_recognition_run_detail_id | uuid | NULL | — | FK → revenue_recognition_run_details.id (if generated by rev rec run) |
 | posted_at | timestamptz | NULL | — | |
 | posted_by | uuid | NULL | — | FK → profiles.id |
 | *+ standard audit columns* | | | | |
 
 **Constraint:** `CHECK(total_debit = total_credit)` when status = 'posted'
+**v3 Note:** `je_type` expanded to include 'amortization', 'revenue_recognition', 'auto_reversal' for schedule-generated entries. `amortization_run_detail_id` and `revenue_recognition_run_detail_id` provide full traceability from JE back to source schedule line.
 
 ---
 
@@ -959,6 +1066,44 @@ Records FIFO cost layer depletion when inventory is reduced.
 | source_line_type | text | NULL | — | 'invoice_line','vat_entry','ewt_entry','header' |
 | source_line_id | uuid | NULL | — | FK to source line |
 | *+ standard audit columns* | | | | |
+
+**Constraint:** `CHECK(debit_amount = 0 OR credit_amount = 0)`
+
+---
+
+### `recurring_journal_templates`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| name | text | NOT NULL | — | Template name (e.g., "Monthly Depreciation") |
+| description | text | NULL | — | |
+| frequency | text | NOT NULL | — | CHECK IN ('monthly','quarterly','annually') |
+| start_date | date | NOT NULL | — | First date to generate |
+| end_date | date | NULL | — | NULL = indefinite |
+| next_run_date | date | NULL | — | Computed: next execution date |
+| last_run_date | date | NULL | — | Last successful execution date |
+| auto_reverse | boolean | NOT NULL | false | If true, generated JEs will have auto_reversal_flag=true |
+| auto_reversal_days_offset | integer | NOT NULL | 1 | Days after document_date for auto-reversal (default: 1 = next day, i.e. 1st of next month) |
+| je_type | text | NOT NULL | 'recurring' | Value to set on generated journal_entries.je_type |
+| total_debit | numeric(18,4) | NOT NULL | 0 | Expected debit total (validation only) |
+| status | text | NOT NULL | 'active' | CHECK IN ('active','paused','completed','cancelled') |
+| *+ standard audit columns* | | | | |
+
+### `recurring_journal_template_lines`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| template_id | uuid | NOT NULL | — | FK → recurring_journal_templates.id |
+| line_no | integer | NOT NULL | — | Display order |
+| account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id |
+| debit_amount | numeric(18,4) | NOT NULL | 0 | |
+| credit_amount | numeric(18,4) | NOT NULL | 0 | |
+| description | text | NULL | — | Line narration |
+| branch_id | uuid | NULL | — | FK → branches.id |
+| department_id | uuid | NULL | — | FK → departments.id |
+| cost_center_id | uuid | NULL | — | FK → cost_centers.id |
 
 **Constraint:** `CHECK(debit_amount = 0 OR credit_amount = 0)`
 
@@ -1535,7 +1680,7 @@ Immutable. One row per ATC per line per source document.
 | filing_status | text | NOT NULL | 'draft' | CHECK IN ('draft','filed','amended') |
 | filing_date | date | NULL | — | |
 | bir_confirmation_no | text | NULL | — | |
-| itr_working_paper_id | uuid | NULL | — | FK → itr_working_papers.id |
+| itr_computation_run_id | uuid | NULL | — | FK → itr_computation_runs.id |
 | export_job_id | uuid | NULL | — | FK → export_jobs.id |
 | *+ standard audit columns* | | | | |
 
@@ -1554,9 +1699,568 @@ Immutable. One row per ATC per line per source document.
 | OD-CS-05 | `document_no` assigned at DRAFT or at POST? | Recommended: At DRAFT (allocated from `number_series` with SELECT FOR UPDATE). Voided drafts consume their number per ATP rules. | all transaction tables |
 | OD-CS-06 | `cash_sales.customer_id` — require or allow NULL for walk-in customers? | Recommended: NULL allowed. BIR allows aggregated walk-in sales below PHP threshold in SLSP. | cash_sales |
 
+---
+
+## SECTION 20: INCOME TAX COMPUTATION SUPPORT (v3 addition)
+
+### `itr_computation_runs`
+Header record for each ITR computation run. A computation run is triggered on-demand before filing. Multiple runs may exist per `income_tax_return_filing` (e.g., amended computations).
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| itr_filing_id | uuid | NOT NULL | — | FK → income_tax_return_filings.id |
+| run_sequence | integer | NOT NULL | 1 | 1 = initial, 2+ = recomputed |
+| regime_snapshot | text | NOT NULL | — | Snapshot of income_tax_regime at run time |
+| gross_income_amount | numeric(18,4) | NOT NULL | 0 | For MCIT comparison |
+| gross_revenue_osd | numeric(18,4) | NOT NULL | 0 | For OSD computation |
+| osd_rate | numeric(10,6) | NULL | — | OSD rate applied if OSD method used |
+| osd_amount | numeric(18,4) | NOT NULL | 0 | OSD deduction (regime='osd' only) |
+| taxable_income_amount | numeric(18,4) | NOT NULL | 0 | Final taxable income |
+| regular_tax_amount | numeric(18,4) | NOT NULL | 0 | Tax at normal rate |
+| mcit_amount | numeric(18,4) | NOT NULL | 0 | MCIT (2% × gross income, 1% under CREATE Act) |
+| tax_due_amount | numeric(18,4) | NOT NULL | 0 | Higher of regular tax or MCIT |
+| nolco_applied | numeric(18,4) | NOT NULL | 0 | NOLCO deduction applied in this run |
+| notes | text | NULL | — | CPA notes on adjustments |
+| run_at | timestamptz | NOT NULL | now() | |
+| run_by | uuid | NOT NULL | — | FK → profiles.id |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(itr_filing_id, run_sequence)`
+
+---
+
+### `income_tax_computation_lines`
+Stores per-account breakdown used when computing income tax returns (1701Q/1701/1702Q/1702RT). Populated by the ITR computation engine from `gl_balances` + `chart_of_accounts.fs_section` classification.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| computation_run_id | uuid | NOT NULL | — | FK → itr_computation_runs.id |
+| account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id |
+| account_code | text | NOT NULL | — | Snapshot |
+| account_name | text | NOT NULL | — | Snapshot |
+| fs_section | text | NOT NULL | — | Snapshot from COA at computation time |
+| tax_deductibility | text | NOT NULL | — | Snapshot from COA |
+| is_mcit_gross_income | boolean | NOT NULL | false | Snapshot from COA |
+| is_osd_gross_revenue | boolean | NOT NULL | false | Snapshot from COA |
+| period_ytd_debit | numeric(18,4) | NOT NULL | 0 | YTD debit from gl_balances |
+| period_ytd_credit | numeric(18,4) | NOT NULL | 0 | YTD credit from gl_balances |
+| book_amount | numeric(18,4) | NOT NULL | 0 | Net book balance (positive = income/expense) |
+| tax_adjustment | numeric(18,4) | NOT NULL | 0 | Book-to-tax difference (add-back or deduction) |
+| taxable_amount | numeric(18,4) | NOT NULL | 0 | book_amount + tax_adjustment |
+| computed_at | timestamptz | NOT NULL | now() | |
+| computed_by | uuid | NOT NULL | — | FK → profiles.id |
+
+**Constraints:** `UNIQUE(computation_run_id, account_id)`
+
+---
+
+### `nolco_tracking`
+Net Operating Loss Carry-Over tracking per fiscal year. NOLCO may be deducted within 3 consecutive taxable years following the year of loss.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id — year the loss was incurred |
+| nolco_amount | numeric(18,4) | NOT NULL | 0 | Net operating loss for the year |
+| applied_fy1_amount | numeric(18,4) | NOT NULL | 0 | Amount applied in year +1 |
+| applied_fy2_amount | numeric(18,4) | NOT NULL | 0 | Amount applied in year +2 |
+| applied_fy3_amount | numeric(18,4) | NOT NULL | 0 | Amount applied in year +3 |
+| remaining_balance | numeric(18,4) | NOT NULL | 0 | nolco_amount - sum of applied amounts |
+| is_expired | boolean | NOT NULL | false | True after 3 carry-over years lapse |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, fiscal_year_id)`
+**v3 Note:** NOLCO is only applicable for income_tax_regime = 'corporate' or 'individual' using itemized deductions. OSD users do not carry over losses.
+
+---
+
+### `book_tax_reconciliations`
+Reconciliation schedule (BIR Schedule) between book income and taxable income. One record per `itr_computation_run` for each reconciling item.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| computation_run_id | uuid | NOT NULL | — | FK → itr_computation_runs.id |
+| reconciliation_type | text | NOT NULL | — | CHECK IN ('add_back','deduction','permanent','temporary') |
+| description | text | NOT NULL | — | Description of reconciling item |
+| account_id | uuid | NULL | — | FK → chart_of_accounts.id (if account-driven) |
+| book_amount | numeric(18,4) | NOT NULL | 0 | Amount per books |
+| tax_amount | numeric(18,4) | NOT NULL | 0 | Amount per tax rules |
+| difference_amount | numeric(18,4) | NOT NULL | 0 | tax_amount - book_amount |
+| sequence_no | integer | NOT NULL | 1 | Display order |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `tax_credits_schedules`
+Creditable taxes (2307, 2306) applied against income tax due in a filing period.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| itr_filing_id | uuid | NOT NULL | — | FK → income_tax_return_filings.id |
+| credit_type | text | NOT NULL | — | CHECK IN ('ewt_2307','fwt_2306','prior_quarter_overpayment','soa_payment') |
+| certificate_id | uuid | NULL | — | FK → certificates_2307_issued.id or certificates_2306_issued.id |
+| credit_period_from | date | NOT NULL | — | |
+| credit_period_to | date | NOT NULL | — | |
+| credit_amount | numeric(18,4) | NOT NULL | 0 | |
+| payor_name | text | NULL | — | Snapshot |
+| payor_tin | text | NULL | — | Snapshot |
+| *+ standard audit columns* | | | | |
+
+---
+
+## SECTION 21: Critical Reference Tables — Abbreviated Specs
+
+> These tables appear in doc 02 inventory but do not have full column specs in doc 03. Abbreviated specs provided here for Phase 1 freeze. Full specs in Phase 2 sprint.
+
+### `currencies`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| code | text | NOT NULL | — | ISO 4217 (e.g., 'PHP', 'USD') |
+| name | text | NOT NULL | — | Full name |
+| symbol | text | NOT NULL | — | '₱', '$', etc. |
+| is_base_currency | boolean | NOT NULL | false | TRUE for PHP only |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(code)`
+
+---
+
+### `payment_terms`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| name | text | NOT NULL | — | e.g., 'Net 30', 'COD' |
+| description | text | NULL | — | |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+### `payment_term_lines`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| payment_term_id | uuid | NOT NULL | — | FK → payment_terms.id |
+| sequence_no | integer | NOT NULL | 1 | |
+| days_due | integer | NOT NULL | 0 | Days after invoice date |
+| percent_due | numeric(10,6) | NOT NULL | 1.000000 | Portion due (1.0 = 100%) |
+
+---
+
+### `vat_codes`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| code | text | NOT NULL | — | e.g., 'VAT12', 'ZR', 'EX' |
+| description | text | NOT NULL | — | |
+| rate | numeric(10,6) | NOT NULL | — | 0.12, 0.00 |
+| classification | text | NOT NULL | — | CHECK IN ('vatable','zero_rated','exempt') |
+| effective_from | date | NOT NULL | — | |
+| effective_to | date | NULL | — | NULL = active |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `atc_codes`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| code | text | NOT NULL | — | BIR ATC e.g., 'WI010' |
+| description | text | NOT NULL | — | BIR official description |
+| tax_type | text | NOT NULL | — | CHECK IN ('ewt','fwt') |
+| rate | numeric(10,6) | NOT NULL | — | e.g., 0.01, 0.02, 0.05 |
+| effective_from | date | NOT NULL | — | Principle 11: effective-date versioned |
+| effective_to | date | NULL | — | NULL = currently active |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(code, effective_from)` | Partial unique index WHERE effective_to IS NULL
+
+---
+
+### `items`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| item_code | text | NOT NULL | — | Internal SKU/code |
+| name | text | NOT NULL | — | |
+| description | text | NULL | — | |
+| item_type | text | NOT NULL | — | CHECK IN ('inventory','service','non_inventory') |
+| unit_of_measure | text | NOT NULL | 'piece' | |
+| unit_price | numeric(18,4) | NOT NULL | 0 | Default selling price |
+| unit_cost | numeric(18,4) | NOT NULL | 0 | Standard cost (overridden by FIFO layer) |
+| sales_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| purchase_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| cogs_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| inventory_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| vat_code_id | uuid | NULL | — | FK → vat_codes.id |
+| ewt_atc_id | uuid | NULL | — | FK → atc_codes.id (default EWT on purchases) |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, item_code)`
+
+---
+
+## SECTION 22: Cross-Reference Index — All Tables to Spec Location
+
+> Every table in doc 02 is listed here with its canonical column spec location. Tables marked **SPEC REQUIRED** have no spec in any document and must be specced before database freeze.
+
+| Module | Table Name | Spec Location |
+|---|---|---|
+| MODULE 1 | companies | Doc 03 § 1 |
+| MODULE 1 | branches | Doc 03 § 1 |
+| MODULE 1 | departments | Doc 03 § 1 |
+| MODULE 1 | cost_centers | Doc 03 § 1 |
+| MODULE 1 | fiscal_years | Doc 03 § 1 |
+| MODULE 1 | fiscal_periods | Doc 03 § 1 |
+| MODULE 1 | fiscal_locks | Doc 03 § 1 |
+| MODULE 1 | company_compliance_profiles | Doc 03 § 1 |
+| MODULE 1 | company_feature_settings | Doc 03 § 1 |
+| MODULE 2 | currencies | Doc 03 § 21 |
+| MODULE 2 | exchange_rates | **SPEC REQUIRED** |
+| MODULE 2 | payment_terms | Doc 03 § 21 |
+| MODULE 2 | payment_term_lines | Doc 03 § 21 |
+| MODULE 2 | number_series | Doc 07 |
+| MODULE 2 | document_templates | Doc 03 § 14 |
+| MODULE 2 | generated_documents | Doc 03 § 14 |
+| MODULE 3 | chart_of_accounts | Doc 03 § 3 |
+| MODULE 3 | account_types | Doc 03 § 3 |
+| MODULE 3 | posting_rule_sets | Doc 06 |
+| MODULE 3 | posting_rules | Doc 06 |
+| MODULE 4 | customers | Doc 03 § 4 |
+| MODULE 4 | customer_tax_profiles | Doc 03 § 4 |
+| MODULE 4 | customer_contacts | Doc 03 § 4 |
+| MODULE 4 | customer_addresses | Doc 03 § 4 |
+| MODULE 4 | customer_credit_limits | **SPEC REQUIRED** |
+| MODULE 5 | suppliers | Doc 03 § 5 |
+| MODULE 5 | supplier_tax_profiles | Doc 03 § 5 |
+| MODULE 5 | supplier_contacts | **SPEC REQUIRED** |
+| MODULE 5 | supplier_addresses | **SPEC REQUIRED** |
+| MODULE 6 | items | Doc 03 § 21 |
+| MODULE 6 | item_categories | **SPEC REQUIRED** |
+| MODULE 6 | units_of_measure | **SPEC REQUIRED** |
+| MODULE 6 | vat_codes | Doc 03 § 21 |
+| MODULE 6 | atc_codes | Doc 03 § 21 |
+| MODULE 6 | percentage_tax_codes | **SPEC REQUIRED** |
+| MODULE 7 | sales_invoices | Doc 03 § 7 |
+| MODULE 7 | sales_invoice_lines | Doc 03 § 7 |
+| MODULE 7 | credit_memos | Doc 03 § 7 |
+| MODULE 7 | credit_memo_lines | Doc 03 § 7 |
+| MODULE 8 | cash_sales | Doc 03 § 8 |
+| MODULE 8 | cash_sale_lines | Doc 03 § 8 |
+| MODULE 9 | vendor_bills | Doc 03 § 9 |
+| MODULE 9 | vendor_bill_lines | Doc 03 § 9 |
+| MODULE 9 | debit_memos | **SPEC REQUIRED** |
+| MODULE 9 | debit_memo_lines | **SPEC REQUIRED** |
+| MODULE 10 | cash_purchases | Doc 03 § 10 |
+| MODULE 10 | cash_purchase_lines | Doc 03 § 10 |
+| MODULE 11 | official_receipts | Doc 03 § 11 |
+| MODULE 11 | official_receipt_lines | Doc 03 § 11 |
+| MODULE 11 | disbursement_vouchers | Doc 03 § 11 |
+| MODULE 11 | disbursement_voucher_lines | Doc 03 § 11 |
+| MODULE 11 | petty_cash_vouchers | Doc 03 § 11 |
+| MODULE 11 | petty_cash_voucher_lines | Doc 03 § 11 |
+| MODULE 12 | journal_entries | Doc 03 § 12 |
+| MODULE 12 | journal_entry_lines | Doc 03 § 12 |
+| MODULE 13 | gl_accounts (= chart_of_accounts) | Doc 03 § 3 |
+| MODULE 13 | gl_balances | Doc 03 § 9 |
+| MODULE 13 | gl_transactions | Doc 03 § 13 |
+| MODULE 13 | document_relationships | Doc 03 § 13 |
+| MODULE 14 | vat_entries | Doc 03 § 14 |
+| MODULE 14 | vat_period_summaries | Doc 03 § 14 |
+| MODULE 14 | vat_return_filings | Doc 03 § 14 |
+| MODULE 15 | ewt_entries | Doc 03 § 15 |
+| MODULE 15 | ewt_period_summaries | Doc 03 § 15 |
+| MODULE 15 | certificates_2307_issued | Doc 03 § 15 |
+| MODULE 15 | certificates_2306_issued | **SPEC REQUIRED** |
+| MODULE 16 | sawt_records | Doc 03 § 16 |
+| MODULE 16 | slsp_records | Doc 03 § 16 |
+| MODULE 16 | qap_records | **SPEC REQUIRED** |
+| MODULE 16 | relief_records | **SPEC REQUIRED** |
+| MODULE 17 | inventory_cost_layers | Doc 03 § 17 |
+| MODULE 17 | inventory_cost_layer_consumption | Doc 03 § 17 |
+| MODULE 17 | inventory_movements | **SPEC REQUIRED** |
+| MODULE 18 | bank_accounts | Doc 03 § 18 |
+| MODULE 18 | bank_statements | Doc 03 § 18 |
+| MODULE 18 | bank_statement_lines | Doc 03 § 18 |
+| MODULE 18 | bank_reconciliations | Doc 03 § 18 |
+| MODULE 19 | income_tax_return_filings | Doc 03 § 19 |
+| MODULE 19 | itr_computation_runs | Doc 03 § 20 |
+| MODULE 19 | income_tax_computation_lines | Doc 03 § 20 |
+| MODULE 19 | book_tax_reconciliations | Doc 03 § 20 |
+| MODULE 19 | tax_credits_schedules | Doc 03 § 20 |
+| MODULE 19 | nolco_tracking | Doc 03 § 20 |
+| MODULE 20 | percentage_tax_entries | Doc 03 § 17 |
+| MODULE 20 | percentage_tax_period_summaries | Doc 03 § 17 |
+| MODULE 20 | percentage_tax_return_filings | Doc 03 § 17 |
+| MODULE 21 | fwt_remittances_1601fq | Doc 03 § 18 |
+| MODULE 22 | attachments | Doc 03 § 21 |
+| MODULE 22 | attachment_versions | **SPEC REQUIRED** |
+| MODULE 23 | notifications | Doc 03 § 21 |
+| MODULE 23 | notification_templates | Doc 03 § 21 |
+| MODULE 24 | budgets | Doc 03 § 21 |
+| MODULE 24 | budget_lines | Doc 03 § 21 |
+| MODULE 25 | period_close_checklists | Doc 03 § 21 |
+| MODULE 25 | period_close_tasks | Doc 03 § 21 |
+| MODULE 26 | party_merge_log | **SPEC REQUIRED** |
+| MODULE 27 | import_jobs | Doc 08 |
+| MODULE 27 | import_batches | Doc 08 |
+| MODULE 27 | import_batch_rows | Doc 08 |
+| MODULE 27 | export_jobs | Doc 08 |
+| MODULE 28 | audit_logs | Doc 07 |
+| MODULE 28 | audit_log_details | Doc 07 |
+| MODULE 28 | system_alerts | Doc 07 |
+| MODULE 29 | profiles | Doc 09 |
+| MODULE 29 | user_company_access | Doc 03 § 16 |
+| MODULE 29 | roles | Doc 09 |
+| MODULE 29 | role_permissions | Doc 09 |
+| MODULE 29 | user_roles | Doc 09 |
+| MODULE 30 | posting_logs | Doc 06 |
+| MODULE 30 | posting_log_lines | Doc 06 |
+| MODULE 31 | amortization_schedules | Doc 03 § 23 |
+| MODULE 31 | amortization_schedule_lines | Doc 03 § 23 |
+| MODULE 31 | amortization_runs | Doc 03 § 23 |
+| MODULE 31 | amortization_run_details | Doc 03 § 23 |
+| MODULE 31 | revenue_recognition_schedules | Doc 03 § 23 |
+| MODULE 31 | revenue_recognition_schedule_lines | Doc 03 § 23 |
+| MODULE 31 | revenue_recognition_runs | Doc 03 § 23 |
+| MODULE 31 | revenue_recognition_run_details | Doc 03 § 23 |
+| MODULE 31 | auto_reversal_runs | Doc 03 § 23 |
+| MODULE 16 (updated) | recurring_journal_templates | Doc 03 § 9 |
+| MODULE 16 (updated) | recurring_journal_template_lines | Doc 03 § 9 |
+
+> **SPEC REQUIRED** count reduced to ~12 tables (recurring_journal_templates and recurring_journal_template_lines now specced). These must be fully specced in a dedicated Phase 2 doc sprint before schema migration begins.
+
+---
+
+## SECTION 23: ACCOUNTING SCHEDULES (v3 Enhancement)
+
+> Tables #201–#209. Supports prepaid amortization, deferred revenue recognition, and auto-reversal batch processing. Every generated journal entry is fully traceable back to its source schedule line through the run detail record.
+
+---
+
+### `amortization_schedules`
+Header for each prepaid expense or deferred charge being amortized. Covers prepaid rent, prepaid insurance, prepaid software, prepaid professional fees, deferred charges.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| name | text | NOT NULL | — | e.g., "AXA Fire Insurance FY2026" |
+| prepaid_type | text | NOT NULL | — | CHECK IN ('prepaid_rent','prepaid_insurance','prepaid_software','prepaid_professional_fees','deferred_charge','other') |
+| source_document_type | text | NULL | — | 'vendor_bill' or 'cash_purchase' — originating payment |
+| source_document_id | uuid | NULL | — | FK to originating document |
+| prepaid_account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id (Prepaid Expense account) |
+| expense_account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id (target expense account) |
+| total_amount | numeric(18,4) | NOT NULL | 0 | Total prepaid amount to amortize |
+| amount_amortized | numeric(18,4) | NOT NULL | 0 | Running total of amount already amortized |
+| amount_remaining | numeric(18,4) | NOT NULL | 0 | total_amount - amount_amortized |
+| start_date | date | NOT NULL | — | First period to recognize expense |
+| end_date | date | NOT NULL | — | Last period to recognize expense |
+| frequency | text | NOT NULL | 'monthly' | CHECK IN ('monthly','quarterly','annually') |
+| amortization_method | text | NOT NULL | 'straight_line' | CHECK IN ('straight_line') — Phase 1: straight-line only |
+| status | text | NOT NULL | 'active' | CHECK IN ('active','completed','cancelled') |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, name)` (optional unique on name per company)
+
+---
+
+### `amortization_schedule_lines`
+Pre-computed amortization table — one line per period. Generated when the schedule is created. Allows user to preview the full amortization table before any run executes.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| amortization_schedule_id | uuid | NOT NULL | — | FK → amortization_schedules.id |
+| period_date | date | NOT NULL | — | First day of the period being amortized |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
+| line_no | integer | NOT NULL | — | Period number (1, 2, 3, …) |
+| period_amount | numeric(18,4) | NOT NULL | 0 | Amount to recognize this period |
+| cumulative_amount | numeric(18,4) | NOT NULL | 0 | Running total through this period |
+| remaining_after | numeric(18,4) | NOT NULL | 0 | Balance remaining after this period |
+| status | text | NOT NULL | 'pending' | CHECK IN ('pending','processed','skipped') |
+| journal_entry_id | uuid | NULL | — | FK → journal_entries.id (set when processed) |
+
+**Constraints:** `UNIQUE(amortization_schedule_id, fiscal_period_id)`
+
+---
+
+### `amortization_runs`
+Batch execution header — one record per amortization run batch. Supports async processing (Principle 17).
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id — period being processed |
+| run_date | date | NOT NULL | — | Date of the run |
+| status | text | NOT NULL | 'pending' | CHECK IN ('pending','processing','completed','failed','rolled_back') |
+| schedules_included | integer | NOT NULL | 0 | Number of amortization schedules included |
+| entries_created | integer | NOT NULL | 0 | Number of journal entries created |
+| entries_failed | integer | NOT NULL | 0 | |
+| run_by | uuid | NOT NULL | — | FK → profiles.id |
+| run_at | timestamptz | NOT NULL | now() | |
+| completed_at | timestamptz | NULL | — | |
+| error_message | text | NULL | — | |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `amortization_run_details`
+Traceability link between a run, a schedule line, and the generated journal entry. One record per schedule line processed in a run.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| run_id | uuid | NOT NULL | — | FK → amortization_runs.id |
+| amortization_schedule_id | uuid | NOT NULL | — | FK → amortization_schedules.id |
+| amortization_schedule_line_id | uuid | NOT NULL | — | FK → amortization_schedule_lines.id |
+| journal_entry_id | uuid | NULL | — | FK → journal_entries.id (NULL if failed) |
+| period_amount | numeric(18,4) | NOT NULL | 0 | Amount in this detail |
+| status | text | NOT NULL | 'pending' | CHECK IN ('pending','success','failed','rolled_back') |
+| error_message | text | NULL | — | |
+
+**Constraints:** `UNIQUE(run_id, amortization_schedule_line_id)`
+
+---
+
+### `revenue_recognition_schedules`
+Header for each deferred revenue item being recognized over time. Covers annual retainers, service contracts, subscription contracts, advance billings.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| name | text | NOT NULL | — | e.g., "ABC Corp Annual Retainer FY2026" |
+| deferred_revenue_type | text | NOT NULL | — | CHECK IN ('annual_retainer','service_contract','subscription','advance_billing','other') |
+| source_document_type | text | NULL | — | 'sales_invoice' or 'cash_sale' — originating billing |
+| source_document_id | uuid | NULL | — | FK to originating document |
+| customer_id | uuid | NULL | — | FK → customers.id |
+| deferred_revenue_account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id (Deferred Revenue / Unearned Revenue) |
+| revenue_account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id (target revenue account) |
+| total_amount | numeric(18,4) | NOT NULL | 0 | Total contract value to be recognized |
+| amount_recognized | numeric(18,4) | NOT NULL | 0 | Amount already recognized |
+| amount_remaining | numeric(18,4) | NOT NULL | 0 | total_amount - amount_recognized |
+| start_date | date | NOT NULL | — | First period to recognize revenue |
+| end_date | date | NOT NULL | — | Last period to recognize revenue |
+| frequency | text | NOT NULL | 'monthly' | CHECK IN ('monthly','quarterly','annually') |
+| recognition_method | text | NOT NULL | 'straight_line' | CHECK IN ('straight_line') — Phase 1: straight-line only |
+| status | text | NOT NULL | 'active' | CHECK IN ('active','completed','cancelled') |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `revenue_recognition_schedule_lines`
+Pre-computed recognition table — one line per period.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| revenue_recognition_schedule_id | uuid | NOT NULL | — | FK → revenue_recognition_schedules.id |
+| period_date | date | NOT NULL | — | First day of the recognition period |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
+| line_no | integer | NOT NULL | — | Period number (1, 2, 3, …) |
+| period_amount | numeric(18,4) | NOT NULL | 0 | Revenue to recognize this period |
+| cumulative_amount | numeric(18,4) | NOT NULL | 0 | Running total through this period |
+| remaining_after | numeric(18,4) | NOT NULL | 0 | Balance remaining after this period |
+| status | text | NOT NULL | 'pending' | CHECK IN ('pending','processed','skipped') |
+| journal_entry_id | uuid | NULL | — | FK → journal_entries.id (set when processed) |
+
+**Constraints:** `UNIQUE(revenue_recognition_schedule_id, fiscal_period_id)`
+
+---
+
+### `revenue_recognition_runs`
+Batch execution header for revenue recognition runs.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
+| run_date | date | NOT NULL | — | |
+| status | text | NOT NULL | 'pending' | CHECK IN ('pending','processing','completed','failed','rolled_back') |
+| schedules_included | integer | NOT NULL | 0 | |
+| entries_created | integer | NOT NULL | 0 | |
+| entries_failed | integer | NOT NULL | 0 | |
+| run_by | uuid | NOT NULL | — | FK → profiles.id |
+| run_at | timestamptz | NOT NULL | now() | |
+| completed_at | timestamptz | NULL | — | |
+| error_message | text | NULL | — | |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `revenue_recognition_run_details`
+Traceability link between a recognition run, a schedule line, and the generated journal entry.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| run_id | uuid | NOT NULL | — | FK → revenue_recognition_runs.id |
+| revenue_recognition_schedule_id | uuid | NOT NULL | — | FK → revenue_recognition_schedules.id |
+| revenue_recognition_schedule_line_id | uuid | NOT NULL | — | FK → revenue_recognition_schedule_lines.id |
+| journal_entry_id | uuid | NULL | — | FK → journal_entries.id (NULL if failed) |
+| period_amount | numeric(18,4) | NOT NULL | 0 | |
+| status | text | NOT NULL | 'pending' | CHECK IN ('pending','success','failed','rolled_back') |
+| error_message | text | NULL | — | |
+
+**Constraints:** `UNIQUE(run_id, revenue_recognition_schedule_line_id)`
+
+---
+
+### `auto_reversal_runs`
+Batch execution header for auto-reversal processing. At the start of each period, the posting engine processes all `journal_entries` where `auto_reversal_flag = true` and `auto_reversal_date` falls within the new period.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id — period in which reversals are posted |
+| run_date | date | NOT NULL | — | Date reversals were created |
+| status | text | NOT NULL | 'pending' | CHECK IN ('pending','processing','completed','failed') |
+| entries_reversed | integer | NOT NULL | 0 | Number of JEs reversed |
+| entries_failed | integer | NOT NULL | 0 | |
+| run_by | uuid | NOT NULL | — | FK → profiles.id |
+| run_at | timestamptz | NOT NULL | now() | |
+| completed_at | timestamptz | NULL | — | |
+| *+ standard audit columns* | | | | |
+
+**v3 Note:** When an auto-reversal run processes a JE, it:
+1. Creates a new JE with `is_auto_reversal = true`, `reversal_of_je_id` = original JE id, `auto_reversal_run_id` = this run's id
+2. Updates the original JE: `auto_reversal_run_id` = this run's id, `reversed_by_je_id` = new reversal JE id
+The reversal JE mirrors all journal lines with DR and CR swapped.
+
+---
+
 ## Implementation Notes
 
 - All `{party}_tin` snapshot columns on compliance tables (`vat_entries`, `ewt_entries`, etc.) must be populated at document posting time by copying from the master record. They must NOT be updated if the master TIN changes later.
-- `vat_direction` replaces the ambiguous `vat_type` column from v1. Direction is either 'output' (sales) or 'input' (purchases). Classification (vatable/zero_rated/exempt) is separate.
+- `vat_direction` replaces the ambiguous `vat_type` column from v1. Direction is either 'output' (sales) or 'input' (purchases). Classification (vatable/zero_rated/exempt) is separate. **v3: All line tables now carry both `vat_direction` AND `vat_classification` as separate columns.**
 - `cash_sales` and `cash_purchases` share the same structural pattern as `sales_invoices` and `vendor_bills` but have no AR/AP ledger impact.
 - `petty_cash_voucher_lines` was missing in v1 — now fully specified. EWT on petty cash is captured at the line level, not deferred to replenishment.
+- **v3: COA `fs_section` + `fs_group` + `fs_sort_order` enable programmatic generation of FS reports (BS, P&L, SOCE) without hardcoded account ranges. The posting engine is not affected — it still posts to account_id regardless of FS classification.**
+- **v3: `income_tax_computation_lines` and `nolco_tracking` are Phase 1 inclusion. They are computed tables — populated on-demand when ITR computation is triggered, not updated continuously.**

@@ -1,7 +1,7 @@
 # PXL ERP — Database Architecture Overview
-**Version:** 2.0 — Revised for Implementation Readiness
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
 **Prepared by:** PXL Database Architecture Team
-**Status:** For CPA and Developer Review
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 ---
 
@@ -16,6 +16,95 @@
 - Standardized column name conventions (see Section 11)
 - Resolved OD-01 through OD-07 with recommended defaults
 - Expanded Supabase-Specific Decisions section
+
+## v3 Architecture Review Changes Applied
+
+### A. COA FS Mapping — Architecture Decision (RESOLVED)
+
+**Decision: Phase 1 uses COA-embedded fields only. No separate mapping tables.**
+
+Fields added to `chart_of_accounts`:
+- `fs_section` — 10-value enum covering all FS statement sections
+- `fs_group` — sub-group label within section (e.g., 'cash_and_equivalents')
+- `fs_sort_order` — display ordering within fs_group
+- `cash_flow_category` — ('operating','investing','financing'), NULL if not on direct CF
+
+**Not included in Phase 1 (deferred to Phase 2):**
+- `financial_statement_mappings` table — custom FS layouts for multi-GAAP
+- `cash_flow_mapping_rules` table — indirect method cash flow computation rules
+- `account_tax_mappings` table — replaced by inline COA flags (is_mcit_gross_income, is_osd_gross_revenue, tax_deductibility)
+
+**Rationale:** MSME clients need standard PFRS for SMEs layouts. COA-embedded fields are sufficient for BS, P&L, SOCE generation without runtime joins to a separate mapping table. Phase 2 can add mapping tables if multi-GAAP or custom layouts are needed.
+
+### B. Company Taxpayer Type — RESOLVED
+
+**Canonical source:** `company_compliance_profiles.taxpayer_type` CHECK IN ('vat','non_vat')
+
+`companies.tax_type` CHECK changed from ('vat','non_vat','**exempt**') to ('vat','non_vat'). **'exempt' is not a taxpayer type — it is a transaction-level VAT classification.** A company with exempt income is still either VAT-registered (files 2550 but discloses exempt sales) or non-VAT (files 2551Q). There is no 'exempt' taxpayer type under the NIRC.
+
+`companies.tax_type` is retained as a deprecated shadow column synced from compliance_profiles. Removal planned for Phase 2.
+
+### C. Party Classification vs Transaction VAT Classification — RESOLVED
+
+**Separation of concerns:**
+
+| Concept | Column | Table | Values |
+|---|---|---|---|
+| Customer VAT registration | `vat_registration_status` (v3: renamed from `vat_status`) | `customers` | 'vat', 'non_vat' |
+| Customer special entity type | `party_special_class` (v3: new column) | `customers` | 'government', 'peza', 'boi', 'foreign_entity', NULL |
+| Supplier VAT registration | `vat_registration_status` | `suppliers` | 'vat', 'non_vat' |
+| Supplier special entity type | `party_special_class` | `suppliers` | same |
+| Transaction tax treatment on sales lines | `vat_classification` | `sales_invoice_lines`, `cash_sale_lines` | 'vatable', 'zero_rated', 'exempt' |
+| Transaction tax treatment on purchase lines | `vat_classification` | `vendor_bill_lines`, `cash_purchase_lines` | 'vatable', 'zero_rated', 'exempt', 'capital_goods', 'services' |
+| Compliance reporting category | `vat_classification` | `vat_entries` | 'vatable', 'zero_rated', 'exempt', **'government'** |
+
+**Why 'government' appears only in `vat_entries`:** BIR Form 2550M/2550Q has a specific disclosure line for "Sales to Government." Government sales are still vatable (12%), but the BIR requires them disclosed separately. When the posting engine creates a `vat_entry` for a vatable sale to a customer with `party_special_class = 'government'`, it automatically sets `vat_entries.vat_classification = 'government'`. The transaction line itself uses 'vatable' — the system derives the reporting category.
+
+### D. Income Tax Table Overlaps — RESOLVED
+
+**Canonical table set for income tax (consolidated from Module 19 + Module 30):**
+
+| # | Table | Role | Status |
+|---|---|---|---|
+| 158a | `income_tax_return_filings` | ITR filing header per form per period | KEEP |
+| 154 | `itr_computation_runs` (renamed from `itr_working_papers`) | Computation run header — when computed, by whom, status (draft/final) | RENAME |
+| 199 | `income_tax_computation_lines` | Per-account GL breakdown per computation run | KEEP |
+| 155 | `book_tax_reconciliations` | Summary book-to-tax reconciliation per fiscal year | KEEP |
+| 200 | `nolco_tracking` | NOLCO balance and 3-year application tracking (canonical) | KEEP |
+| 158 | `tax_credits_schedules` | Creditable taxes per year (2307 received, CWT on VAT, prior overpayment) | KEEP |
+| **156** | **`mcit_computations`** | **REMOVE** — MCIT is computed from `income_tax_computation_lines` WHERE `is_mcit_gross_income = true`; no separate table needed | **REMOVED** |
+| **157** | **`nolco_schedules`** | **REMOVE** — Replaced by `nolco_tracking` (#200) | **REMOVED** |
+
+`itr_computation_runs` links to `income_tax_return_filings` (many runs per filing, for recomputation), and has `income_tax_computation_lines` as its detail lines.
+
+### E. Other v3 Changes
+
+- `posting_rule_sets.effective_from/effective_to` added (Principle 11)
+- `system_account_config` keys expanded: PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE
+- `customer_tax_profiles` and `supplier_tax_profiles` now versioned with effective_from/effective_to
+- All line tables: `vat_direction` + `vat_classification` now separate columns
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Options | Recommended |
+|---|---|---|---|
+| OD-V3-ARCH-01 | Capital goods input VAT amortization (>PHP 1M): Phase 1 or Phase 2? | Phase 1 / Phase 2 | Phase 1: flag at entry + compute at filing. Monthly amortization JE in Phase 2. |
+| OD-V3-ARCH-02 | `companies.tax_type` shadow column: sync automatically via trigger or manual update only? | Auto-trigger / Manual | Auto-trigger after compliance_profiles INSERT (recommended for data integrity) |
+| OD-V3-ARCH-03 | `itr_computation_runs` — how many runs per `income_tax_return_filings`? Is the final run locked? | One final / Multiple allowed | Multiple allowed (recomputation); `is_final = true` marks the run used for filing |
+| OD-V3-ARCH-04 | `doc 03` is the stated canonical spec source, but specs for ~120 tables are scattered in docs 06/07/08. Consolidate into doc 03 or add a cross-reference index? | Consolidate / Cross-ref | Cross-reference index in doc 03 for Phase 1; consolidation in Phase 2 documentation sprint |
+
+## v3 Cross-Document Consistency Validation
+
+- Doc 02 income tax module: `mcit_computations` (#156) and `nolco_schedules` (#157) marked REMOVED; table count adjusted ✓
+- Doc 02 customers/suppliers module: `vat_status` note updated to reflect `vat_registration_status` + `party_special_class` split ✓
+- Doc 03: `companies.tax_type` CHECK corrected; `customers/suppliers.vat_status` renamed and split; `vat_entries.vat_classification` note for 'government' derivation added ✓
+- Doc 05: compliance map updated to reference `party_special_class` for government sales categorization ✓
+- Doc 06: posting engine updated to route based on `party_special_class` at post time ✓
+- Doc 07: new audit events added for income tax computation runs and party classification changes ✓
+- Doc 08: import types updated for COA FS mapping fields and income tax mapping fields ✓
+- **REMAINING GAP**: Doc 03 does not have full column specs for ~120 tables inventoried in doc 02. See OD-V3-ARCH-04. A cross-reference index is added to doc 03 as interim resolution.
+
+---
 
 ## Changes Applied (v2 → v2.1) — Principle Alignment
 
