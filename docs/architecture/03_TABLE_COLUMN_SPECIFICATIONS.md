@@ -7,6 +7,17 @@
 
 ---
 
+## Changes Applied (v2 → v2.1) — Principle Alignment
+
+- Added `company_compliance_profiles` column spec (new table — Principles 1, 6, 11)
+- Added `company_feature_settings` column spec (new table — Principles 1, 7)
+- Added `percentage_tax_entries`, `percentage_tax_period_summaries`, `percentage_tax_return_filings` column specs
+- Added `fwt_remittances_1601fq` column spec
+- Added `income_tax_return_filings` column spec
+- Updated `customers.vat_status` CHECK to include `'government','peza','boi','foreign_entity'` (Principle 5)
+- Updated `suppliers.vat_status` CHECK to include `'government','peza','boi','foreign_entity'` (Principle 5)
+- Added `atc_codes.effective_from` and `atc_codes.effective_to` (Principle 11)
+
 ## Changes Applied (v1 → v2)
 
 - Standardized `document_no` (not `document_number`) on all transaction headers
@@ -160,6 +171,46 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | gl_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
 | is_active | boolean | NOT NULL | true | |
 | *+ standard audit columns* | | | | |
+
+---
+
+### `company_compliance_profiles`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| taxpayer_type | text | NOT NULL | — | CHECK IN ('vat','non_vat') |
+| income_tax_regime | text | NOT NULL | — | CHECK IN ('corporate','individual','partnership','cooperative') |
+| legal_type | text | NOT NULL | — | CHECK IN ('sole_proprietor','regular_corporation','opc','partnership','cooperative') |
+| withholding_agent_status | text | NOT NULL | 'registered' | CHECK IN ('registered','not_registered') |
+| rdo_code | text | NOT NULL | — | BIR Revenue District Office code |
+| bir_registered_at | date | NOT NULL | — | Date of original BIR registration |
+| filing_obligations | text[] | NOT NULL | '{}' | e.g. '{2550m,1601eq,2551q}' — forms this company must file |
+| effective_from | date | NOT NULL | — | Date this profile takes effect |
+| effective_to | date | NULL | — | NULL = currently active profile |
+| notes | text | NULL | — | |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** UNIQUE on `(company_id, effective_from)`. Only one record per company may have `effective_to IS NULL` (enforced by partial unique index).
+
+**Principle 11 Note:** When taxpayer type changes (e.g., NON-VAT → VAT), do NOT update existing row. Set `effective_to` on the current row and INSERT a new row with the new `effective_from`. Historical transactions use the profile effective on their `document_date`.
+
+---
+
+### `company_feature_settings`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id (UNIQUE) |
+| inventory_enabled | boolean | NOT NULL | false | Shows/hides Inventory module menus and dashboards |
+| fixed_assets_enabled | boolean | NOT NULL | false | Shows/hides Fixed Assets module |
+| petty_cash_enabled | boolean | NOT NULL | false | Shows/hides Petty Cash module |
+| bank_recon_enabled | boolean | NOT NULL | true | Shows/hides Bank Reconciliation module |
+| budgeting_enabled | boolean | NOT NULL | false | Shows/hides Budget module |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id)` — one settings row per company
+**Principle 7:** These flags control UI visibility only. Disabling inventory does NOT prevent inventory GL accounts from being used in journal entries.
 
 ---
 
@@ -348,7 +399,7 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | trade_name | text | NULL | — | |
 | customer_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') |
 | tin | text | NULL | — | TIN (required for VAT customers and SLSP) |
-| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government') |
+| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government','peza','boi','foreign_entity') |
 | payment_terms_id | uuid | NULL | — | FK → payment_terms.id |
 | ar_account_id | uuid | NULL | — | FK → chart_of_accounts.id (override) |
 | sales_account_id | uuid | NULL | — | FK → chart_of_accounts.id (default revenue) |
@@ -394,7 +445,7 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | trade_name | text | NULL | — | |
 | supplier_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') |
 | tin | text | NULL | — | TIN (required for 2307) |
-| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government') |
+| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government','peza','boi','foreign_entity') |
 | payment_terms_id | uuid | NULL | — | FK → payment_terms.id |
 | ap_account_id | uuid | NULL | — | FK → chart_of_accounts.id (override) |
 | expense_account_id | uuid | NULL | — | FK → chart_of_accounts.id (default) |
@@ -1378,6 +1429,117 @@ Immutable. One row per ATC per line per source document.
 | *+ standard audit columns* | | | | |
 
 **Constraints:** `UNIQUE(user_id, company_id)`
+
+---
+
+---
+
+## SECTION 17: PERCENTAGE TAX (NON-VAT COMPANIES)
+
+### `percentage_tax_entries`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
+| source_document_id | uuid | NOT NULL | — | FK to cash_sales or sales_invoices |
+| source_document_type | text | NOT NULL | — | 'cash_sales' or 'sales_invoices' |
+| percentage_tax_code_id | uuid | NULL | — | FK → percentage_tax_codes.id |
+| gross_receipts_amount | numeric(18,4) | NOT NULL | — | Gross receipts subject to PT |
+| pt_rate | numeric(10,6) | NOT NULL | — | Rate applied (e.g., 0.030000 = 3%) |
+| pt_amount | numeric(18,4) | NOT NULL | — | Computed PT amount |
+| transaction_date | date | NOT NULL | — | Date of the source transaction |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `percentage_tax_period_summaries`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
+| quarter | integer | NOT NULL | — | 1–4 |
+| gross_receipts_total | numeric(18,4) | NOT NULL | 0 | Total gross receipts for the period |
+| pt_amount_total | numeric(18,4) | NOT NULL | 0 | Total percentage tax for the period |
+| status | text | NOT NULL | 'open' | CHECK IN ('open','filed') |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, fiscal_period_id)`
+
+---
+
+### `percentage_tax_return_filings`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| quarter | integer | NOT NULL | — | 1–4 |
+| quarter_date_from | date | NOT NULL | — | Quarter start |
+| quarter_date_to | date | NOT NULL | — | Quarter end |
+| gross_receipts_amount | numeric(18,4) | NOT NULL | 0 | |
+| pt_amount_due | numeric(18,4) | NOT NULL | 0 | |
+| pt_amount_paid | numeric(18,4) | NOT NULL | 0 | |
+| filing_status | text | NOT NULL | 'draft' | CHECK IN ('draft','filed','amended') |
+| filing_date | date | NULL | — | Date actually filed |
+| bir_confirmation_no | text | NULL | — | BIR confirmation number on filing |
+| period_summary_id | uuid | NULL | — | FK → percentage_tax_period_summaries.id |
+| export_job_id | uuid | NULL | — | FK → export_jobs.id |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, fiscal_year_id, quarter)`
+
+---
+
+## SECTION 18: FWT REMITTANCE
+
+### `fwt_remittances_1601fq`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| quarter | integer | NOT NULL | — | 1–4 |
+| quarter_date_from | date | NOT NULL | — | Quarter start |
+| quarter_date_to | date | NOT NULL | — | Quarter end |
+| fwt_amount_total | numeric(18,4) | NOT NULL | 0 | Total FWT due for quarter |
+| fwt_amount_remitted | numeric(18,4) | NOT NULL | 0 | Amount remitted |
+| filing_status | text | NOT NULL | 'draft' | CHECK IN ('draft','filed','amended') |
+| filing_date | date | NULL | — | |
+| bir_confirmation_no | text | NULL | — | |
+| export_job_id | uuid | NULL | — | FK → export_jobs.id |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, fiscal_year_id, quarter)`
+
+---
+
+## SECTION 19: INCOME TAX RETURN FILINGS
+
+### `income_tax_return_filings`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
+| filing_type | text | NOT NULL | — | CHECK IN ('quarterly','annual') |
+| quarter | integer | NULL | — | 1–4 for quarterly; NULL for annual |
+| form_code | text | NOT NULL | — | '1701Q','1701','1702Q','1702RT' — derived from income_tax_regime |
+| taxable_income_amount | numeric(18,4) | NOT NULL | 0 | |
+| income_tax_due | numeric(18,4) | NOT NULL | 0 | |
+| mcit_amount | numeric(18,4) | NOT NULL | 0 | 0 if individual/partnership |
+| income_tax_payable | numeric(18,4) | NOT NULL | 0 | Tax due minus creditable taxes |
+| filing_status | text | NOT NULL | 'draft' | CHECK IN ('draft','filed','amended') |
+| filing_date | date | NULL | — | |
+| bir_confirmation_no | text | NULL | — | |
+| itr_working_paper_id | uuid | NULL | — | FK → itr_working_papers.id |
+| export_job_id | uuid | NULL | — | FK → export_jobs.id |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, fiscal_year_id, filing_type, quarter)`
 
 ---
 

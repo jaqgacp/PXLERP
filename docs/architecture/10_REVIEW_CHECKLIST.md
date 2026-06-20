@@ -350,6 +350,68 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
+---
+
+## SECTION 21: Compliance Profile & Feature Settings
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 21.1 | `company_compliance_profiles` table designed with effective_from/effective_to for version history confirmed (Principle 11) | DB Architect | [ ] | |
+| 21.2 | `taxpayer_type` on compliance profile drives VAT vs Percentage Tax behavior confirmed (Principle 6) | CPA Lead | [ ] | |
+| 21.3 | `income_tax_regime` on compliance profile drives ITR form code (1701Q/1701 for individual; 1702Q/1702RT for corporate) confirmed (Principle 3 Driver 2) | CPA Lead | [ ] | |
+| 21.4 | `legal_type` on compliance profile drives registration requirements confirmed (Principle 3 Driver 3) | CPA Lead | [ ] | |
+| 21.5 | Compliance profile lookup at posting time uses effective_from/effective_to range confirmed (Principle 11) | DB Architect | [ ] | |
+| 21.6 | `company_feature_settings` has exactly one row per company (UNIQUE constraint) confirmed (Principle 7) | DB Architect | [ ] | |
+| 21.7 | Feature settings control UI visibility ONLY — no effect on accounting or posting confirmed (Principle 7) | CPA Lead | [ ] | |
+| 21.8 | Compliance profile changes generate `COMPLIANCE_PROFILE_CHANGED` audit event (Principle 15) | DB Architect | [ ] | |
+
+---
+
+## SECTION 22: Percentage Tax (NON-VAT Companies)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 22.1 | `percentage_tax_entries` created by posting engine only — not by application layer confirmed | DB Architect | [ ] | |
+| 22.2 | Posting engine checks `company_compliance_profiles.taxpayer_type` at post time confirmed | DB Architect | [ ] | |
+| 22.3 | `percentage_tax_period_summaries` — one row per company per fiscal period (UNIQUE constraint) confirmed | DB Architect | [ ] | |
+| 22.4 | 2551Q links to `percentage_tax_period_summaries` confirmed | CPA Lead | [ ] | |
+| 22.5 | VAT Dashboard only shows for VAT companies; PT Dashboard only shows for NON-VAT companies (Principle 1) confirmed | Business Lead | [ ] | |
+| 22.6 | Companies switching from NON-VAT to VAT use effective_from — historical PT entries unchanged (Principle 11) confirmed | CPA Lead | [ ] | |
+
+---
+
+## SECTION 23: FWT / 1601FQ
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 23.1 | `fwt_entries` for WF-series ATC codes only — separate from EWT (WC/WI series) confirmed | CPA Lead | [ ] | |
+| 23.2 | `fwt_remittances_1601fq` separate table — separate BIR form from 1601EQ confirmed | CPA Lead | [ ] | |
+| 23.3 | `certificates_2306` generated per payee per quarter from `fwt_entries` confirmed | CPA Lead | [ ] | |
+| 23.4 | WF-series ATC codes in `atc_codes` confirmed | CPA Lead | [ ] | |
+
+---
+
+## SECTION 24: Income Tax Regime & ITR Filing
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 24.1 | `income_tax_regime` on `company_compliance_profiles` determines ITR form code confirmed | CPA Lead | [ ] | |
+| 24.2 | `income_tax_return_filings.form_code` validated against income_tax_regime (1701Q/1701 vs 1702Q/1702RT) confirmed | CPA Lead | [ ] | |
+| 24.3 | MCIT Computation only applicable for corporate / OPC confirmed | CPA Lead | [ ] | |
+| 24.4 | Income Tax Dashboard shows relevant ITR form per income_tax_regime (Principle 1) confirmed | Business Lead | [ ] | |
+
+---
+
+## SECTION 25: Customer & Supplier Broader Tax Classification
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 25.1 | `customers.vat_status` and `suppliers.vat_status` CHECK includes 'government', 'peza', 'boi', 'foreign_entity' confirmed (Principle 5) | CPA Lead | [ ] | |
+| 25.2 | PXL does not target these entities as company clients (Principle 4) but supports transacting with them confirmed | CPA Lead | [ ] | |
+| 25.3 | TIN snapshots at posting capture vat_status correctly for SLSP/RELIEF confirmed (Principle 10) | CPA Lead | [ ] | |
+
+---
+
 ## SIGN-OFF BLOCK
 
 | Role | Name | Signature | Date |
@@ -361,6 +423,6 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
-**Once all items in Sections 1–20 are marked `[x]` or `[N/A]`, and all Open Decisions in Section 13 are resolved, SQL migration authoring may begin.**
+**Once all items in Sections 1–25 are marked `[x]` or `[N/A]`, and all Open Decisions in Section 13 are resolved, SQL migration authoring may begin.**
 
 *Next step after sign-off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*

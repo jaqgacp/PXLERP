@@ -17,6 +17,15 @@
 - Resolved OD-01 through OD-07 with recommended defaults
 - Expanded Supabase-Specific Decisions section
 
+## Changes Applied (v2 → v2.1) — Principle Alignment
+
+- Added Section 5.5: Compliance Profile & Feature Settings Design (Principles 1, 2, 6, 7)
+- Added Percentage Tax (2551Q) flow to Section 8 Tax Lifecycle Design (Principle 20)
+- Added FWT (1601FQ) flow to Section 8 (Principle 20)
+- Updated Compliance Readiness Summary (Section 15) to include 2551Q, 1601FQ, ITR rows
+- Added `income_tax_regime` as a distinct driver per Principle 3 Driver 2
+- Customer/Supplier tax classifications expanded per Principle 5 (GOVERNMENT, PEZA, BOI, FOREIGN_ENTITY)
+
 ---
 
 ## 1. Design Philosophy
@@ -165,6 +174,53 @@ All posted entries carry `fiscal_year_id` and `fiscal_period_id`. Period locks (
 
 ---
 
+## 5.5 Compliance Profile & Feature Settings Design
+
+### Compliance Profile — Principle 6
+
+`company_compliance_profiles` is the single source of truth for a company's tax and regulatory configuration. It is versioned (effective_from / effective_to) and drives all compliance behavior.
+
+```
+company_compliance_profiles
+  ├── taxpayer_type         ('vat' | 'non_vat')              → Drives VAT vs Percentage Tax
+  ├── income_tax_regime     ('corporate' | 'individual' | 'partnership' | 'cooperative')
+  ├── legal_type            ('sole_proprietor' | 'regular_corporation' | 'opc' | 'partnership' | 'cooperative')
+  ├── withholding_agent_status ('registered' | 'not_registered')
+  ├── rdo_code              (Revenue District Office)
+  ├── bir_registered_at     (date of original BIR registration)
+  ├── effective_from        (when this profile takes effect)
+  ├── effective_to          (NULL = current)
+  └── filing_obligations[]  (array: '2550m','2551q','1601eq','1601fq',etc.)
+```
+
+This allows a company that transitions from NON-VAT to VAT-registered to maintain historical compliance accuracy per Principle 11.
+
+### Feature Settings — Principle 7
+
+`company_feature_settings` stores per-company module visibility flags. These control the UI only — they never affect accounting or tax logic.
+
+```
+company_feature_settings
+  ├── inventory_enabled       boolean (shows/hides Inventory module)
+  ├── fixed_assets_enabled    boolean (shows/hides Fixed Assets module)
+  ├── petty_cash_enabled      boolean (shows/hides Petty Cash module)
+  ├── bank_recon_enabled      boolean (shows/hides Bank Reconciliation module)
+  └── budgeting_enabled       boolean (shows/hides Budget module)
+```
+
+### Six Business Drivers — Principle 3
+
+| Driver | Source | Affects |
+|---|---|---|
+| Taxpayer Type | `company_compliance_profiles.taxpayer_type` | VAT vs PT on transactions, dashboards, menus |
+| Income Tax Regime | `company_compliance_profiles.income_tax_regime` | ITR form type (1701Q vs 1702Q), MCIT, OSD |
+| Legal Type | `company_compliance_profiles.legal_type` | Company setup, registration, compliance reminders |
+| Enabled Features | `company_feature_settings.*_enabled` | Menu visibility only |
+| Transaction Classification | `vat_entries.vat_classification` | Transaction-level VAT/PT/exempt treatment |
+| User Security Context | `user_roles`, `role_permissions` | Access, visibility, posting rights |
+
+---
+
 ## 6. Cash Sales and Cash Purchases — Design Decision (OD-08 RESOLVED)
 
 ### Decision: Separate Transaction Headers — Not AR/AP Shortcuts
@@ -253,6 +309,36 @@ Vendor Bill / Cash Purchase / Payment Voucher / Petty Cash Voucher
                 │
                 ├── QAP (Quarterly Alphalist of Payees)
                 └── SAWT (Summary of Alphalist of Withholding Tax)
+```
+
+### Percentage Tax / 2551Q Flow
+
+For NON-VAT companies, Percentage Tax (OTC: 3% of gross receipts) is computed from sales transactions instead of VAT.
+
+```
+Sales Invoice / Cash Sales (NON-VAT company)
+        │
+        ├── percentage_tax_entries (per period, per ATC code)
+        │
+        └── percentage_tax_period_summaries (aggregated by period)
+                │
+                └── BIR Form 2551Q (Quarterly Percentage Tax Return)
+```
+
+> Percentage Tax is NOT computed per line the same way VAT is. It is computed on total gross receipts per period. `percentage_tax_entries` aggregate from source transactions.
+
+### FWT / 1601FQ Flow
+
+Final Withholding Tax (FWT) applies to passive income, royalties, dividends, and certain professional fees (WF-series ATC codes). It is tracked separately from EWT.
+
+```
+Sales Invoice / Vendor Bill / Payment (FWT-subject items)
+        │
+        ├── fwt_entries (per transaction, WF-series ATC)
+        │
+        ├── certificates_2306 (per payee, per quarter)
+        │
+        └── fwt_remittances_1601fq (1601FQ quarterly remittance filing)
 ```
 
 ### 2307 Received (from customers withholding from us)
@@ -421,6 +507,10 @@ party_merge_logs (records when two customer or supplier records are merged)
 | CAS Audit | `audit_logs` + `field_change_history` + `dat_generation_logs` |
 | Cash Sales Book | `cash_sales` + `vat_entries` |
 | Cash Purchases Book | `cash_purchases` + `vat_entries` + `ewt_entries` |
+| 2551Q | `percentage_tax_entries` → `percentage_tax_period_summaries` → form output |
+| 1601FQ | `fwt_entries` → `fwt_remittances_1601fq` → period aggregation |
+| ITR (Corporate) | `itr_working_papers` → Book-to-tax → 1702Q / 1702RT |
+| ITR (Individual) | `itr_working_papers` → Book-to-tax → 1701Q / 1701 |
 
 ---
 

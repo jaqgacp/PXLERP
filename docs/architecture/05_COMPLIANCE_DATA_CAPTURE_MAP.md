@@ -4,6 +4,14 @@
 
 ---
 
+## Changes Applied (v2 → v2.1) — Principle Alignment
+
+- Added Section 12a: Percentage Tax / 2551Q Data Capture Map (Principle 20)
+- Added Section 12b: Final Withholding Tax / 1601FQ Data Capture Map (Principle 20)
+- Added Section 12c: Income Tax Return (ITR) Data Capture Map (split by income_tax_regime per Principle 3)
+- Updated `compliance_report_runs.report_type` to include '2551Q' and '1601FQ'
+- Updated Compliance Readiness Checklist (Section 12) with 2551Q, 1601FQ, ITR rows
+
 ## Changes Applied (v1 → v2)
 
 - Fixed `bir_tin` → `tin` on all master tables (`companies`, `customers`, `suppliers`)
@@ -397,6 +405,10 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | Form / Report | Tables Driving It | Key Fields |
 |---|---|---|
 | 2550M / 2550Q | `vat_entries`, `vat_period_summaries` | vat_direction, vat_classification, net_amount, vat_amount, fiscal_period_id |
+| 2551Q | `percentage_tax_entries`, `percentage_tax_period_summaries` | gross_receipts_amount, pt_rate, pt_amount, fiscal_period_id |
+| 1601FQ | `fwt_entries`, `fwt_remittances_1601fq` | atc_code (WF-series), fwt_amount, payee_tin, fiscal_period_id |
+| ITR (Individual) | `itr_working_papers`, `income_tax_return_filings` | form_code='1701Q'/'1701', taxable_income, income_tax_due |
+| ITR (Corporate) | `itr_working_papers`, `mcit_computations`, `income_tax_return_filings` | form_code='1702Q'/'1702RT', mcit_amount, income_tax_due |
 | SLSP (Sales) | `sales_invoices`, `cash_sales`, `customers`, `vat_entries` | customer_tin (snapshot), document_date, amounts |
 | SLSP (Purchases) / RELIEF | `vendor_bills`, `cash_purchases`, `suppliers`, `vat_entries` | supplier_tin (snapshot), document_date, amounts |
 | 1601EQ | `ewt_entries`, `ewt_remittances_1601eq` | atc_code, ewt_amount, fiscal_period_id |
@@ -413,6 +425,64 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 
 ---
 
+---
+
+## 12a. Percentage Tax / 2551Q Data Capture
+
+Applies only when `company_compliance_profiles.taxpayer_type = 'non_vat'`.
+
+| Field Required on 2551Q | Source Table | Column |
+|---|---|---|
+| Taxpayer TIN | `company_compliance_profiles` → `companies` | `companies.tin` (snapshot at filing) |
+| Registered Name | `companies` | `name` |
+| RDO Code | `company_compliance_profiles` | `rdo_code` |
+| Quarter Covered | `percentage_tax_return_filings` | `quarter`, `quarter_date_from`, `quarter_date_to` |
+| Gross Receipts | `percentage_tax_period_summaries` | `gross_receipts_total` |
+| PT Rate | `percentage_tax_entries` | `pt_rate` |
+| PT Due | `percentage_tax_period_summaries` | `pt_amount_total` |
+
+Source transactions: `sales_invoices` and `cash_sales` where the company's taxpayer_type = 'non_vat' at the time of posting.
+
+---
+
+## 12b. Final Withholding Tax / 1601FQ Data Capture
+
+Applies to transactions with WF-series ATC codes (dividends, royalties, final interest, etc.).
+
+| Field Required on 1601FQ | Source Table | Column |
+|---|---|---|
+| Taxpayer TIN | `companies` | `tin` (snapshot) |
+| Withholding Agent Name | `companies` | `name` |
+| Quarter Covered | `fwt_remittances_1601fq` | `quarter`, dates |
+| Total FWT | `fwt_remittances_1601fq` | `fwt_amount_total` |
+| Per-Payee Breakdown | `fwt_entries` → `certificates_2306` | payee_tin (snapshot), fwt_amount |
+
+Key difference from EWT: FWT is final — payees cannot claim these as creditable taxes. EWT (1601EQ) is creditable by the payee.
+
+---
+
+## 12c. Income Tax Return (ITR) Data Capture
+
+ITR form is determined by `company_compliance_profiles.income_tax_regime`:
+
+| income_tax_regime | Quarterly ITR | Annual ITR | MCIT Applies? |
+|---|---|---|---|
+| `individual` | 1701Q | 1701 | No |
+| `corporate` | 1702Q | 1702RT | Yes |
+| `partnership` | 1702Q | 1702RT | No |
+| `cooperative` | Special (out of scope for Phase 1) | — | — |
+
+| Field Required on ITR | Source Table | Column |
+|---|---|---|
+| Taxpayer TIN | `companies` | `tin` |
+| Taxable Income | `itr_working_papers` | derived from `gl_balances` |
+| Income Tax Due | `income_tax_return_filings` | `income_tax_due` |
+| MCIT (if higher) | `mcit_computations` | `mcit_amount` |
+| Tax Credits (2307) | `tax_credits_schedules` | from `certificates_2307_received` |
+| Net Tax Payable | `income_tax_return_filings` | `income_tax_payable` |
+
+---
+
 ## 13. Compliance Output Generation Tables
 
 ### `compliance_report_runs`
@@ -422,7 +492,7 @@ Tracks every BIR compliance report generation request.
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `report_type` | text | NOT NULL | '2550M' \| '2550Q' \| '1601EQ' \| 'SLSP' \| 'RELIEF' \| 'QAP' \| 'SAWT' \| '1604E' |
+| `report_type` | text | NOT NULL | '2550M' \| '2550Q' \| '2551Q' \| '1601EQ' \| '1601FQ' \| 'SLSP' \| 'RELIEF' \| 'QAP' \| 'SAWT' \| '1604E' \| 'ITR_1701Q' \| 'ITR_1701' \| 'ITR_1702Q' \| 'ITR_1702RT' |
 | `fiscal_period_id` | uuid | FK fiscal_periods, NULL | |
 | `fiscal_year_id` | uuid | FK fiscal_years, NULL | |
 | `period_from` | date | NOT NULL | |

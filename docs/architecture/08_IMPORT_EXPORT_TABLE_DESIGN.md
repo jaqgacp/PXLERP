@@ -77,6 +77,8 @@ Header record for every import operation.
 
 | import_type | Category | Target Tables |
 |---|---|---|
+| `compliance_profile` | Setup | `company_compliance_profiles` |
+| `feature_settings` | Setup | `company_feature_settings` |
 | `chart_of_accounts` | Setup | `chart_of_accounts` |
 | `payment_terms` | Setup | `payment_terms`, `payment_term_lines` |
 | `atc_codes` | Setup | `atc_codes` |
@@ -225,6 +227,12 @@ Tracks asynchronous report/export generation jobs. Supabase Realtime enabled.
 | `slsp_sales` | SLSP (Sales) quarterly |
 | `slsp_purchases` | SLSP (Purchases) / RELIEF |
 | `ewt_1601eq` | BIR Form 1601EQ |
+| `pt_2551q` | BIR Form 2551Q (Percentage Tax — NON-VAT companies only) |
+| `fwt_1601fq` | BIR Form 1601FQ (Final Withholding Tax) |
+| `itr_1701q` | BIR Form 1701Q (Quarterly ITR — Individual / Sole Proprietor) |
+| `itr_1701` | BIR Form 1701 (Annual ITR — Individual / Sole Proprietor) |
+| `itr_1702q` | BIR Form 1702Q (Quarterly ITR — Corporate / OPC / Partnership) |
+| `itr_1702rt` | BIR Form 1702RT (Annual ITR — Corporate / OPC / Partnership) |
 | `qap` | QAP DAT file |
 | `sawt` | SAWT |
 | `2307_issued` | Batch 2307 certificates |

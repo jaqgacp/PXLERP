@@ -115,6 +115,11 @@ Immutable log of every system event. No soft delete. No update allowed.
 | `USER_ROLE_REMOVED` | Role removed from user |
 | `APPROVAL_MATRIX_CHANGED` | Approval matrix modified |
 | `POSTING_RULE_CHANGED` | Posting rule set modified |
+| `COMPLIANCE_PROFILE_CHANGED` | Company compliance profile updated (e.g., taxpayer type changed from NON-VAT to VAT) |
+| `FEATURE_SETTING_CHANGED` | Company feature settings updated (module visibility changed) |
+| `PERCENTAGE_TAX_RETURN_FILED` | 2551Q filed |
+| `FWT_REMITTANCE_FILED` | 1601FQ filed |
+| `INCOME_TAX_RETURN_FILED` | ITR filed (1701Q/1701/1702Q/1702RT) |
 | `SYSTEM_CONFIG_CHANGED` | System account config changed |
 
 ---

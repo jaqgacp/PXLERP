@@ -67,6 +67,10 @@ Defines the top-level rule set for each transaction type.
 **Valid `transaction_type` values:**
 `sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `inventory_adjustment` | `asset_depreciation` | `bank_deposit` | `bank_withdrawal` | `bank_transfer` | `journal_entry` | `stock_transfer` | `asset_disposal`
 
+> **Percentage Tax Note (Principle 3 Driver 1):** `sales_invoice` and `cash_sale` posting rules check `company_compliance_profiles.taxpayer_type` at post time. If `taxpayer_type = 'non_vat'`, the posting engine creates `percentage_tax_entries` instead of `vat_entries`. No separate `transaction_type` is needed — the same source documents drive different compliance entries depending on the company's taxpayer type.
+
+> **FWT Note:** `fwt_entries` are created during posting of vendor_bill, cash_purchase, or payment_voucher lines where the `ewt_atc_id` references a WF-series ATC code. These flow to `fwt_remittances_1601fq` instead of `ewt_remittances_1601eq`.
+
 ---
 
 ### `posting_rule_lines`

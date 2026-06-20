@@ -30,6 +30,17 @@ Legend:
 - Added `duplicate_tin_flags` to MODULE 28
 - Clarified Cash Sales and Cash Purchases as separate transaction headers
 
+## Changes Applied (v2 → v2.1) — Principle Alignment
+
+- Added `company_compliance_profiles` and `company_feature_settings` to MODULE 2 (Principles 1, 2, 6, 7)
+- Added `percentage_tax_codes` to MODULE 5 (Principle 20)
+- Added `fwt_codes` to MODULE 5 (Principle 20)
+- Added MODULE 29: COMPLIANCE — PERCENTAGE TAX (3 tables) (Principle 20)
+- Added `fwt_remittances_1601fq` to MODULE 18: COMPLIANCE — WITHHOLDING TAX (Principle 20)
+- Added `income_tax_return_filings` to MODULE 19: COMPLIANCE — INCOME TAX
+- Updated MODULE 6: customer and supplier `vat_status` now includes `government`, `peza`, `boi`, `foreign_entity` (Principle 5)
+- Updated total table count
+
 ---
 
 ## MODULE 1: SECURITY & IDENTITY
@@ -57,6 +68,10 @@ Legend:
 | 12 | `cost_centers` | Cost center under department | master | ✅ | ✅ | ✅ | ❌ | low |
 | 13 | `cas_registrations` | BIR CAS accreditation records | setup | ✅ | ✅ | ❌ | ✅ | low |
 | 14 | `company_bank_accounts` | Company bank accounts | master | ✅ | ✅ | ✅ | ❌ | low |
+| 14a | `company_compliance_profiles` | Versioned compliance profile (taxpayer type, income tax regime, legal type, filing obligations) | config | ✅ | ✅ | ❌ | ❌ | low |
+| 14b | `company_feature_settings` | Feature visibility flags per company (inventory, FA, petty cash, bank recon, budgeting) | config | ✅ | ✅ | ❌ | ❌ | low |
+
+> `company_compliance_profiles` is effective-date versioned (Principle 11). One row per company per effective date range. `company_feature_settings` has one active row per company (UPSERT pattern).
 
 ---
 
@@ -100,8 +115,12 @@ Legend:
 | 34 | `tax_codes` | General tax code master | master | ✅ | ✅ | ✅ | ❌ | low |
 | 35 | `vat_codes` | VAT type codes (VAT, Zero-rated, Exempt) | master | ✅ | ✅ | ✅ | ❌ | low |
 | 36 | `ewt_codes` | Expanded withholding tax codes | master | ✅ | ✅ | ✅ | ❌ | low |
-| 37 | `atc_codes` | BIR ATC code master (WC000, WI000, etc.) | master | ✅ | ✅ | ✅ | ❌ | low |
+| 36a | `fwt_codes` | Final withholding tax codes (WF-series ATC) | master | ✅ | ✅ | ✅ | ❌ | low |
+| 36b | `percentage_tax_codes` | Percentage tax codes per industry / ATC basis | master | ✅ | ✅ | ✅ | ❌ | low |
+| 37 | `atc_codes` | BIR ATC code master (WC000, WI000, WF000, etc.) | master | ✅ | ✅ | ✅ | ❌ | low |
 | 38 | `tax_calendar` | BIR filing deadlines per form/period | config | ✅ | ✅ | ✅ | ❌ | low |
+
+> `atc_codes` now includes WF-series (Final WHT) codes in addition to WC/WI (EWT) codes. `fwt_codes` references the WF-series ATC rows. `percentage_tax_codes` holds industry-specific PT rates per BIR regulation.
 
 ---
 
@@ -109,6 +128,8 @@ Legend:
 
 | # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
 |---|---|---|---|---|---|---|---|---|
+> **Principle 5 — Customer/Supplier Tax Classification Scope:** `customer_tax_profiles.tax_classification` and `supplier_tax_profiles.tax_classification` support: `vat`, `non_vat`, `exempt`, `zero_rated`, `government`, `peza`, `boi`, `foreign_entity`. PXL does not target these entities as clients, but Philippine businesses transact with them.
+
 | 39 | `customers` | Customer master | master | ✅ | ✅ | ✅ | ❌ | medium |
 | 40 | `customer_addresses` | Customer address records (billing, shipping) | master | ✅ | ✅ | ✅ | ❌ | medium |
 | 41 | `customer_contacts` | Customer contact persons | master | ✅ | ✅ | ✅ | ❌ | medium |
@@ -305,6 +326,7 @@ Legend:
 | 148 | `certificates_2307_received` | 2307 certificates received from customers | transaction | ✅ | ✅ | ❌ | ✅ | medium |
 | 149 | `certificates_2306` | 2306 final withholding certificates | output | ✅ | ✅ | ❌ | ✅ | low |
 | 150 | `ewt_remittances_1601eq` | 1601EQ quarterly remittance filing | transaction | ✅ | ✅ | ❌ | ✅ | low |
+| 150a | `fwt_remittances_1601fq` | 1601FQ quarterly final withholding tax remittance filing | transaction | ✅ | ✅ | ❌ | ✅ | low |
 | 151 | `qap_exports` | QAP export batch records | output | ✅ | ✅ | ❌ | ✅ | low |
 | 152 | `sawt_exports` | SAWT export batch records | output | ✅ | ✅ | ❌ | ✅ | low |
 | 153 | `ewt_period_summaries` | Aggregated EWT per ATC per period | output | ✅ | ❌ | ❌ | ✅ | medium |
@@ -320,6 +342,7 @@ Legend:
 | 156 | `mcit_computations` | Minimum Corporate Income Tax computation | output | ✅ | ✅ | ❌ | ✅ | low |
 | 157 | `nolco_schedules` | Net Operating Loss Carryover schedule | master | ✅ | ✅ | ✅ | ❌ | low |
 | 158 | `tax_credits_schedules` | Tax credits schedule per year | master | ✅ | ✅ | ✅ | ❌ | low |
+| 158a | `income_tax_return_filings` | ITR filing tracking records (1701Q/1701 or 1702Q/1702RT per income_tax_regime) | transaction | ✅ | ✅ | ❌ | ✅ | low |
 
 ---
 
@@ -419,6 +442,20 @@ Legend:
 
 ---
 
+---
+
+## MODULE 29: COMPLIANCE — PERCENTAGE TAX
+
+| # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
+|---|---|---|---|---|---|---|---|---|
+| 190 | `percentage_tax_entries` | Percentage tax entries aggregated from NON-VAT company sales transactions per period | ledger | ✅ | ❌ | ❌ | ✅ | medium |
+| 191 | `percentage_tax_period_summaries` | Aggregated PT by period (gross receipts, PT computed) | output | ✅ | ❌ | ❌ | ✅ | low |
+| 192 | `percentage_tax_return_filings` | 2551Q filing tracking records per quarter | transaction | ✅ | ✅ | ❌ | ✅ | low |
+
+> Percentage Tax applies only when `company_compliance_profiles.taxpayer_type = 'non_vat'`. The posting engine skips VAT entries and creates `percentage_tax_entries` instead when this condition is met.
+
+---
+
 ## Summary by Module
 
 | Module | Table Count |
@@ -439,9 +476,12 @@ Legend:
 | Inventory Transactions | 10 |
 | Fixed Assets | 10 |
 | Accounting | 11 |
+| Organization Setup | +2 (compliance_profiles, feature_settings) |
+| Tax Setup | +2 (fwt_codes, percentage_tax_codes) |
 | Compliance — VAT | 5 |
-| Compliance — EWT | 9 |
-| Compliance — Income Tax | 5 |
+| Compliance — EWT | +1 (fwt_remittances_1601fq) = 10 |
+| Compliance — Income Tax | +1 (income_tax_return_filings) = 6 |
+| Compliance — Percentage Tax | 3 (new MODULE 29) |
 | Audit & CAS | 8 |
 | Attachments | 2 |
 | Workflow & Approvals | 2 |
@@ -451,7 +491,7 @@ Legend:
 | Budget | 2 |
 | Period Close | 3 |
 | Party Duplicate Management | 2 |
-| **TOTAL** | **~189** |
+| **TOTAL** | **~198** |
 
 ---
 

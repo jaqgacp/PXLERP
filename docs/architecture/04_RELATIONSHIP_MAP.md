@@ -23,6 +23,13 @@
 - Updated bridge table summary for all new tables
 - Fixed `bank_statements_lines` → `bank_statement_lines` (singular table name)
 
+## Changes Applied (v2 → v2.1) — Principle Alignment
+
+- Added Section 22: Compliance Profile Chain (Principle 6)
+- Added Section 23: Percentage Tax Chain (Principle 20)
+- Added Section 24: FWT / 1601FQ Chain (Principle 20)
+- Added Section 25: Income Tax Return Filing Chain
+
 ---
 
 ## Open Decisions Remaining
@@ -592,3 +599,77 @@ import_batches (1)
 - `reversed_by_document_id` on source documents must reference a POSTED reversal document — enforced by posting engine
 - Cash Sales and Cash Purchases must NOT create `subsidiary_ledger_entries` — enforced by posting rule sets for those transaction types
 - `party_merge_logs` source record must be soft-deleted after merge — enforced by merge Edge Function
+
+---
+
+## 22. Compliance Profile Chain
+
+```
+companies (1)
+  └── company_compliance_profiles (many — versioned by effective_from / effective_to)
+        ├── taxpayer_type → drives VAT vs Percentage Tax behavior
+        ├── income_tax_regime → drives ITR form (1701Q/1701 vs 1702Q/1702RT)
+        └── legal_type → drives registration requirements and compliance reminders
+```
+
+Compliance profile lookup: always SELECT WHERE `company_id = ? AND effective_from <= document_date AND (effective_to IS NULL OR effective_to > document_date)`.
+
+```
+companies (1)
+  └── company_feature_settings (1)
+        ├── inventory_enabled → shows/hides Inventory module
+        ├── fixed_assets_enabled → shows/hides Fixed Assets module
+        ├── petty_cash_enabled → shows/hides Petty Cash module
+        ├── bank_recon_enabled → shows/hides Bank Reconciliation module
+        └── budgeting_enabled → shows/hides Budget module
+```
+
+---
+
+## 23. Percentage Tax Chain (NON-VAT Companies)
+
+```
+sales_invoices / cash_sales (posted, company is NON-VAT)
+        │
+        ├── percentage_tax_entries (per transaction)
+        │
+        └── percentage_tax_period_summaries (aggregated per fiscal period)
+                │
+                └── percentage_tax_return_filings (2551Q — one per quarter)
+                        │
+                        └── export_jobs (2551Q DAT/PDF export)
+```
+
+---
+
+## 24. FWT / 1601FQ Chain
+
+```
+vendor_bills / cash_purchases / payments (FWT-subject, WF-series ATC)
+        │
+        ├── fwt_entries (per transaction line)
+        │
+        ├── certificates_2306 (per payee, per quarter)
+        │
+        └── fwt_remittances_1601fq (1601FQ — one per quarter)
+                │
+                └── export_jobs (1601FQ export)
+```
+
+---
+
+## 25. Income Tax Return Filing Chain
+
+```
+itr_working_papers (one per fiscal period)
+        │
+        ├── book_tax_reconciliations (annual)
+        ├── mcit_computations (corporate only, annual)
+        ├── nolco_schedules (if applicable)
+        └── tax_credits_schedules (2307 received → income tax credits)
+                │
+                └── income_tax_return_filings
+                      ├── form_code: '1701Q' | '1701' (sole_proprietor / individual)
+                      ├── form_code: '1702Q' | '1702RT' (corporation / OPC / partnership)
+                      └── export_jobs (ITR export)
+```

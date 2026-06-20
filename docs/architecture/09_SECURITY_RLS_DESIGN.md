@@ -4,6 +4,13 @@
 
 ---
 
+## Changes Applied (v2 → v2.1) — Principle Alignment
+
+- Added `settings.compliance_profile.manage` permission (COMPANY_ADMIN)
+- Added `settings.feature_settings.manage` permission (COMPANY_ADMIN)
+- Added `compliance.2551q.file`, `compliance.1601fq.file`, `compliance.itr.file` permissions
+- Added RLS design note for `company_compliance_profiles` and `company_feature_settings`
+
 ## Changes Applied (v1 → v2)
 
 - Fixed `profiles.full_name` → `profiles.first_name` + `profiles.last_name` (v2 column standard; virtual `full_name` can be computed)
@@ -292,6 +299,36 @@ CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
 -- All writes done by posting engine via service role
 ```
 
+#### Company Compliance Profiles (Admin Only for Writes)
+
+```sql
+-- company_compliance_profiles: all users in company can SELECT (needed to drive UI behavior)
+-- INSERT / UPDATE: only COMPANY_ADMIN with settings.compliance_profile.manage permission
+CREATE POLICY "compliance_profiles_select" ON company_compliance_profiles
+  FOR SELECT USING (company_id = ANY(auth.user_company_ids()));
+
+CREATE POLICY "compliance_profiles_insert" ON company_compliance_profiles
+  FOR INSERT WITH CHECK (
+    company_id = ANY(auth.user_company_ids())
+    AND auth.has_permission('settings.compliance_profile.manage', company_id)
+  );
+```
+
+#### Company Feature Settings (Admin Only for Writes)
+
+```sql
+-- company_feature_settings: all users SELECT (needed to drive module visibility)
+-- INSERT / UPDATE: only COMPANY_ADMIN
+CREATE POLICY "feature_settings_select" ON company_feature_settings
+  FOR SELECT USING (company_id = ANY(auth.user_company_ids()));
+
+CREATE POLICY "feature_settings_upsert" ON company_feature_settings
+  FOR INSERT WITH CHECK (
+    company_id = ANY(auth.user_company_ids())
+    AND auth.has_permission('settings.feature_settings.manage', company_id)
+  );
+```
+
 #### Notifications (Own Records Only)
 
 ```sql
@@ -367,6 +404,9 @@ CREATE POLICY "system_alerts_select" ON system_alerts
 | `compliance.dat.generate` | Controller |
 | `compliance.2307.generate` | Tax Accountant, Controller |
 | `compliance.1601eq.file` | Tax Accountant, Controller |
+| `compliance.2551q.file` | Tax Accountant, Controller |
+| `compliance.1601fq.file` | Tax Accountant, Controller |
+| `compliance.itr.file` | Tax Accountant, Controller |
 
 ### Settings & Admin
 
@@ -377,6 +417,8 @@ CREATE POLICY "system_alerts_select" ON system_alerts
 | `settings.coa.manage` | Controller |
 | `settings.approval.manage` | Company Admin, Controller |
 | `settings.document_templates.manage` | Controller |
+| `settings.compliance_profile.manage` | Company Admin |
+| `settings.feature_settings.manage` | Company Admin |
 | `import.execute` | Company Admin, Controller |
 | `audit.view` | Auditor, Company Admin |
 
