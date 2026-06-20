@@ -1,7 +1,7 @@
 # PXL ERP — Complete Table Inventory
-**Version:** 2.0 — Revised for Implementation Readiness
-**Total Tables:** ~210
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Total Tables:** ~209 (after removing 2 superseded income tax tables; +9 accounting schedule tables from Enhancement Round)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 Legend:
 - **Type:** master | transaction | ledger | setup | audit | bridge | output | config | notification
@@ -29,6 +29,48 @@ Legend:
 - Added `subledger_close_certifications` to MODULE 27
 - Added `duplicate_tin_flags` to MODULE 28
 - Clarified Cash Sales and Cash Purchases as separate transaction headers
+
+## v3 Architecture Review Changes Applied (Enhancement Round — Accounting Schedules)
+
+- **MODULE 31: ACCOUNTING SCHEDULES** (new, 9 tables #201–#209): Added amortization and revenue recognition schedule system with full 4-table traceability pattern per feature, plus auto_reversal_runs batch table
+- **MODULE 16 updated**: `journal_entries` columns added (auto_reversal_flag, auto_reversal_date, auto_reversal_run_id, is_auto_reversal, amortization_run_detail_id, revenue_recognition_run_detail_id); je_type expanded; `recurring_journal_templates` gets `auto_reverse` flag
+- **Decision: Accrual Schedules NOT added** — accruals are handled by recurring_journal_templates with auto_reverse=true. Adding separate accrual_schedules would duplicate this functionality (Principle 23).
+- **Decision: Foreign Currency Revaluation NOT added** — Phase 1 exclusion per Principle 23.
+- **Decision: Intercompany Eliminations NOT added** — Phase 1 exclusion per Principle 23.
+
+## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
+
+- **MODULE 19 consolidation**: Removed `mcit_computations` (#156) and `nolco_schedules` (#157) — subsumed by MODULE 30 tables
+- **MODULE 19 rename**: `itr_working_papers` (#154) → `itr_computation_runs` — computation run header, not a static paper
+- **MODULE 29 (Percentage Tax)**: No new tables — existing 3 tables confirmed complete
+- **MODULE 30: INCOME TAX COMPUTATION** (new): Added `income_tax_computation_lines` (#199) and `nolco_tracking` (#200)
+- **MODULE 6 (Parties)**: `customers.vat_status` split into `vat_registration_status` + `party_special_class`; same for suppliers
+- **`chart_of_accounts`**: COA-embedded FS mapping columns added; no separate mapping tables in Phase 1 (see doc 01 Section A)
+- **`account_types`**: Code enum expanded (cost_of_sales, other_income, other_expense, contra variants)
+- **`posting_rule_sets`**: `effective_from`/`effective_to` added (Principle 11)
+- **`system_account_config`**: Keys added: PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE, OUTPUT_VAT_NON_VAT
+- **`customer_tax_profiles`** and **`supplier_tax_profiles`**: Now versioned with effective_from/effective_to
+- **All line tables**: `vat_classification` column added alongside `vat_direction`
+- **Total count**: ~200 (removed 2 superseded tables: #156, #157)
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Owner |
+|---|---|---|
+| OD-V3-T1 | `income_tax_computation_lines` — on-demand per ITR run (idempotent/recomputed) vs continuous maintenance as JEs post? | CPA Lead |
+| OD-V3-T2 | `itr_computation_runs.is_final = true` — does this lock the computation and prevent recomputation? Or is recomputation always allowed until filing? | CPA Lead |
+| OD-V3-T3 | `book_tax_reconciliations` — should it carry line-by-line differences (like income_tax_computation_lines but with tax adjustments), or a summary total only? | Tax Consultant |
+| OD-V3-T4 | `tax_credits_schedules` — should it link to `certificates_2307_received` one-to-many, or accept summary amounts only? | CPA Lead |
+
+## v3 Cross-Document Consistency Validation
+
+- `income_tax_computation_lines.computation_run_id` → `itr_computation_runs.id` FK (renamed from itr_working_papers) — doc 03 Section 20 updated ✓
+- `itr_computation_runs.itr_filing_id` → `income_tax_return_filings.id` FK ✓
+- `party_special_class` column on customers and suppliers — doc 03 Sections 4 and 6 updated ✓
+- Removed tables #156 and #157 NOT in doc 03 (they never had column specs there — no cleanup needed in doc 03) ✓
+- `vat_entries.vat_classification = 'government'` derived at posting from `party_special_class` — posting engine doc 06 updated ✓
+
+---
 
 ## Changes Applied (v2 → v2.1) — Principle Alignment
 
@@ -126,9 +168,14 @@ Legend:
 
 ## MODULE 6: MASTER DATA — PARTIES
 
+> **v3 Party Classification Design (replaces Principle 5 v2.1 note):**
+> `customers.vat_registration_status` and `suppliers.vat_registration_status` track VAT registration only: CHECK IN ('vat','non_vat').
+> `customers.party_special_class` and `suppliers.party_special_class` track special entity type: CHECK IN ('government','peza','boi','foreign_entity'), NULL for regular entities.
+> These are TWO separate columns with separate semantics — not mixed into a single `vat_status` field.
+> The posting engine reads `party_special_class` at post time to (a) set `vat_entries.vat_classification = 'government'` for 2550M government disclosure line, and (b) flag zero-rated export sales for PEZA/foreign entities.
+
 | # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
 |---|---|---|---|---|---|---|---|---|
-> **Principle 5 — Customer/Supplier Tax Classification Scope:** `customer_tax_profiles.tax_classification` and `supplier_tax_profiles.tax_classification` support: `vat`, `non_vat`, `exempt`, `zero_rated`, `government`, `peza`, `boi`, `foreign_entity`. PXL does not target these entities as clients, but Philippine businesses transact with them.
 
 | 39 | `customers` | Customer master | master | ✅ | ✅ | ✅ | ❌ | medium |
 | 40 | `customer_addresses` | Customer address records (billing, shipping) | master | ✅ | ✅ | ✅ | ❌ | medium |
@@ -335,13 +382,15 @@ Legend:
 
 ## MODULE 19: COMPLIANCE — INCOME TAX
 
+> **v3 Consolidation:** `mcit_computations` (#156) and `nolco_schedules` (#157) removed — superseded by `income_tax_computation_lines` (#199) and `nolco_tracking` (#200) in MODULE 30. `itr_working_papers` (#154) renamed to `itr_computation_runs` to better reflect its role as a computation run header, not a static paper document.
+
 | # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
 |---|---|---|---|---|---|---|---|---|
-| 154 | `itr_working_papers` | ITR working paper per period | output | ✅ | ✅ | ❌ | ✅ | low |
-| 155 | `book_tax_reconciliations` | Book-to-tax reconciliation per year | output | ✅ | ✅ | ❌ | ✅ | low |
-| 156 | `mcit_computations` | Minimum Corporate Income Tax computation | output | ✅ | ✅ | ❌ | ✅ | low |
-| 157 | `nolco_schedules` | Net Operating Loss Carryover schedule | master | ✅ | ✅ | ✅ | ❌ | low |
-| 158 | `tax_credits_schedules` | Tax credits schedule per year | master | ✅ | ✅ | ✅ | ❌ | low |
+| 154 | `itr_computation_runs` | Computation run header per ITR filing — tracks when run, who ran it, draft vs final (was: itr_working_papers) — **v3: renamed** | output | ✅ | ✅ | ❌ | ✅ | low |
+| 155 | `book_tax_reconciliations` | Book-to-tax reconciliation per fiscal year — summary of book income vs taxable income with permanent and temporary differences | output | ✅ | ✅ | ❌ | ✅ | low |
+| 156 | ~~`mcit_computations`~~ | **REMOVED (v3)** — Subsumed by `income_tax_computation_lines` (MODULE 30) filtered by `is_mcit_gross_income = true` | — | — | — | — | — | — |
+| 157 | ~~`nolco_schedules`~~ | **REMOVED (v3)** — Replaced by `nolco_tracking` (MODULE 30, table #200) | — | — | — | — | — | — |
+| 158 | `tax_credits_schedules` | Tax credits schedule per year — 2307 received, CWT on VAT from government, prior overpayment, advance payments | master | ✅ | ✅ | ✅ | ❌ | low |
 | 158a | `income_tax_return_filings` | ITR filing tracking records (1701Q/1701 or 1702Q/1702RT per income_tax_regime) | transaction | ✅ | ✅ | ❌ | ✅ | low |
 
 ---
@@ -456,6 +505,37 @@ Legend:
 
 ---
 
+## MODULE 30: INCOME TAX COMPUTATION SUPPORT (v3 addition)
+
+| # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
+|---|---|---|---|---|---|---|---|---|
+| 199 | `income_tax_computation_lines` | Per-account breakdown used when computing ITR (1701Q/1701/1702Q/1702RT); populated on-demand per filing run | output | ✅ | ❌ | ❌ | ✅ | medium |
+| 200 | `nolco_tracking` | Net Operating Loss Carry-Over tracking per fiscal year; supports 3-year carry-over deduction per NIRC | ledger | ✅ | ✅ | ❌ | ❌ | low |
+
+> Income tax computation tables are Phase 1 inclusions. `income_tax_computation_lines` is recreated per computation run (idempotent). `nolco_tracking` persists across years and is updated when annual ITR is filed.
+> NOLCO applies only when `company_compliance_profiles.income_tax_regime IN ('corporate','individual')` and company uses itemized deductions (not OSD).
+
+---
+
+## MODULE 31: ACCOUNTING SCHEDULES (Enhancement Round addition)
+
+| # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
+|---|---|---|---|---|---|---|---|---|
+| 201 | `amortization_schedules` | Header for each prepaid expense / deferred charge being amortized (insurance, rent, software, professional fees) | master | ✅ | ✅ | ✅ | ❌ | low |
+| 202 | `amortization_schedule_lines` | Pre-computed monthly amortization lines; allows full schedule preview before execution | master | ✅ | ❌ | ❌ | ❌ | medium |
+| 203 | `amortization_runs` | Batch execution header per fiscal period amortization run (async, Principle 17) | transaction | ✅ | ✅ | ❌ | ✅ | low |
+| 204 | `amortization_run_details` | Traceability link: run → schedule line → generated journal entry (Principles 9, 12) | bridge | ✅ | ❌ | ❌ | ✅ | medium |
+| 205 | `revenue_recognition_schedules` | Header for each deferred revenue item (annual retainers, service contracts, subscriptions) | master | ✅ | ✅ | ✅ | ❌ | low |
+| 206 | `revenue_recognition_schedule_lines` | Pre-computed monthly recognition lines; allows full schedule preview | master | ✅ | ❌ | ❌ | ❌ | medium |
+| 207 | `revenue_recognition_runs` | Batch execution header per fiscal period recognition run (async, Principle 17) | transaction | ✅ | ✅ | ❌ | ✅ | low |
+| 208 | `revenue_recognition_run_details` | Traceability link: run → schedule line → generated journal entry | bridge | ✅ | ❌ | ❌ | ✅ | medium |
+| 209 | `auto_reversal_runs` | Batch execution header for auto-reversal processing at period start | transaction | ✅ | ✅ | ❌ | ✅ | low |
+
+> **Accruals not added as separate tables.** Recurring accruals use `recurring_journal_templates` with `auto_reverse = true`. One-time accruals are manual JEs with `auto_reversal_flag = true`. The auto-reversal run processes both.
+> **Full traceability chain:** `amortization_schedules` → `amortization_schedule_lines` → `amortization_runs` → `amortization_run_details` → `journal_entries` → `journal_lines` → `gl_balances`. Same chain for revenue recognition.
+
+---
+
 ## Summary by Module
 
 | Module | Table Count |
@@ -481,7 +561,9 @@ Legend:
 | Compliance — VAT | 5 |
 | Compliance — EWT | +1 (fwt_remittances_1601fq) = 10 |
 | Compliance — Income Tax | +1 (income_tax_return_filings) = 6 |
-| Compliance — Percentage Tax | 3 (new MODULE 29) |
+| Compliance — Percentage Tax | 3 (MODULE 29) |
+| Income Tax Computation Support | 2 (MODULE 30 — v3 addition) |
+| Accounting Schedules | 9 (MODULE 31 — Enhancement Round) |
 | Audit & CAS | 8 |
 | Attachments | 2 |
 | Workflow & Approvals | 2 |
@@ -491,7 +573,7 @@ Legend:
 | Budget | 2 |
 | Period Close | 3 |
 | Party Duplicate Management | 2 |
-| **TOTAL** | **~198** |
+| **TOTAL** | **~209** |
 
 ---
 

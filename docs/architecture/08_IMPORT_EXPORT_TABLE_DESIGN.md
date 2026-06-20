@@ -1,6 +1,23 @@
 # PXL ERP — Import & Export Table Design
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
+
+---
+
+## v3 Architecture Review Changes Applied
+
+- **New import types added**: `coa_fs_mapping`, `income_tax_mappings`, `party_special_class` — see Import Types table below.
+- **`itr_working_papers` export**: Renamed to `itr_computation_runs` in export_jobs export_type list.
+- **`mcit_computations` export**: REMOVED (subsumed into `itr_computation_runs` record; no separate export).
+- **`nolco_schedules` export**: REMOVED; replaced by `nolco_tracking` export type.
+- **Party classification import**: `party_special_class` bulk import allows updating customers/suppliers.party_special_class in batch — needed for companies migrating from systems where government/PEZA customers were not separately flagged.
+
+## v3 Open Decisions
+
+| OD# | Decision | Status |
+|---|---|---|
+| OD-08-V3-01 | `coa_fs_mapping` import — allow partial update (only update rows where fs_section is null) or always overwrite? | Recommended: always overwrite with explicit confirm prompt — fs_section drives FS report generation. |
+| OD-08-V3-02 | `income_tax_mappings` import — update `is_mcit_gross_income` and `is_osd_gross_revenue` on COA accounts — require CPA review flag before allowing import? | Recommended: Yes — require role check (CONTROLLER_ROLE or higher). |
 
 ---
 
@@ -96,6 +113,10 @@ Header record for every import operation.
 | `ap_opening` | Opening | `subsidiary_ledger_entries` (AP), supplier outstanding bills |
 | `inventory_opening` | Opening | `inventory_cost_layers`, `inventory_movements` |
 | `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedule` |
+| `coa_fs_mapping` | Setup (v3) | `chart_of_accounts` — bulk update fs_section, fs_group, fs_sort_order, cash_flow_category fields |
+| `income_tax_mappings` | Setup (v3) | `chart_of_accounts` — bulk update is_mcit_gross_income, is_osd_gross_revenue, tax_deductibility fields |
+| `party_special_class` | Master Data (v3) | `customers`, `suppliers` — bulk set party_special_class (government/peza/boi/foreign_entity) |
+| `nolco_tracking` | Compliance (v3) | `nolco_tracking` — import historical NOLCO balances from prior years |
 | `employees` | OUT OF SCOPE | Phase 1 — HR module excluded |
 
 ---

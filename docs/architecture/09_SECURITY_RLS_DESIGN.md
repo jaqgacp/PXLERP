@@ -1,6 +1,57 @@
 # PXL ERP — Security & RLS Design
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
+
+---
+
+## v3 Architecture Review Changes Applied
+
+- Added RLS policies for `income_tax_computation_lines` and `nolco_tracking` (new MODULE 30 tables)
+- Added permissions: `compliance.itr.compute`, `compliance.nolco.view`, `compliance.nolco.manage`
+- **v3 Round 2**: Added permission `party.special_class.manage` for updating customers/suppliers.party_special_class — requires CONTROLLER_ROLE or higher (changing this field affects VAT routing at posting time)
+- **v3 Round 2**: Added RLS policies for `itr_computation_runs`, `book_tax_reconciliations`, `tax_credits_schedules` (new in doc 03 § 20)
+- Added performance index guidance for high-volume compliance tables: `vat_entries`, `ewt_entries`, `percentage_tax_entries`, `income_tax_computation_lines`
+- `customer_tax_profiles` versioning: RLS policy updated — SELECT must filter `WHERE effective_to IS NULL OR effective_to >= current_date` for active-profile lookups; historical lookups at transaction `document_date` require unfiltered access for posting engine (service role)
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Recommended |
+|---|---|---|
+| OD-SEC-V3-01 | `income_tax_computation_lines` — user-visible or service-role-only? | Both: accountants can view; computation triggered via service role |
+| OD-SEC-V3-02 | Should `nolco_tracking` modifications require COMPANY_ADMIN approval or can ACCOUNTANT role update? | ACCOUNTANT can compute; COMPANY_ADMIN approves/locks |
+
+## v3 Cross-Document Consistency Validation
+
+- All new Module 30 tables (`income_tax_computation_lines`, `nolco_tracking`) have `company_id` FK — standard RLS pattern applies ✓
+- `posting_rule_sets` versioning: posting engine runs as service role (bypasses RLS) — no RLS change needed ✓
+- `customer_tax_profiles` RLS must expose all versions (not just active) to the posting engine for historical transaction resolution ✓
+
+## v3 Required Indexes (Performance — High Volume Tables)
+
+```sql
+-- vat_entries: primary compliance query patterns
+CREATE INDEX idx_vat_entries_company_period ON vat_entries(company_id, fiscal_period_id);
+CREATE INDEX idx_vat_entries_direction_class ON vat_entries(company_id, vat_direction, vat_classification);
+CREATE INDEX idx_vat_entries_party_tin ON vat_entries(company_id, party_tin) WHERE party_tin IS NOT NULL;
+
+-- ewt_entries: QAP and 2307 queries
+CREATE INDEX idx_ewt_entries_company_quarter ON ewt_entries(company_id, year, quarter);
+CREATE INDEX idx_ewt_entries_supplier_tin ON ewt_entries(company_id, supplier_tin);
+
+-- percentage_tax_entries: PT period summaries
+CREATE INDEX idx_pt_entries_company_period ON percentage_tax_entries(company_id, fiscal_period_id);
+
+-- income_tax_computation_lines
+CREATE INDEX idx_itc_lines_filing ON income_tax_computation_lines(itr_filing_id);
+CREATE INDEX idx_itc_lines_account ON income_tax_computation_lines(itr_filing_id, account_id);
+
+-- chart_of_accounts: FS generation queries
+CREATE INDEX idx_coa_fs_section ON chart_of_accounts(company_id, fs_section) WHERE is_active = true;
+CREATE INDEX idx_coa_mcit ON chart_of_accounts(company_id, is_mcit_gross_income) WHERE is_mcit_gross_income = true;
+
+-- customer_tax_profiles: active profile lookup
+CREATE UNIQUE INDEX idx_ctp_active ON customer_tax_profiles(company_id, customer_id) WHERE effective_to IS NULL;
+```
 
 ---
 
