@@ -1,6 +1,55 @@
 # PXL ERP — Security & RLS Design
-**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
-**Status:** v3 In Review — Not Yet Approved for Database Freeze
+**Version:** 3.1 — Normalization Pass
+**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+
+---
+
+## Branch Access Security Boundary Decision (v3.1 — BLOCKER 6 RESOLVED)
+
+**Decision: Option A — Company-level RLS. Branch is a UI/query filter, NOT a security boundary.**
+
+### Options Evaluated
+
+| Option | Description | Phase 1 Decision |
+|---|---|---|
+| **Option A** | RLS enforces company-level isolation only. Branch filtering is applied by the application in WHERE clauses using `auth.user_branch_ids()`. Branch access controls which data a user *sees*, not which data the database *returns at the RLS layer*. | ✅ **SELECTED for Phase 1** |
+| **Option B** | RLS enforces both company AND branch-level isolation. A separate branch-level RLS policy prevents users from reading rows where `branch_id NOT IN (auth.user_branch_ids())`. Branch access is a hard security boundary enforced at DB level. | 🔜 Phase 2 upgrade path |
+
+### Rationale for Option A (Phase 1)
+
+1. **Complexity**: Branch-level RLS requires every table to have a compound RLS policy checking both `company_id` and `branch_id`. Many tables have `branch_id = NULL` (company-wide records), requiring `OR branch_id IS NULL` conditions — this is error-prone and slows every query.
+2. **MSME context**: For Phase 1 target clients (SMEs), branch access violations are a user-experience concern, not a security concern. A user seeing another branch's invoices by accident is a UI bug, not a data breach.
+3. **Performance**: `auth.user_company_ids()` is already on the hot path. Adding `auth.user_branch_ids()` to every RLS policy doubles the policy evaluation cost per row.
+4. **Upgrade path**: Option A can be upgraded to Option B in Phase 2 by adding branch_id conditions to existing policies — no schema changes required.
+
+### Phase 1 Implementation
+
+```sql
+-- Branch filtering is applied at the APPLICATION query layer, not RLS layer:
+-- Example: listing sales invoices for user's accessible branches
+SELECT * FROM sales_invoices
+WHERE company_id = $company_id
+  AND (branch_id IS NULL OR branch_id = ANY(auth.user_branch_ids()))
+  AND status != 'voided';
+
+-- RLS only enforces company_id:
+CREATE POLICY "sales_invoices_select" ON sales_invoices
+  FOR SELECT USING (company_id = ANY(auth.user_company_ids()));
+```
+
+### When Branch IS a Hard Security Boundary
+
+Even under Option A, the following scenarios enforce branch-level access at the **service role / Edge Function layer** (not RLS):
+- **Period close**: A user can only close periods for branches they have access to (enforced in Edge Function)
+- **CAS DAT export**: Only generates data for the user's accessible branches (enforced in export Edge Function)
+- **Approval routing**: Approvals are routed only to approvers with access to the document's branch (enforced in workflow Edge Function)
+
+### Phase 2 Upgrade Path (Option B)
+
+When client contracts require hard branch isolation (e.g., franchise networks where franchisees share one Supabase project but must NOT see other branches' transactions), upgrade by:
+1. Adding `branch_id = ANY(auth.user_branch_ids()) OR branch_id IS NULL` to SELECT policies on transaction tables
+2. Updating INSERT policies to validate `branch_id` is in user's branch list
+3. No schema migration needed — only policy changes
 
 ---
 
@@ -34,16 +83,16 @@ CREATE INDEX idx_vat_entries_company_period ON vat_entries(company_id, fiscal_pe
 CREATE INDEX idx_vat_entries_direction_class ON vat_entries(company_id, vat_direction, vat_classification);
 CREATE INDEX idx_vat_entries_party_tin ON vat_entries(company_id, party_tin) WHERE party_tin IS NOT NULL;
 
--- ewt_entries: QAP and 2307 queries
+-- ewt_entries: QAP and 2307 queries (v3.1: supplier_tin renamed to payee_tin)
 CREATE INDEX idx_ewt_entries_company_quarter ON ewt_entries(company_id, year, quarter);
-CREATE INDEX idx_ewt_entries_supplier_tin ON ewt_entries(company_id, supplier_tin);
+CREATE INDEX idx_ewt_entries_payee_tin ON ewt_entries(company_id, payee_tin);
 
 -- percentage_tax_entries: PT period summaries
 CREATE INDEX idx_pt_entries_company_period ON percentage_tax_entries(company_id, fiscal_period_id);
 
--- income_tax_computation_lines
-CREATE INDEX idx_itc_lines_filing ON income_tax_computation_lines(itr_filing_id);
-CREATE INDEX idx_itc_lines_account ON income_tax_computation_lines(itr_filing_id, account_id);
+-- income_tax_computation_lines (linked to computation_run_id per v3 rename)
+CREATE INDEX idx_itc_lines_run ON income_tax_computation_lines(computation_run_id);
+CREATE INDEX idx_itc_lines_account ON income_tax_computation_lines(computation_run_id, account_id);
 
 -- chart_of_accounts: FS generation queries
 CREATE INDEX idx_coa_fs_section ON chart_of_accounts(company_id, fs_section) WHERE is_active = true;

@@ -1,6 +1,6 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
-**Status:** v3 In Review — Not Yet Approved for Database Freeze
+**Version:** 3.1 — Normalization Pass
+**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
 **Sign-off Required Before:** SQL migration authoring begins
 
 ---
@@ -122,11 +122,11 @@ Each item requires explicit sign-off from the responsible party before proceedin
 | 4.5 | `ewt_entries` — one row per (line × ATC code), column `ewt_base_amount` (not `tax_base_amount`) confirmed | CPA Lead | [ ] | |
 | 4.6 | 2307 issued: per (supplier, ATC, quarter) certificate confirmed; `is_issued`, `issued_at`, `generated_document_id` columns added | CPA Lead | [ ] | |
 | 4.7 | 2307 received: per (customer, ATC, quarter) confirmed | CPA Lead | [ ] | |
-| 4.8 | 2306 (final withholding) separate from 2307 confirmed — `certificates_2306_issued` table | CPA Lead | [ ] | |
+| 4.8 | 2306 (final withholding) separate from 2307 confirmed — `certificates_2306_issued` table — **v3.1: renamed** | CPA Lead | [!] | BLOCKER 3 resolved |
 | 4.9 | QAP monthly breakdown (M1, M2, M3) per (payee_tin, atc_code) confirmed using `ewt_entries` snapshots | CPA Lead | [ ] | |
 | 4.10 | SLSP — buyer TIN required on sales invoices (validation rule at posting) confirmed | CPA Lead | [ ] | |
 | 4.11 | RELIEF — seller TIN required on vendor bills (validation rule at posting) confirmed | CPA Lead | [ ] | |
-| 4.12 | `payee_tin` denormalized on `ewt_entries` (snapshot at time of transaction, never updated) confirmed | CPA Lead | [ ] | |
+| 4.12 | `payee_tin` denormalized on `ewt_entries` (snapshot at time of transaction, never updated) confirmed — **v3.1: column renamed from `supplier_tin`** | CPA Lead | [!] | BLOCKER 4 resolved |
 | 4.13 | `customer_tin` and `supplier_tin` denormalized on `vat_entries` (snapshot) confirmed | CPA Lead | [ ] | |
 | 4.14 | Cash Sales contribute to Output VAT, SLSP, and Cash Sales Book confirmed | CPA Lead | [ ] | |
 | 4.15 | Cash Purchases contribute to Input VAT, RELIEF, and Cash Purchases Book confirmed | CPA Lead | [ ] | |
@@ -378,7 +378,7 @@ All open decisions must be resolved before SQL migrations begin.
 | 20.3 | Cash Sales do NOT create AR entries in `subsidiary_ledger_entries` confirmed | CPA Lead | [ ] | |
 | 20.4 | Cash Purchases do NOT create AP entries in `subsidiary_ledger_entries` confirmed | CPA Lead | [ ] | |
 | 20.5 | Cash Sales posting: DR Cash / CR Revenue + CR Output VAT confirmed | CPA Lead | [ ] | |
-| 20.6 | Cash Purchases posting: DR Inventory/Expense + DR Input VAT / CR Cash (net of EWT) + DR EWT Payable confirmed | CPA Lead | [ ] | |
+| 20.6 | Cash Purchases posting confirmed: DR Inventory/Expense (gross_amount) + DR Input VAT / CR Cash (net_payable_amount = gross + vat - ewt) + **CR EWT Payable** (liability) — **v3.1: DR corrected to CR** | CPA Lead | [!] | BLOCKER 2 resolved |
 | 20.7 | Cash Sales reduce inventory for stocked items (same as Sales Invoice) confirmed | CPA Lead | [ ] | |
 | 20.8 | Cash Purchases increase inventory for goods items (same as Vendor Bill) confirmed | CPA Lead | [ ] | |
 | 20.9 | EWT on Cash Purchases captured at `cash_purchase_lines` level (not deferred to a payment voucher) confirmed | CPA Lead | [ ] | |
@@ -424,7 +424,7 @@ All open decisions must be resolved before SQL migrations begin.
 |---|---|---|---|---|
 | 23.1 | `fwt_entries` for WF-series ATC codes only — separate from EWT (WC/WI series) confirmed | CPA Lead | [ ] | |
 | 23.2 | `fwt_remittances_1601fq` separate table — separate BIR form from 1601EQ confirmed | CPA Lead | [ ] | |
-| 23.3 | `certificates_2306` generated per payee per quarter from `fwt_entries` confirmed | CPA Lead | [ ] | |
+| 23.3 | `certificates_2306_issued` generated per payee per quarter from `fwt_entries` confirmed — **v3.1: renamed** from `certificates_2306` | CPA Lead | [!] | BLOCKER 3 resolved |
 | 23.4 | WF-series ATC codes in `atc_codes` confirmed | CPA Lead | [ ] | |
 
 ---
@@ -637,6 +637,107 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
-**Once all items in Sections 1–37 are marked `[x]` or `[N/A]`, and all Open Decisions across all documents are resolved or explicitly deferred, SQL migration authoring may begin.**
+---
+
+## SECTION 38: BLOCKER 2 — EWT Payable Posting Correction (v3.1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 38.1 | Cash Purchase EWT posting corrected in doc 06: `CR: EWT Payable` (not DR) — confirmed | CPA Lead | [!] | v3.1 normalization resolved |
+| 38.2 | Cash Purchase posting formula confirmed: `net_payable_amount = gross_amount + vat_amount - ewt_amount` | CPA Lead | [!] | v3.1 normalization resolved |
+| 38.3 | EWT Payable is a **liability** (credit-normal balance) — company owes withheld amount to BIR | CPA Lead | [!] | CPA standard — no ambiguity |
+| 38.4 | All posting examples in all architecture docs reviewed for DR/CR correctness | DB Architect | [ ] | Verify in doc 05 compliance map |
+
+---
+
+## SECTION 39: BLOCKER 3 — Canonical Table Name Registry (v3.1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 39.1 | `financial_statement_mappings` (#31) confirmed REMOVED — COA embedded fields replace it | DB Architect | [!] | v3.1 normalization resolved |
+| 39.2 | `certificates_2306` RENAMED to `certificates_2306_issued` (#149) — confirmed in doc 02 Canonical Registry | CPA Lead | [!] | v3.1 normalization resolved |
+| 39.3 | `receipts` (#71) — canonical name confirmed KEEP as-is (Official Receipts issued to customers for AR collection) | CPA Lead | [!] | v3.1 resolved |
+| 39.4 | `payment_vouchers` (#87) — canonical name confirmed KEEP as-is (AP payments to suppliers) | CPA Lead | [!] | v3.1 resolved |
+| 39.5 | `journal_lines` (#130) — canonical name confirmed KEEP as-is | DB Architect | [!] | v3.1 resolved |
+| 39.6 | Canonical Table Name Registry section added to doc 02 — 207 ACTIVE + 3 REMOVED tables | DB Architect | [!] | v3.1 normalization resolved |
+| 39.7 | Naming convention documented: `_issued` suffix on certificate output tables; `_entries` on compliance ledger tables; `_runs` on batch headers; `_lines` on line-item tables | DB Architect | [!] | v3.1 normalization resolved |
+| 39.8 | All migration scripts must use canonical names from doc 02 registry — no deviations | DB Architect | [ ] | Must be validated in migration authoring |
+
+---
+
+## SECTION 40: BLOCKER 4 — EWT/FWT Party Field Normalization (v3.1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 40.1 | Decision: `ewt_entries` and `fwt_entries` remain as **separate tables** — not merged into a unified withholding table | CPA Lead | [!] | v3.1 — separate tables confirmed; BIR forms are separate (1601EQ vs 1601FQ) |
+| 40.2 | `ewt_entries` party field columns RENAMED: `supplier_tin` → `payee_tin`, `supplier_name` → `payee_registered_name` | DB Architect | [!] | v3.1 normalization resolved |
+| 40.3 | Standard party snapshot columns on `ewt_entries`: `payee_id uuid NULL`, `payee_type CHECK IN ('supplier','customer')`, `payee_tin text`, `payee_registered_name text`, `payee_registered_address text NULL` | CPA Lead / DB Architect | [!] | v3.1 normalization resolved |
+| 40.4 | Same standard party snapshot columns applied to `fwt_entries` — consistent interface | DB Architect | [!] | v3.1 normalization resolved |
+| 40.5 | Index updated: `idx_ewt_entries_payee_tin ON ewt_entries(company_id, payee_tin)` — replaces old `idx_ewt_entries_supplier_tin` | DB Architect | [!] | v3.1 normalization resolved — doc 09 updated |
+| 40.6 | `payee_id` is nullable (snapshot-first) — historical transactions without party master records still supported | DB Architect | [ ] | Confirm in migration script |
+| 40.7 | `payee_type = 'customer'` on `ewt_entries` — valid for customer EWT (e.g., CWT on rents received) | CPA Lead | [ ] | Confirm PH use cases with CPA |
+
+---
+
+## SECTION 41: BLOCKER 5 — Cross-Reference Index Rebuilt (v3.1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 41.1 | Cross-reference index in doc 03 Section 22 rebuilt with exact counts — no approximations | DB Architect | [!] | v3.1 normalization task |
+| 41.2 | All 207 active tables account for full column specs in doc 03 (Sections 1–44) — no SPEC REQUIRED placeholders remaining | DB Architect | [ ] | Pending doc 03 agent completion |
+| 41.3 | Cross-reference index states exact table count: 207 active, 3 removed | DB Architect | [ ] | Pending doc 03 agent completion |
+| 41.4 | Tables with specs in doc 09 Section 2 (security tables) cross-referenced from doc 03 | DB Architect | [!] | v3.1 normalization resolved |
+
+---
+
+## SECTION 42: BLOCKER 6 — Branch Access Security Boundary Decision (v3.1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 42.1 | **Decision: Option A selected for Phase 1** — company-level RLS only; branch is a UI/query filter, not a hard RLS security boundary | DB Architect / Business Lead | [!] | v3.1 normalization resolved — doc 09 updated |
+| 42.2 | Branch filtering in application queries uses `auth.user_branch_ids()` in WHERE clause — confirmed | DB Architect | [!] | v3.1 resolved |
+| 42.3 | Branch-level access enforcement at Edge Function layer confirmed for: period close, CAS DAT export, approval routing | DB Architect | [ ] | Must be implemented in Edge Functions |
+| 42.4 | Phase 2 upgrade path to Option B documented in doc 09 — no schema changes required, policy changes only | DB Architect | [!] | v3.1 resolved |
+| 42.5 | `user_branch_access` table confirmed as configuration table for both Phase 1 (UI filtering) and Phase 2 (RLS enforcement) | DB Architect | [!] | v3.1 resolved |
+
+---
+
+## SECTION 43: BLOCKER 7 — UI Mockup as Prototype (v3.1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 43.1 | `index.html` in repository root formally documented as VISUAL PROTOTYPE ONLY in doc 01 | Business Lead / DB Architect | [!] | v3.1 normalization resolved |
+| 43.2 | Architecture decisions derived from mockup module groupings are documented in docs 02–10 — mockup is NOT the source of truth | DB Architect | [!] | v3.1 resolved |
+| 43.3 | Mockup will be replaced by actual application UI during development sprints — confirmed | Business Lead | [ ] | Stakeholder awareness needed |
+| 43.4 | No column names, business logic, or BIR form configurations should be derived from the mockup | CPA Lead | [!] | v3.1 resolved |
+
+---
+
+## SECTION 44: All Column Specs Complete (v3.1 — BLOCKER 1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 44.1 | All 207 active tables have full column specifications in doc 03 — no SPEC REQUIRED entries | DB Architect | [ ] | Pending doc 03 agent completion |
+| 44.2 | Sections 24–44 added to doc 03 covering ~114 previously unspecced tables | DB Architect | [ ] | Pending doc 03 agent completion |
+| 44.3 | All specs follow standard format: column name, type, null/not null, default, description | DB Architect | [ ] | Pending doc 03 agent completion |
+| 44.4 | Standard audit columns documented once in doc 03 Standard Column Sets and referenced by all applicable tables | DB Architect | [!] | Already in doc 03 |
+| 44.5 | Standard transaction header columns documented once and referenced — no copy-paste duplication | DB Architect | [!] | Already in doc 03 |
+| 44.6 | Money columns: `numeric(18,4)` verified across all new specs | CPA Lead | [ ] | Pending spec review |
+| 44.7 | Rate columns: `numeric(10,6)` verified across all new specs | DB Architect | [ ] | Pending spec review |
+
+---
+
+## SECTION 45: Version Normalization (v3.1)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 45.1 | All 10 architecture documents updated to version 3.1 | DB Architect | [!] | v3.1 normalization resolved |
+| 45.2 | All 10 documents show consistent status: "v3.1 — Normalization In Progress — Not Yet Migration-Approved" | DB Architect | [!] | v3.1 normalization resolved |
+| 45.3 | No document states "Gaps Resolved" or "v3 In Review" as current status | DB Architect | [!] | v3.1 normalization resolved — all statuses corrected |
+| 45.4 | Migration authoring gate confirmed: ALL sign-off items in this checklist must be `[x]` or `[N/A]` before SQL migrations begin | DB Architect / Project Lead | [ ] | Not yet — normalization pass in progress |
+
+---
+
+**Once all items in Sections 1–45 are marked `[x]` or `[N/A]`, and all Open Decisions across all documents are resolved or explicitly deferred, SQL migration authoring may begin.**
 
 *Next step after sign-off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*
