@@ -1,6 +1,41 @@
 # PXL ERP — Security & RLS Design
-**Version:** 1.0 — Blueprint Locked  
+**Version:** 2.0 — Revised for Implementation Readiness
 **Status:** For CPA and Developer Review
+
+---
+
+## Changes Applied (v1 → v2)
+
+- Fixed `profiles.full_name` → `profiles.first_name` + `profiles.last_name` (v2 column standard; virtual `full_name` can be computed)
+- Added notification-related permissions to permission matrix: `notifications.view`, `notifications.manage`
+- Added `system_alerts.view` permission
+- Added `document_template.manage` permission for controllers
+- Added `cash_sales.*` and `cash_purchases.*` permissions (new transaction types)
+- Updated Supabase Realtime list: added `notifications` and `system_alerts` (ATP gap alerts)
+- Added `NOTIFICATIONS` section to permission matrix
+- Added `CASH_TRANSACTIONS` section to permission matrix
+- Added `TAX_ACCOUNTANT` role: clarified it can manage compliance exports and generate 2307s
+- Aligned role descriptions with 11 system-seeded roles confirmed in v2
+- Added `export_jobs` and `import_batches` to Realtime list (were referenced in doc 01 but not explicit here)
+
+---
+
+## Open Decisions Remaining
+
+| OD # | Question | Status |
+|---|---|---|
+| OD-19 | Should `system_alerts` have its own RLS policy scoped to COMPANY_ADMIN and CONTROLLER roles only? | Recommended: Yes. Regular users should not see ATP gap alerts. Confirm before RLS migration. |
+| OD-20 | Should `notifications` RLS allow users to only SELECT their own notifications (recipient = auth.uid())? | Recommended: Yes — user can only see their own notifications. Company admins can see all. |
+
+---
+
+## Implementation Notes
+
+- `auth.user_company_ids()` is on the hot path of every RLS policy — it must be indexed on `user_company_access(user_id, is_active, revoked_at)`.
+- `auth.has_permission()` adds one sub-query per DML check. For high-volume tables, consider caching permission lookups in the JWT claim (Phase 2) or using role-check triggers in Edge Functions instead.
+- Service role is used by all Edge Functions (posting engine, import engine, notification dispatch, compliance exports). The service role key must NEVER be exposed to the client.
+- Super admin (`profiles.is_super_admin = true`) bypasses company RLS for platform-level administration only. Super admins cannot post transactions.
+- Hard DELETE is REVOKE'd on all app roles. Only the service role via migrations can hard-delete, and only for cleanup of test data.
 
 ---
 
@@ -18,18 +53,21 @@ Extended user profile linked to `auth.users`.
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK, FK auth.users | Same UUID as auth.users |
-| `full_name` | text | NOT NULL | |
-| `display_name` | text | NULL | |
+| `first_name` | text | NOT NULL | |
+| `last_name` | text | NOT NULL | |
+| `display_name` | text | NULL | Optional nickname/alias |
 | `avatar_url` | text | NULL | Supabase Storage path |
 | `phone` | text | NULL | |
 | `job_title` | text | NULL | |
 | `is_active` | boolean | NOT NULL DEFAULT true | |
 | `is_super_admin` | boolean | NOT NULL DEFAULT false | Platform-level admin (not company admin) |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `updated_at` | timestamptz | | |
+| `updated_at` | timestamptz | NULL | |
 | `last_login_at` | timestamptz | NULL | |
 | `timezone` | text | NOT NULL DEFAULT 'Asia/Manila' | |
 | `locale` | text | NOT NULL DEFAULT 'en-PH' | |
+
+> `full_name` is a computed expression `first_name || ' ' || last_name` — not a stored column.
 
 ---
 
@@ -222,7 +260,7 @@ CREATE POLICY "{table_name}_update" ON {table_name}
 #### Audit Tables (Insert-Only)
 
 ```sql
--- audit_logs, field_change_history, atp_usage_logs:
+-- audit_logs, field_change_history, atp_usage_logs, document_void_register:
 -- SELECT: yes (users can read logs for their companies)
 -- INSERT: yes (via trigger / edge function using service role)
 -- UPDATE: no
@@ -232,22 +270,19 @@ CREATE POLICY "{table_name}_update" ON {table_name}
 #### Immutable Posted Documents
 
 ```sql
--- Additional policy on posted documents (sales_invoices, vendor_bills, etc.):
+-- Additional policy on posted documents (sales_invoices, vendor_bills, cash_sales, cash_purchases, etc.):
 CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
   FOR UPDATE USING (
-    status != 'POSTED'
-    AND status != 'VOIDED'
-    AND status != 'REVERSED'
+    status NOT IN ('POSTED', 'VOIDED', 'REVERSED')
   );
 ```
 
-#### Journal Entries (Auto-Posted Only)
+#### Journal Entries (Service Role Only for Writes)
 
 ```sql
--- journal_entries UPDATE restricted to status transition only:
+-- journal_entries: application users may only view, not insert/update directly
+-- Manual JEs go through the journal_entry UI which calls the posting edge function
 -- Posting engine uses service role to write journal entries
--- Application users may only view, not insert/update directly
--- Manual JEs go through the journal_entries UI which calls the posting edge function
 ```
 
 #### GL Balances (Service Role Only)
@@ -257,9 +292,39 @@ CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
 -- All writes done by posting engine via service role
 ```
 
+#### Notifications (Own Records Only)
+
+```sql
+-- notifications: user can only SELECT rows where recipient_user_id = auth.uid()
+-- Company admins can SELECT all notifications for their company
+CREATE POLICY "notifications_select_own" ON notifications
+  FOR SELECT USING (
+    recipient_user_id = auth.uid()
+    OR (
+      company_id = ANY(auth.user_company_ids())
+      AND auth.has_permission('notifications.manage', company_id)
+    )
+  );
+```
+
+#### System Alerts (Admin/Controller Only)
+
+```sql
+-- system_alerts: visible only to COMPANY_ADMIN and CONTROLLER roles
+CREATE POLICY "system_alerts_select" ON system_alerts
+  FOR SELECT USING (
+    company_id = ANY(auth.user_company_ids())
+    AND (
+      auth.has_permission('system_alerts.view', company_id)
+    )
+  );
+```
+
 ---
 
 ## 4. Permission Matrix (Reference)
+
+### Sales & Cash Transactions
 
 | Permission Code | Who Needs It |
 |---|---|
@@ -267,24 +332,61 @@ CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
 | `sales_invoice.create` | AR Clerk, Sales |
 | `sales_invoice.edit` | AR Clerk (DRAFT only) |
 | `sales_invoice.post` | Accountant, Controller |
-| `sales_invoice.void` | Controller, CFO |
+| `sales_invoice.void` | Controller |
+| `cash_sale.create` | AR Clerk, Sales |
+| `cash_sale.post` | Accountant, Controller |
+| `cash_sale.void` | Controller |
+
+### Purchasing & Cash Purchases
+
+| Permission Code | Who Needs It |
+|---|---|
 | `vendor_bill.view` | AP Clerk, Accountant, Auditor |
 | `vendor_bill.create` | AP Clerk, Purchasing |
 | `vendor_bill.post` | Accountant, Controller |
-| `payment_voucher.approve` | Approver, CFO |
+| `cash_purchase.create` | AP Clerk, Purchasing |
+| `cash_purchase.post` | Accountant, Controller |
+| `cash_purchase.void` | Controller |
+| `payment_voucher.approve` | Approver, Controller |
+
+### Accounting & GL
+
+| Permission Code | Who Needs It |
+|---|---|
 | `journal_entry.create` | Accountant |
 | `journal_entry.post` | Controller |
 | `gl.view` | Accountant, Controller, Auditor |
 | `gl.close_period` | Controller |
+
+### Compliance & Tax
+
+| Permission Code | Who Needs It |
+|---|---|
 | `compliance.vat.export` | Tax Accountant, Controller |
 | `compliance.ewt.export` | Tax Accountant, Controller |
-| `compliance.dat.generate` | Controller, CAS Admin |
+| `compliance.dat.generate` | Controller |
+| `compliance.2307.generate` | Tax Accountant, Controller |
+| `compliance.1601eq.file` | Tax Accountant, Controller |
+
+### Settings & Admin
+
+| Permission Code | Who Needs It |
+|---|---|
 | `settings.users.manage` | Company Admin |
 | `settings.roles.manage` | Company Admin |
 | `settings.coa.manage` | Controller |
 | `settings.approval.manage` | Company Admin, Controller |
+| `settings.document_templates.manage` | Controller |
 | `import.execute` | Company Admin, Controller |
 | `audit.view` | Auditor, Company Admin |
+
+### Notifications & Alerts
+
+| Permission Code | Who Needs It |
+|---|---|
+| `notifications.view` | All authenticated users (own notifications) |
+| `notifications.manage` | Company Admin (all notifications) |
+| `system_alerts.view` | Company Admin, Controller |
 
 ---
 
@@ -292,17 +394,17 @@ CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
 
 | Role Code | Description | Key Permissions |
 |---|---|---|
-| `COMPANY_ADMIN` | Company administrator | All settings, user management |
-| `CONTROLLER` | Financial controller | Post, close periods, compliance exports |
+| `COMPANY_ADMIN` | Company administrator | All settings, user management, system alerts |
+| `CONTROLLER` | Financial controller | Post, close periods, compliance exports, document templates |
 | `ACCOUNTANT` | General accountant | Create/post JEs, view all GL |
-| `AR_CLERK` | Accounts receivable | Sales invoices, receipts |
-| `AP_CLERK` | Accounts payable | Vendor bills, payment vouchers |
+| `AR_CLERK` | Accounts receivable | Sales invoices, cash sales, receipts |
+| `AP_CLERK` | Accounts payable | Vendor bills, cash purchases, payment vouchers |
 | `PURCHASING` | Purchasing officer | Purchase orders, goods receipts |
-| `SALES` | Sales officer | Sales orders, delivery orders |
+| `SALES` | Sales officer | Sales orders, delivery orders, cash sales (create) |
 | `APPROVER` | Document approver | Approve workflow items |
 | `INVENTORY_CLERK` | Inventory | Adjustments, stock transfers |
 | `AUDITOR` | Read-only auditor | View all, audit logs |
-| `TAX_ACCOUNTANT` | Tax compliance | All compliance exports |
+| `TAX_ACCOUNTANT` | Tax compliance | All compliance exports, generate 2307, 1601EQ filing |
 
 ---
 
@@ -310,11 +412,11 @@ CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
 
 | Feature | Configuration |
 |---|---|
-| **Service Role** | Used by Edge Functions for posting engine, import engine, compliance exports. Never exposed to client. |
+| **Service Role** | Used by Edge Functions for posting engine, import engine, compliance exports, notification dispatch. Never exposed to client. |
 | **Anon Role** | No access to any operational table. Only public company registration flow. |
 | **Auth JWT** | `auth.uid()` used in all RLS policies. Company/branch IDs looked up from access tables, not stored in JWT claims. |
-| **Realtime** | Enabled only on: `approval_requests`, `approval_actions`, `export_jobs`, `import_batches`. Not enabled on ledger/audit tables. |
-| **MFA** | Supabase Auth MFA (TOTP) — enabled for COMPANY_ADMIN and CONTROLLER roles. |
+| **Realtime** | Enabled on: `approval_requests`, `approval_actions`, `export_jobs`, `import_batches`, `notifications`, `system_alerts`. NOT enabled on ledger, audit, or compliance tables. |
+| **MFA** | Supabase Auth MFA (TOTP) — required for COMPANY_ADMIN and CONTROLLER roles. |
 
 ---
 
@@ -324,5 +426,7 @@ CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
 2. **Branch filtering**: UI and reports additionally filter by `user_branch_ids()` where applicable.
 3. **No cross-company reads**: Helper function `auth.user_company_ids()` returns only explicitly granted companies.
 4. **Super admin access**: `profiles.is_super_admin = true` bypasses company RLS for platform administration only. Super admin cannot post transactions.
-5. **Posted document immutability**: Enforced at both trigger level (raises exception) and RLS level (UPDATE policy excludes posted rows).
+5. **Posted document immutability**: Enforced at both trigger level (raises exception) and RLS level (UPDATE policy excludes posted/voided/reversed rows).
 6. **Audit table integrity**: `audit_logs` and `field_change_history` are written only by service role via triggers and Edge Functions. Application users have SELECT only.
+7. **Notification isolation**: Users can only read their own notifications. Company admins with `notifications.manage` can read all.
+8. **Cash Sales / Cash Purchases**: Same RLS pattern as sales_invoices and vendor_bills — `company_id` scoped, `has_permission` checked on INSERT.

@@ -1,19 +1,43 @@
 # PXL ERP — Import & Export Table Design
-**Version:** 1.0 — Blueprint Locked  
+**Version:** 2.0 — Revised for Implementation Readiness
 **Status:** For CPA and Developer Review
+
+---
+
+## Changes Applied (v1 → v2)
+
+- Expanded `import_type` list to include all Setup and Master Data modules (payment_terms, approval_matrix, atc_codes, warehouses, units_of_measure, etc.) — not only transactional data
+- Added `attachment_versions` full table specification (new in v2)
+- Added `file_hash_sha256` to `attachments` table
+- Confirmed `export_jobs` table name (was `export_batches` in v1 doc 02 — now consistent across all docs)
+- Added `cash_sale` and `cash_purchase` to export types (new transaction types in v2)
+- Added compliance output export types: `compliance_report_run_id` link on export_jobs
+- Added `import_batch_id` column reference note: all master data tables carry this column
+- Added `EMPLOYEES` import type marked as OUT OF SCOPE for Phase 1
+
+---
+
+## Open Decisions Remaining
+
+| OD # | Question | Status |
+|---|---|---|
+| OD-17 | Should attachment storage use a single bucket per company or a single shared bucket with folder-based separation? | Recommended: single shared bucket with `company_id/entity_type/entity_id/` path structure. Confirm before Supabase Storage setup. |
+| OD-18 | Should the import template (column mapping) be saved per import_type so users don't re-map columns on every import? | Recommended: Yes — store as `import_column_templates` table (Phase 2). Phase 1: column_mapping stored per batch. |
+
+---
+
+## Implementation Notes
+
+- Every record created by a bulk import must carry `import_batch_id`. This is the only reliable rollback mechanism (soft-delete all records with matching `import_batch_id`).
+- Import rollback is available only for records that have NOT been posted. Posted journal entries from opening balance imports cannot be rolled back via batch — they require a manual reversal JE.
+- `attachment_versions` allows re-upload of the same attachment (e.g., corrected invoice scan). The latest version is `is_current = true`; previous versions are retained.
+- `export_jobs` uses Supabase Realtime so the user gets live progress feedback. The generated file is stored in Supabase Storage; the download link is generated on-demand with a signed URL.
 
 ---
 
 ## 1. Overview
 
-MSME companies migrating to PXL ERP need to bulk-import:
-- Chart of accounts
-- Customers and suppliers
-- Items and inventory
-- Opening balances
-- Historical AR/AP balances
-
-Every bulk-created record carries `import_batch_id` for full traceability and rollback support.
+MSME companies migrating to PXL ERP need to bulk-import setup data, master data, and opening balances. Every bulk-created record carries `import_batch_id` for full traceability and rollback support.
 
 ---
 
@@ -51,20 +75,26 @@ Header record for every import operation.
 
 ### Import Types
 
-| import_type | Target Tables |
-|---|---|
-| `chart_of_accounts` | `chart_of_accounts` |
-| `customers` | `customers`, `customer_tax_profiles`, `customer_addresses` |
-| `suppliers` | `suppliers`, `supplier_tax_profiles`, `supplier_addresses` |
-| `items` | `items`, `item_units_of_measure` |
-| `opening_balances` | `opening_balance_entries` → `journal_entries` |
-| `ar_opening` | `customers`, `subsidiary_ledger_entries` (AR) |
-| `ap_opening` | `suppliers`, `subsidiary_ledger_entries` (AP) |
-| `inventory_opening` | `items`, `inventory_cost_layers`, `inventory_movements` |
-| `fixed_assets_opening` | `fixed_assets`, `asset_depreciation_schedule` |
-| `employees` | `employees` (if HR module in scope) |
-| `price_lists` | `item_price_lists` |
-| `bank_accounts` | `company_bank_accounts` |
+| import_type | Category | Target Tables |
+|---|---|---|
+| `chart_of_accounts` | Setup | `chart_of_accounts` |
+| `payment_terms` | Setup | `payment_terms`, `payment_term_lines` |
+| `atc_codes` | Setup | `atc_codes` |
+| `tax_codes` | Setup | `tax_codes` (VAT classification master) |
+| `warehouses` | Setup | `warehouses`, `warehouse_locations` |
+| `units_of_measure` | Setup | `units_of_measure` |
+| `approval_matrix` | Setup | `approval_matrix`, `approval_matrix_steps` |
+| `customers` | Master Data | `customers`, `customer_tax_profiles`, `customer_addresses` |
+| `suppliers` | Master Data | `suppliers`, `supplier_tax_profiles`, `supplier_addresses` |
+| `items` | Master Data | `items`, `item_units_of_measure` |
+| `price_lists` | Master Data | `item_price_lists` |
+| `bank_accounts` | Master Data | `company_bank_accounts` |
+| `opening_balances` | Opening | `opening_balance_entries` → `journal_entries` |
+| `ar_opening` | Opening | `subsidiary_ledger_entries` (AR), customer outstanding invoices |
+| `ap_opening` | Opening | `subsidiary_ledger_entries` (AP), supplier outstanding bills |
+| `inventory_opening` | Opening | `inventory_cost_layers`, `inventory_movements` |
+| `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedule` |
+| `employees` | OUT OF SCOPE | Phase 1 — HR module excluded |
 
 ---
 
@@ -120,6 +150,9 @@ All validation errors per import row.
 | `TIN_MISMATCH` | TIN already registered to a different name |
 | `UOM_NOT_FOUND` | Unit of measure not in master list |
 | `EXCEEDS_MAX_LENGTH` | Text exceeds maximum allowed length |
+| `WAREHOUSE_NOT_FOUND` | Warehouse code not in master list |
+| `ATC_NOT_FOUND` | ATC code not in atc_codes master list |
+| `PAYMENT_TERMS_NOT_FOUND` | Payment terms code not in master list |
 
 ---
 
@@ -141,7 +174,7 @@ Stores opening balances before they are converted to journal entries.
 | `import_batch_id` | uuid | FK import_batches, NULL | |
 | `posted_journal_entry_id` | uuid | FK journal_entries, NULL | Set when posted |
 | `is_posted` | boolean | NOT NULL DEFAULT false | |
-| `created_by` | uuid | FK auth.users | |
+| `created_by` | uuid | FK auth.users, NOT NULL | |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() | |
 
 ---
@@ -149,14 +182,14 @@ Stores opening balances before they are converted to journal entries.
 ## 4. Export / Report Generation Tables
 
 ### `export_jobs`
-Tracks asynchronous report/export generation jobs.
+Tracks asynchronous report/export generation jobs. Supabase Realtime enabled.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `export_type` | text | NOT NULL | See export types below |
-| `parameters` | jsonb | NOT NULL | Filter params: date range, accounts, etc. |
+| `parameters` | jsonb | NOT NULL | Filter params: date range, accounts, branches, etc. |
 | `format` | text | CHECK IN ('PDF','XLSX','CSV','DAT','JSON') | |
 | `status` | text | CHECK IN ('QUEUED','PROCESSING','COMPLETED','FAILED') | |
 | `requested_by` | uuid | FK auth.users, NOT NULL | |
@@ -168,6 +201,7 @@ Tracks asynchronous report/export generation jobs.
 | `record_count` | integer | NULL | |
 | `error_message` | text | NULL | |
 | `expires_at` | timestamptz | NULL | When to auto-delete from storage |
+| `compliance_report_run_id` | uuid | FK compliance_report_runs, NULL | Set when export is a compliance form |
 
 ### Export Types
 
@@ -184,6 +218,8 @@ Tracks asynchronous report/export generation jobs.
 | `cash_disbursements_book` | BIR Book: Cash Disbursements |
 | `sales_book` | BIR Book: Sales |
 | `purchases_book` | BIR Book: Purchases |
+| `cash_sales_book` | BIR Book: Cash Sales |
+| `cash_purchases_book` | BIR Book: Cash Purchases |
 | `vat_2550m` | BIR Form 2550M |
 | `vat_2550q` | BIR Form 2550Q |
 | `slsp_sales` | SLSP (Sales) quarterly |
@@ -200,33 +236,58 @@ Tracks asynchronous report/export generation jobs.
 | `dat_inv` | CAS DAT File: Inventory |
 | `inventory_valuation` | Inventory Valuation Report |
 | `fixed_asset_schedule` | Fixed Asset Lapsing Schedule |
+| `budget_vs_actual` | Budget vs Actual Variance Report |
 
 ---
 
 ## 5. Attachment Tables
 
 ### `attachments`
-Metadata for all uploaded files (Supabase Storage holds the actual files).
+Metadata for all uploaded files. Supabase Storage holds the actual files.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `entity_type` | text | NOT NULL | Table name of related record |
+| `entity_type` | text | NOT NULL | Table name of related record (polymorphic) |
 | `entity_id` | uuid | NOT NULL | PK of related record |
 | `file_name` | text | NOT NULL | Original filename |
 | `file_size_bytes` | bigint | NOT NULL | |
 | `mime_type` | text | NOT NULL | |
 | `storage_bucket` | text | NOT NULL | Supabase Storage bucket name |
 | `storage_path` | text | NOT NULL | Path within bucket |
+| `file_hash_sha256` | text | NULL | SHA-256 checksum of uploaded file |
 | `description` | text | NULL | User-provided label |
-| `is_primary` | boolean | NOT NULL DEFAULT false | Primary/thumbnail attachment |
+| `is_primary` | boolean | NOT NULL DEFAULT false | Primary/featured attachment |
+| `current_version_id` | uuid | FK attachment_versions, NULL | Points to the current version |
 | `uploaded_by` | uuid | FK auth.users, NOT NULL | |
 | `uploaded_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `deleted_at` | timestamptz | NULL | Soft delete |
 | `deleted_by` | uuid | FK auth.users, NULL | |
 
-Supported entity types: `sales_invoices`, `vendor_bills`, `receipts`, `payment_vouchers`, `journal_entries`, `petty_cash_vouchers`, `purchase_orders`, `goods_receipts`, `bank_reconciliations`, `fixed_assets`
+**Supported entity types:**
+`sales_invoices` | `vendor_bills` | `receipts` | `payment_vouchers` | `cash_sales` | `cash_purchases` | `journal_entries` | `petty_cash_vouchers` | `purchase_orders` | `goods_receipts` | `bank_reconciliations` | `fixed_assets` | `customers` | `suppliers`
+
+---
+
+### `attachment_versions`
+Version history for re-uploaded attachments.
+
+| Column | Type | Constraint | Description |
+|---|---|---|---|
+| `id` | uuid | PK | |
+| `company_id` | uuid | FK companies, NOT NULL | |
+| `attachment_id` | uuid | FK attachments, NOT NULL | |
+| `version_number` | integer | NOT NULL | Sequential, starts at 1 |
+| `file_name` | text | NOT NULL | Filename for this version |
+| `file_size_bytes` | bigint | NOT NULL | |
+| `mime_type` | text | NOT NULL | |
+| `storage_path` | text | NOT NULL | Supabase Storage path for this version |
+| `file_hash_sha256` | text | NULL | SHA-256 checksum of this version |
+| `is_current` | boolean | NOT NULL DEFAULT true | Only one version is current per attachment |
+| `uploaded_by` | uuid | FK auth.users, NOT NULL | |
+| `uploaded_at` | timestamptz | NOT NULL DEFAULT now() | |
+| `upload_reason` | text | NULL | Why this version was uploaded |
 
 ---
 
@@ -243,7 +304,7 @@ Supported entity types: `sales_invoices`, `vendor_bills`, `receipts`, `payment_v
    d. Update import_batches.status = 'VALIDATED'
    e. Update counts: total_rows, error_rows, success_rows
 5. User reviews validation results
-6. User approves import
+6. User approves import (all-or-nothing for VALID rows; ERROR rows are skipped)
 7. IMPORT PASS:
    a. For each VALID row: create target record(s)
    b. Set created_record_id on import_rows
@@ -251,10 +312,13 @@ Supported entity types: `sales_invoices`, `vendor_bills`, `receipts`, `payment_v
    d. Update import_rows.status = 'IMPORTED'
    e. Update import_batches.status = 'COMPLETED'
 8. Audit log: BULK_IMPORT_COMPLETED
+9. Notify initiator: import completed (row counts, error summary)
 ```
 
 ### Rollback
-- Only available for imports that have NOT been posted
+
+- Only available for imports where no records have been posted
 - Sets `deleted_at` on all records with matching `import_batch_id`
 - Updates `import_batches.status = 'ROLLED_BACK'`
-- Creates audit log entry
+- Creates `audit_logs` entry (event_type='BULK_IMPORT_ROLLED_BACK')
+- Opening balance journal entries that have been POSTED cannot be rolled back via batch — require manual reversal JE

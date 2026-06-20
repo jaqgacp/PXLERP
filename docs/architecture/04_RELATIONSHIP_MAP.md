@@ -1,6 +1,45 @@
 # PXL ERP — Relationship Map
-**Version:** 1.0 — Blueprint Locked  
+**Version:** 2.0 — Revised for Implementation Readiness
 **Status:** For CPA and Developer Review
+
+---
+
+## Changes Applied (v1 → v2)
+
+- Updated posting engine references: `posting_rules` → `posting_rule_sets`
+- Updated compliance references: `vat_summary_period` → `vat_period_summaries`
+- Updated document number column: `document_number` → `document_no`
+- Updated date column: `invoice_date`/`bill_date` → `document_date`
+- Added Cash Sales and Cash Purchases relationship chains (OD-08 resolved)
+- Added Notification relationship chain (Section 13)
+- Added Document Template and Generated Output relationship chain (Section 14)
+- Added Budget relationship chain (Section 15)
+- Added Period Close relationship chain (Section 16)
+- Added Party Duplicate Management relationship chain (Section 17)
+- Added `inventory_cost_layer_consumption` to inventory section
+- Added `bank_statement_lines` to bank reconciliation section
+- Added `attachment_versions` to attachments section
+- Added `system_alerts` to audit section
+- Updated bridge table summary for all new tables
+- Fixed `bank_statements_lines` → `bank_statement_lines` (singular table name)
+
+---
+
+## Open Decisions Remaining
+
+| OD # | Question | Status |
+|---|---|---|
+| OD-09 | Should `document_relationships` also link notification events to their source documents? | Unresolved — Phase 2 consideration |
+| OD-10 | Should `generated_documents` link to `export_jobs` when a PDF is produced as part of an export? | Unresolved — decide before implementing Edge Functions |
+
+---
+
+## Implementation Notes
+
+- Every new table added in v2 (cash_sales, notifications, document_templates, budgets, period_close, party_merge) carries `company_id` for RLS compliance.
+- Cash Sales and Cash Purchases do NOT appear in the AR/AP ledger chains. They have their own posting paths directly to GL.
+- Notification chains are async (fire-and-forget); they do not block or participate in posting transactions.
+- Period close checklist is a separate management workflow; it does not alter the fiscal_locks table directly — the controller manually locks after all tasks are complete.
 
 ---
 
@@ -47,18 +86,20 @@ account_types (1)
 ```
 number_series (1)
   └── number_series_atp (many)
-        └── atp_usage_logs (many)
+        └── atp_usage_logs (many, immutable)
 ```
 
 ### Approval
 ```
 approval_matrix (1)
   └── approval_matrix_steps (many)
+        ├── auth.users (designated approver)
+        └── roles (role-based approver)
         
 approval_requests (1)
   ├── approval_matrix
   ├── [any source document]
-  └── approval_actions (many)
+  └── approval_actions (many, immutable)
         └── auth.users (approver)
 ```
 
@@ -84,8 +125,7 @@ payment_terms (1)
 customers (1)
   ├── customer_tax_profiles (1:1)
   ├── customer_addresses (many)
-  ├── customer_contacts (many)
-  └── customer_credit_terms ──► payment_terms
+  └── customer_contacts (many)
 ```
 
 ### Supplier
@@ -93,8 +133,7 @@ customers (1)
 suppliers (1)
   ├── supplier_tax_profiles (1:1)
   ├── supplier_addresses (many)
-  ├── supplier_contacts (many)
-  └── supplier_payment_terms ──► payment_terms
+  └── supplier_contacts (many)
 ```
 
 ### Item / Inventory
@@ -132,10 +171,22 @@ customers (1)
               │     └── vat_entries (many)
               ├── receipts (many, via invoice_id)
               │     ├── receipt_lines (many)
-              │     │     └── vat_entries (output VAT applied)
               │     └── certificates_2307_received (many)
-              │           └── chart_of_accounts (tax credit account)
+              │           └── generated_documents (PDF of 2307)
               └── document_relationships (many, bidirectional)
+```
+
+### Cash Sales (No AR Created)
+
+```
+customers (1, optional — cash sales may be walk-in)
+  └── cash_sales (many)
+        ├── cash_sale_lines (many)
+        │     ├── items
+        │     ├── chart_of_accounts (revenue account)
+        │     └── vat_entries (output VAT)
+        └── journal_entries (direct DR Cash / CR Revenue + Output VAT)
+              — NO subsidiary_ledger_entries (AR) created
 ```
 
 ### Sales Return
@@ -167,13 +218,27 @@ suppliers (1)
               ├── vendor_bill_lines (many)
               │     ├── items
               │     ├── chart_of_accounts (expense/asset account)
-              │     └── vat_entries (input VAT)
-              │           └── ewt_entries (many, per ATC)
+              │     ├── vat_entries (input VAT)
+              │     └── ewt_entries (many, per ATC)
               └── payment_vouchers (many, via bill_id)
                     ├── payment_voucher_lines (many)
                     │     └── ewt_entries (EWT deducted on payment)
                     └── certificates_2307_issued (many)
-                          └── [supplier TIN, ATC, quarter]
+                          └── generated_documents (PDF of 2307)
+```
+
+### Cash Purchases (No AP Created)
+
+```
+suppliers (1, optional — cash purchases may be one-time vendor)
+  └── cash_purchases (many)
+        ├── cash_purchase_lines (many)
+        │     ├── items
+        │     ├── chart_of_accounts (expense/asset account)
+        │     ├── vat_entries (input VAT)
+        │     └── ewt_entries (EWT captured at time of purchase)
+        └── journal_entries (direct DR Inventory/Expense + Input VAT / CR Cash - EWT)
+              — NO subsidiary_ledger_entries (AP) created
 ```
 
 ### Goods Receipt
@@ -182,7 +247,7 @@ purchase_orders (1)
   └── goods_receipts (many)
         └── goods_receipt_lines (many)
               └── inventory_movements (IN)
-                    └── inventory_cost_layers (FIFO)
+                    └── inventory_cost_layers (FIFO layer)
 ```
 
 ---
@@ -215,7 +280,7 @@ company_bank_accounts (1)
   │     └── company_bank_accounts (destination)
   └── bank_reconciliations (many)
         └── bank_reconciliation_lines (many)
-              ├── bank_statements_lines (imported)
+              ├── bank_statement_lines (imported bank statement)
               └── [matched transaction: receipt | payment_voucher | journal_entry]
 ```
 
@@ -227,10 +292,10 @@ company_bank_accounts (1)
 inventory_movements (1)
   ├── items
   ├── warehouses
-  ├── [source: goods_receipt | delivery_order | adjustment | transfer]
+  ├── [source: goods_receipt | delivery_order | adjustment | transfer | cash_sale | cash_purchase]
   └── inventory_cost_layers (many, FIFO)
         └── inventory_cost_layer_consumption (many)
-              └── inventory_movements (consumption reference)
+              └── inventory_movements (consumption reference — which sale consumed which layer)
 
 inventory_adjustments (1)
   └── inventory_adjustment_lines (many)
@@ -269,11 +334,12 @@ fixed_assets (1)
 ```
 [Any Source Document]
   │  sales_invoices | vendor_bills | receipts | payment_vouchers
-  │  journal_entries (manual) | petty_cash_vouchers | bank_deposits
-  │  bank_withdrawals | inventory_adjustments | depreciation_runs
+  │  cash_sales | cash_purchases | journal_entries (manual)
+  │  petty_cash_vouchers | bank_deposits | bank_withdrawals
+  │  inventory_adjustments | depreciation_runs
   │
   ▼
-posting_rules (1)
+posting_rule_sets (1)
   └── posting_rule_lines (many)
         └── chart_of_accounts (DR/CR account)
   │
@@ -285,8 +351,9 @@ journal_entries (1)
         ├── chart_of_accounts (account)
         ├── [dimension: branch, department, cost_center]
         └── subsidiary_ledger_entries (many)
-              ├── [ar_ledger | ap_ledger | inventory_ledger | fixed_asset_ledger]
+              ├── [AR | AP | INVENTORY | FIXED_ASSET]
               └── [customer | supplier | item | fixed_asset] (entity ref)
+              — NOTE: cash_sales and cash_purchases do NOT generate subsidiary_ledger_entries
 ```
 
 ### GL Balance Update
@@ -305,7 +372,7 @@ document_relationships
   ├── source_document_id
   ├── target_document_type (e.g., 'sales_invoice')
   ├── target_document_id
-  └── relationship_type (e.g., 'BILLED_FROM', 'REVERSED_BY', 'PAID_BY')
+  └── relationship_type ('BILLED_FROM' | 'PAID_BY' | 'REVERSED_BY' | 'DELIVERED_FROM' | 'RECEIVED_FROM' | 'APPLIED_TO' | 'REPLENISHED_BY')
 ```
 
 ---
@@ -315,20 +382,20 @@ document_relationships
 ### VAT Chain
 
 ```
-sales_invoice_lines / vendor_bill_lines
+sales_invoice_lines / cash_sale_lines / vendor_bill_lines / cash_purchase_lines
   └── vat_entries (1:1 per taxable line)
-        └── vat_summary_period (aggregated per period)
+        └── vat_period_summaries (aggregated per period)
               └── [BIR Form 2550M input | SLSP line | RELIEF line]
 ```
 
 ### EWT Chain
 
 ```
-vendor_bill_lines / payment_voucher_lines
+vendor_bill_lines / payment_voucher_lines / petty_cash_voucher_lines / cash_purchase_lines
   └── ewt_entries (many per line, one per ATC code)
         ├── certificates_2307_issued (quarterly aggregate per supplier)
-        │     └── [2307 PDF generation]
-        └── ewt_remittance (1601EQ filing per period)
+        │     └── generated_documents (2307 PDF)
+        └── ewt_remittances_1601eq (1601EQ filing per period)
               ├── qap_entries (quarterly alphalist)
               └── sawt_entries (summary alphalist)
 ```
@@ -336,22 +403,36 @@ vendor_bill_lines / payment_voucher_lines
 ### 2307 Received Chain
 
 ```
-receipts / payment_vouchers_received
+receipts / payment_received
   └── certificates_2307_received (per customer, per quarter)
-        └── tax_credits_schedule (income tax return input)
+        └── generated_documents (2307 received PDF)
               └── [SAWT export]
 ```
 
 ### SLSP / RELIEF Chain
 
 ```
-sales_invoice_lines + customer TIN + vat_entries
+sales_invoice_lines + customer_tin (snapshot) + vat_entries
   └── slsp_entries (per invoice, per period)
         └── slsp_summary (period totals)
 
-vendor_bill_lines + supplier TIN + vat_entries
+vendor_bill_lines + supplier_tin (snapshot) + vat_entries
   └── relief_entries (per bill, per period)
         └── relief_summary (period totals)
+```
+
+### Cash Sales Book (BIR)
+
+```
+cash_sales + cash_sale_lines + vat_entries
+  └── [BIR Cash Sales Book — source documents by date]
+```
+
+### Cash Purchases Book (BIR)
+
+```
+cash_purchases + cash_purchase_lines + vat_entries + ewt_entries
+  └── [BIR Cash Purchases Book — source documents by date]
 ```
 
 ---
@@ -360,45 +441,131 @@ vendor_bill_lines + supplier TIN + vat_entries
 
 ```
 [Any table row change]
-  └── field_change_history
+  └── field_change_history (immutable)
         ├── table_name
         ├── record_id
         ├── field_name
-        ├── old_value
-        ├── new_value
+        ├── old_value, new_value
         └── changed_by ──► auth.users
 
 [Any user action]
-  └── audit_logs
+  └── audit_logs (immutable)
         ├── event_type
-        ├── entity_type
-        ├── entity_id
+        ├── entity_type, entity_id
         └── performed_by ──► auth.users
 
 [Any document voided]
-  └── document_void_register
+  └── document_void_register (immutable)
         ├── [source document ref]
-        ├── void_reason
-        ├── voided_by
+        ├── void_reason, voided_by
         └── journal_entries (reversal JE generated)
+
+[Any gap in number sequence]
+  └── system_alerts
+        └── [nightly pg_cron check via atp_usage_logs]
 ```
 
 ---
 
-## 13. Import Relationships
+## 13. Notification Relationships
+
+```
+[System event: document submitted, approved, posted, rejected, ATP near limit, etc.]
+  │
+  ▼
+notification_templates (1, per event_type per company)
+  │
+  ▼
+notifications (1 per recipient per event)
+  ├── profiles (recipient)
+  ├── [source entity_type + entity_id]
+  └── notification_delivery_logs (1 per delivery channel per notification)
+        └── [channel: 'in_app' | 'email']
+```
+
+---
+
+## 14. Document Template and Generated Output Relationships
+
+```
+document_templates (1 per doc_type per company)
+  │
+  ▼
+generated_documents (1 per generated PDF/file)
+  ├── [source: entity_type + entity_id → sales_invoices | receipts | certificates_2307_issued | etc.]
+  ├── document_templates (template used)
+  └── generated_document_versions (many, version history)
+```
+
+---
+
+## 15. Budget Relationships
+
+```
+fiscal_years (1)
+  └── budgets (many per company per year)
+        └── budget_lines (many)
+              ├── chart_of_accounts (account)
+              ├── fiscal_periods (one line per period)
+              └── branches (optional — branch-level budget)
+```
+
+---
+
+## 16. Period Close Relationships
+
+```
+fiscal_periods (1)
+  └── period_close_checklists (1 per company per period)
+        └── period_close_tasks (many, seeded from standard task list)
+              ├── profiles (assigned_to)
+              ├── profiles (completed_by)
+              └── subledger_close_certifications (optional — per task)
+```
+
+---
+
+## 17. Party Duplicate Management Relationships
+
+```
+customers / suppliers
+  └── duplicate_tin_flags (raised when TIN matches existing record)
+        └── [source_party_id + target_party_id]
+
+party_merge_logs (1 per merge operation)
+  ├── source_party_type + source_party_id (retired record)
+  └── target_party_type + target_party_id (canonical record)
+```
+
+---
+
+## 18. Attachment Relationships
+
+```
+[Any source entity: sales_invoices | vendor_bills | receipts | payment_vouchers | etc.]
+  └── attachments (many, polymorphic via entity_type + entity_id)
+        ├── Supabase Storage (file_size_bytes, storage_bucket, storage_path, file_hash_sha256)
+        └── attachment_versions (many — version history per attachment)
+```
+
+---
+
+## 19. Import Relationships
 
 ```
 import_batches (1)
   ├── import_rows (many)
   │     └── import_validation_errors (many)
   └── [created records carry import_batch_id]
-        examples: customers, suppliers, items, chart_of_accounts
-                  opening_balance_entries, inventory_opening_stock
+        Setup: chart_of_accounts, payment_terms, atc_codes, tax_codes, approval_matrix, warehouses
+        Master: customers, suppliers, items, price_lists, bank_accounts
+        Opening: opening_balance_entries, inventory_cost_layers (opening stock), subsidiary_ledger_entries (AR/AP opening)
+        Fixed Assets: fixed_assets, asset_depreciation_schedule
 ```
 
 ---
 
-## 14. Many-to-Many Bridge Tables Summary
+## 20. Many-to-Many Bridge Tables Summary
 
 | Bridge Table | Left Side | Right Side | Purpose |
 |---|---|---|---|
@@ -408,18 +575,20 @@ import_batches (1)
 | `role_permissions` | roles | permissions | Which permissions each role has |
 | `item_units_of_measure` | items | units_of_measure | UOM conversions per item |
 | `item_price_lists` | items | price_lists | Pricing per item per list |
-| `approval_matrix_steps` | approval_matrix | auth.users/roles | Approver assignments |
+| `approval_matrix_steps` | approval_matrix | auth.users/roles | Approver assignments per step |
 | `bank_reconciliation_lines` | bank_reconciliations | transactions | Matched/unmatched lines |
 | `document_relationships` | documents | documents | Cross-document traceability |
-| `qap_entries` | ewt_remittance | suppliers | Per-payee alphalist entries |
+| `qap_entries` | ewt_remittances_1601eq | suppliers | Per-payee alphalist entries |
 | `sawt_entries` | tax_filing | customers | Summary alphalist of WHT |
 
 ---
 
-## 15. Key Constraints
+## 21. Key Constraints
 
 - Every `journal_entries` record must have `SUM(journal_lines.debit_amount) = SUM(journal_lines.credit_amount)` — enforced by posting engine before commit
 - Every `fiscal_period_id` on posted entries must reference an OPEN period in `fiscal_locks` — enforced by trigger
 - `number_series.current_number` must never exceed `max_number` (ATP limit) — enforced by series allocation function
 - `deleted_at` on parent records does NOT cascade — child records remain for audit; application layer filters
 - `reversed_by_document_id` on source documents must reference a POSTED reversal document — enforced by posting engine
+- Cash Sales and Cash Purchases must NOT create `subsidiary_ledger_entries` — enforced by posting rule sets for those transaction types
+- `party_merge_logs` source record must be soft-deleted after merge — enforced by merge Edge Function
