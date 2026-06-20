@@ -89,6 +89,7 @@
   .mega-dd {
     display: none;
     position: fixed;
+
     top: 68px;
     background: var(--dd-bg);
     border: 1px solid var(--dd-border);
@@ -203,7 +204,7 @@
   <!-- SETUP -->
   <div class="nav-item">
     <div class="nav-label">⚙️ Setup <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">🏢 Organization</div>
         <a class="dd-item"><span class="dot"></span>Company Setup</a>
@@ -212,6 +213,7 @@
         <a class="dd-item"><span class="dot"></span>Cost Centers</a>
         <a class="dd-item"><span class="dot"></span>CAS Registrations</a>
         <a class="dd-item"><span class="dot"></span>Company Bank Accounts</a>
+        <a class="dd-item"><span class="dot"></span>Compliance Profile</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🔧 System Controls</div>
@@ -221,6 +223,12 @@
         <a class="dd-item"><span class="dot"></span>Accounting Documents</a>
         <a class="dd-item"><span class="dot"></span>Compliance Documents</a>
         <a class="dd-item"><span class="dot"></span>ATP Monitoring</a>
+        <div class="dd-sub-head">Feature Settings</div>
+        <a class="dd-item"><span class="dot"></span>Inventory Settings</a>
+        <a class="dd-item"><span class="dot"></span>Fixed Assets Settings</a>
+        <a class="dd-item"><span class="dot"></span>Petty Cash Settings</a>
+        <a class="dd-item"><span class="dot"></span>Bank Reconciliation Settings</a>
+        <a class="dd-item"><span class="dot"></span>Budget Settings</a>
         <div class="dd-sub-head">Approval Matrix</div>
         <a class="dd-item"><span class="dot"></span>Sales Approval</a>
         <a class="dd-item"><span class="dot"></span>Purchasing Approval</a>
@@ -255,6 +263,8 @@
         <a class="dd-item"><span class="dot"></span>Tax Codes</a>
         <a class="dd-item"><span class="dot"></span>VAT Codes</a>
         <a class="dd-item"><span class="dot"></span>EWT Codes</a>
+        <a class="dd-item"><span class="dot"></span>FWT Codes</a>
+        <a class="dd-item"><span class="dot"></span>Percentage Tax Codes</a>
         <a class="dd-item"><span class="dot"></span>ATC Codes</a>
         <a class="dd-item"><span class="dot"></span>Tax Calendar</a>
       </div>
@@ -264,7 +274,7 @@
   <!-- MASTER DATA -->
   <div class="nav-item">
     <div class="nav-label">🗂️ Master Data <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">👥 Parties</div>
         <a class="dd-item"><span class="dot"></span>Customers</a>
@@ -301,7 +311,7 @@
   <!-- SALES -->
   <div class="nav-item">
     <div class="nav-label">🛒 Sales <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">📄 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Sales Invoices</a>
@@ -324,6 +334,7 @@
       <div class="dd-col">
         <div class="dd-group-head">🧾 Tax Review</div>
         <a class="dd-item"><span class="dot"></span>Output VAT Review</a>
+        <a class="dd-item"><span class="dot"></span>Percentage Tax Review</a>
         <a class="dd-item"><span class="dot"></span>2307 Received Review</a>
         <div class="dd-group-head" style="margin-top:8px">📋 Registers</div>
         <a class="dd-item"><span class="dot"></span>Sales Invoice Register</a>
@@ -338,7 +349,7 @@
   <!-- PURCHASING -->
   <div class="nav-item">
     <div class="nav-label">🏪 Purchasing <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">📄 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Purchase Orders</a>
@@ -373,7 +384,7 @@
   <!-- PETTY CASH -->
   <div class="nav-item">
     <div class="nav-label">💵 Petty Cash <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">💵 Petty Cash</div>
         <a class="dd-item"><span class="dot"></span>Petty Cash Fund Setup</a>
@@ -387,7 +398,7 @@
   <!-- BANK -->
   <div class="nav-item">
     <div class="nav-label">🏦 Bank <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">💸 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Fund Transfers</a>
@@ -409,7 +420,7 @@
   <!-- INVENTORY -->
   <div class="nav-item">
     <div class="nav-label">📦 Inventory <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">🔄 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Stock Adjustments</a>
@@ -432,7 +443,7 @@
   <!-- FIXED ASSETS -->
   <div class="nav-item">
     <div class="nav-label">🏗️ Fixed Assets <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">⚙️ Setup</div>
         <a class="dd-item"><span class="dot"></span>Asset Categories</a>
@@ -461,7 +472,7 @@
   <!-- ACCOUNTING -->
   <div class="nav-item">
     <div class="nav-label">📒 Accounting <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">✏️ Journal Entries</div>
         <a class="dd-item"><span class="dot"></span>Journal Entries</a>
@@ -487,10 +498,18 @@
     </div>
   </div>
 
-  <!-- COMPLIANCE -->
-  <div class="nav-item">
+  <!-- COMPLIANCE — right-aligned -->
+  <div class="nav-item" id="nav-compliance">
     <div class="nav-label">📑 Compliance <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="right:0">
+      <div class="dd-col">
+        <div class="dd-group-head">📊 Percentage Tax</div>
+        <a class="dd-item"><span class="dot"></span>Percentage Tax Dashboard</a>
+        <a class="dd-item"><span class="dot"></span>PT Working Papers</a>
+        <a class="dd-item"><span class="dot"></span>PT Quarterly Return 2551Q</a>
+        <a class="dd-item"><span class="dot"></span>PT Reconciliation</a>
+        <a class="dd-item"><span class="dot"></span>PT Summary Register</a>
+      </div>
       <div class="dd-col">
         <div class="dd-group-head">🧾 VAT</div>
         <a class="dd-item"><span class="dot"></span>VAT Dashboard</a>
@@ -520,18 +539,26 @@
         <a class="dd-item"><span class="dot"></span>2307 Certificates Received</a>
         <a class="dd-item"><span class="dot"></span>2306 Certificates</a>
         <a class="dd-item"><span class="dot"></span>1604E Annual Summary</a>
+        <div class="dd-sub-head">Final Withholding Tax</div>
+        <a class="dd-item"><span class="dot"></span>FWT Working Papers</a>
+        <a class="dd-item"><span class="dot"></span>1601FQ Working Papers</a>
+        <a class="dd-item"><span class="dot"></span>1601FQ Quarterly Return</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🏛️ Income Tax</div>
         <a class="dd-item"><span class="dot"></span>Income Tax Dashboard</a>
-        <a class="dd-item"><span class="dot"></span>Quarterly ITR Working Papers</a>
-        <a class="dd-item"><span class="dot"></span>Annual ITR Working Papers</a>
         <a class="dd-item"><span class="dot"></span>Taxable Income Computation</a>
         <a class="dd-item"><span class="dot"></span>Book-to-Tax Reconciliation</a>
-        <a class="dd-item"><span class="dot"></span>MCIT Computation</a>
         <a class="dd-item"><span class="dot"></span>OSD Computation</a>
         <a class="dd-item"><span class="dot"></span>NOLCO Schedule</a>
         <a class="dd-item"><span class="dot"></span>Tax Credits Schedule</a>
+        <div class="dd-sub-head">Individual (Sole Proprietor)</div>
+        <a class="dd-item"><span class="dot"></span>1701Q Quarterly ITR</a>
+        <a class="dd-item"><span class="dot"></span>1701 Annual ITR</a>
+        <div class="dd-sub-head">Corporate / OPC / Partnership</div>
+        <a class="dd-item"><span class="dot"></span>1702Q Quarterly ITR</a>
+        <a class="dd-item"><span class="dot"></span>1702RT Annual ITR</a>
+        <a class="dd-item"><span class="dot"></span>MCIT Computation</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📚 BIR Books of Accounts</div>
@@ -541,7 +568,9 @@
         <a class="dd-item"><span class="dot"></span>Cash Receipts Book</a>
         <a class="dd-item"><span class="dot"></span>Cash Disbursements Book</a>
         <a class="dd-item"><span class="dot"></span>Sales Journal</a>
+        <a class="dd-item"><span class="dot"></span>Cash Sales Journal</a>
         <a class="dd-item"><span class="dot"></span>Purchase Journal</a>
+        <a class="dd-item"><span class="dot"></span>Cash Purchases Journal</a>
         <a class="dd-item"><span class="dot"></span>AR Subsidiary Ledger</a>
         <a class="dd-item"><span class="dot"></span>AP Subsidiary Ledger</a>
         <a class="dd-item"><span class="dot"></span>Inventory Subsidiary Ledger</a>
@@ -564,10 +593,10 @@
     </div>
   </div>
 
-  <!-- REPORTS -->
-  <div class="nav-item">
+  <!-- REPORTS — right-aligned -->
+  <div class="nav-item" id="nav-reports">
     <div class="nav-label">📊 Reports <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="right:0">
       <div class="dd-col">
         <div class="dd-group-head">📈 Financial Statements</div>
         <a class="dd-item"><span class="dot"></span>Balance Sheet</a>
@@ -584,7 +613,9 @@
         <div class="dd-group-head">🧾 Tax Reports</div>
         <a class="dd-item"><span class="dot"></span>Output VAT Summary</a>
         <a class="dd-item"><span class="dot"></span>Input VAT Summary</a>
+        <a class="dd-item"><span class="dot"></span>Percentage Tax Summary</a>
         <a class="dd-item"><span class="dot"></span>EWT Summary</a>
+        <a class="dd-item"><span class="dot"></span>FWT Summary</a>
         <a class="dd-item"><span class="dot"></span>2307 Issued Listing</a>
         <a class="dd-item"><span class="dot"></span>2307 Received Listing</a>
         <div class="dd-group-head" style="margin-top:8px">📅 Aging Reports</div>
@@ -650,7 +681,7 @@
     <div class="module-card"><div class="card-icon">📦</div><div class="card-title">Inventory</div><div class="card-desc">Stock adjustments, transfers &amp; physical count</div></div>
     <div class="module-card"><div class="card-icon">🏗️</div><div class="card-title">Fixed Assets</div><div class="card-desc">Asset register, depreciation &amp; disposals</div></div>
     <div class="module-card"><div class="card-icon">📒</div><div class="card-title">Accounting</div><div class="card-desc">Journal entries, ledgers &amp; period management</div></div>
-    <div class="module-card"><div class="card-icon">📑</div><div class="card-title">Compliance</div><div class="card-desc">VAT, withholding tax, BIR books &amp; CAS audit</div></div>
+    <div class="module-card"><div class="card-icon">📑</div><div class="card-title">Compliance</div><div class="card-desc">VAT, percentage tax, withholding tax, income tax, BIR books &amp; CAS audit</div></div>
     <div class="module-card"><div class="card-icon">📊</div><div class="card-title">Reports</div><div class="card-desc">Financial statements, tax &amp; management reports</div></div>
   </div>
 </div>
@@ -661,16 +692,18 @@
   <span>Period: <b>June 2026</b></span>
   <span>Branch: <b>Main</b></span>
   <span>User: <b>Administrator</b></span>
-  <span style="margin-left:auto">PXL ERP v1.0 — Blueprint Locked</span>
+  <span style="margin-left:auto">PXL ERP v2.0 — Architecture Aligned</span>
 </div>
 
 <script>
+
   function positionDropdown(navItem) {
     const dd = navItem.querySelector('.mega-dd');
     if (!dd) return;
     dd.style.left = '';
     dd.style.right = '';
     const rect = navItem.getBoundingClientRect();
+
     // Temporarily show to measure
     const prev = dd.style.display;
     dd.style.visibility = 'hidden';
@@ -691,11 +724,13 @@
     item.addEventListener('mouseenter', () => positionDropdown(item));
   });
 
+
   document.addEventListener('click', e => {
     if (!e.target.closest('.nav-item')) {
       document.querySelectorAll('.nav-item.pinned').forEach(el => el.classList.remove('pinned'));
     }
   });
+
 
   document.querySelectorAll('.nav-label').forEach(label => {
     label.addEventListener('click', e => {
@@ -707,6 +742,7 @@
       if (!wasPinned) item.classList.add('pinned');
     });
   });
+
 
   document.querySelectorAll('.module-card').forEach((card, i) => {
     card.addEventListener('click', () => {
