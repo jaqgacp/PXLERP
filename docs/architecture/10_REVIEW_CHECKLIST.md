@@ -16,7 +16,15 @@
 - Updated Section 3 (COA) to include v3 checklist items
 - Updated Section 4 (Tax Compliance) to include vat_classification items
 
-## v3 Architecture Review Changes Applied (Round 2)
+## v3 Architecture Review Changes Applied (Enhancement Round — Accounting Schedules)
+
+- Added Section 35: Amortization Schedule System (4 tables, 4-table traceability pattern)
+- Added Section 36: Revenue Recognition Schedule System (4 tables, same pattern)
+- Added Section 37: Auto Reversal System (1 run table + columns on journal_entries)
+- Updated sign-off block to reference Sections 1–37
+- Accrual Schedules explicitly documented as NOT added (Principle 23 — use recurring templates instead)
+
+## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
 
 - Added Section 31: Party Classification Split (customers/suppliers.vat_status split into vat_registration_status + party_special_class)
 - Added Section 32: Income Tax Table Overlap Resolution (itr_working_papers renamed, mcit_computations and nolco_schedules removed)
@@ -583,6 +591,52 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
-**Once all items in Sections 1–34 are marked `[x]` or `[N/A]`, and all Open Decisions across all documents are resolved or explicitly deferred, SQL migration authoring may begin.**
+---
+
+## SECTION 35: Amortization Schedule System (Enhancement Round)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 35.1 | `amortization_schedules` table design reviewed — 4-table pattern confirmed (header + lines + runs + run_details) for full traceability per Principles 9 and 12 | DB Architect | [!] | Enhancement Round — justified by Principle 9 |
+| 35.2 | `amortization_schedule_lines` pre-computed on schedule creation — confirmed; allows user to preview and verify before any run executes | CPA Lead | [ ] | |
+| 35.3 | Amortization run generates JE with `je_type = 'amortization'` and `amortization_run_detail_id` → full traceability to source schedule line | DB Architect | [!] | Traceability chain complete |
+| 35.4 | Amortization JE is posted directly (no separate posting_rule_set) — DR expense_account / CR prepaid_account per schedule — confirmed | CPA Lead | [ ] | |
+| 35.5 | `amortization_schedules.source_document_id` links back to originating vendor_bill or cash_purchase — confirmed | CPA Lead | [ ] | |
+| 35.6 | `amortization_schedule_lines.status` transitions: pending → processed (success) or skipped (period closed) — confirmed | DB Architect | [ ] | |
+| 35.7 | Month-end closing checklist must include "Run Amortization" step before period close | CPA Lead | [ ] | |
+| 35.8 | BIR implication: prepaid expense deductible in period consumed (not paid) — confirmed; amortization schedule enforces this timing | Tax Consultant | [ ] | |
+
+---
+
+## SECTION 36: Revenue Recognition Schedule System (Enhancement Round)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 36.1 | `revenue_recognition_schedules` table design reviewed — same 4-table pattern as amortization | DB Architect | [!] | Enhancement Round |
+| 36.2 | Recognition run generates JE with `je_type = 'revenue_recognition'` and `revenue_recognition_run_detail_id` — traceability complete | DB Architect | [!] | Traceability chain complete |
+| 36.3 | Revenue recognition JE: DR deferred_revenue_account / CR revenue_account per schedule — confirmed | CPA Lead | [ ] | |
+| 36.4 | `revenue_recognition_schedules.source_document_id` links to originating sales_invoice or cash_sale — confirmed | CPA Lead | [ ] | |
+| 36.5 | Revenue recognition affects VAT output? Clarify: VAT is recognized at billing (on the invoice), NOT at monthly recognition | Tax Consultant | [ ] | Open question |
+| 36.6 | Month-end closing checklist must include "Run Revenue Recognition" step before period close | CPA Lead | [ ] | |
+| 36.7 | PFRS 15 (Revenue from Contracts with Customers) — does this satisfy Phase 1 PH GAAP requirements? | CPA Lead / Tax Consultant | [ ] | Straight-line only in Phase 1 |
+
+---
+
+## SECTION 37: Auto Reversal System (Enhancement Round)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 37.1 | Auto-reversal columns added to `journal_entries`: `auto_reversal_flag`, `auto_reversal_date`, `auto_reversal_run_id`, `is_auto_reversal` — confirmed | DB Architect | [!] | Enhancement Round |
+| 37.2 | `accrual_schedules` NOT added — accruals handled by recurring_journal_templates with `auto_reverse = true` — confirmed no duplicate tables needed (Principle 23) | DB Architect | [!] | Principle 23 compliance ✓ |
+| 37.3 | `recurring_journal_templates.auto_reverse` flag — if true, generated JEs have `auto_reversal_flag = true` and `auto_reversal_date = document_date + auto_reversal_days_offset` | DB Architect | [!] | Enhancement Round |
+| 37.4 | `auto_reversal_runs` table reviewed — batch processing header; one run per period per company | DB Architect | [!] | Enhancement Round |
+| 37.5 | Auto-reversal JE creates mirrored lines (all DR/CR swapped) — confirmed | CPA Lead | [ ] | |
+| 37.6 | Auto-reversal cannot process if target period is CLOSED — run aborts the individual line (not the entire batch) | DB Architect | [ ] | |
+| 37.7 | `RECURRING_JE_GENERATED`, `AUTO_REVERSAL_CREATED`, `AUTO_REVERSAL_RUN_COMPLETED` audit events added to doc 07 — confirmed | DB Architect | [!] | Enhancement Round |
+| 37.8 | Period-end workflow must clarify order: (1) Run Amortization, (2) Run Revenue Recognition, (3) Run Recurring JEs (including accruals), (4) Close Period, (5) Run Auto-Reversals (at start of NEXT period) | CPA Lead | [ ] | Open — needs explicit ordering |
+
+---
+
+**Once all items in Sections 1–37 are marked `[x]` or `[N/A]`, and all Open Decisions across all documents are resolved or explicitly deferred, SQL migration authoring may begin.**
 
 *Next step after sign-off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*

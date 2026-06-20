@@ -492,11 +492,21 @@ ITR form is determined by `company_compliance_profiles.income_tax_regime`:
 | Field Required on ITR | Source Table | Column |
 |---|---|---|
 | Taxpayer TIN | `companies` | `tin` |
-| Taxable Income | `itr_computation_runs` | `taxable_income_amount` (derived from gl_balances via income_tax_computation_lines) |
+| Taxable Income | `itr_computation_runs` | `taxable_income_amount` (derived from gl_balances via income_tax_computation_lines — includes effects of amortization and revenue recognition JEs already posted to GL) |
 | Income Tax Due | `income_tax_return_filings` | `income_tax_due` |
 | MCIT (if higher) | `itr_computation_runs` | `mcit_amount` (higher of regular tax or 2%/1% × gross_income_amount) |
 | Tax Credits (2307) | `tax_credits_schedules` | from `certificates_2307_received` |
 | Net Tax Payable | `income_tax_return_filings` | `income_tax_payable` |
+
+---
+
+### Amortization and Deferred Revenue — ITR Impact
+
+Amortization and revenue recognition JEs post to GL like any other journal entry. Their compliance impact is indirect:
+- **Prepaid amortization**: DR Expense each period → reduces taxable income in the correct period (timing of deductibility)
+- **Deferred revenue recognition**: CR Revenue each period → recognizes income in the correct period (timing of taxable income)
+- `income_tax_computation_lines` reads from `gl_balances` which already reflects these posted JEs — no special mapping needed
+- **BIR note**: Prepaid expenses are deductible in the period consumed, not the period paid. Amortization schedules enforce this. For cash-basis taxpayers in Phase 1, this distinction is important.
 
 ---
 

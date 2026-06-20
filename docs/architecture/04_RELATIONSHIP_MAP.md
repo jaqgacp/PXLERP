@@ -23,7 +23,14 @@
 - Updated bridge table summary for all new tables
 - Fixed `bank_statements_lines` → `bank_statement_lines` (singular table name)
 
-## v3 Architecture Review Changes Applied
+## v3 Architecture Review Changes Applied (Enhancement Round)
+
+- **Section 26: Amortization Schedule Chain** added
+- **Section 27: Revenue Recognition Schedule Chain** added
+- **Section 28: Auto Reversal Chain** added
+- **journal_entries** chain updated — new FK columns (auto_reversal_run_id, amortization_run_detail_id, revenue_recognition_run_detail_id) reflected
+
+## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
 
 - **Party classification chain updated**: Customer and supplier nodes now show `party_special_class` (government/peza/boi/foreign_entity) as separate from `vat_registration_status`. The posting engine reads `party_special_class` to set `vat_entries.vat_classification = 'government'` — this is NOT stored on transaction lines.
 - **Income tax chain rewritten**: `itr_working_papers` → renamed `itr_computation_runs`. `mcit_computations` and `nolco_schedules` REMOVED (superseded). Canonical chain: `income_tax_return_filings` → `itr_computation_runs` → `income_tax_computation_lines` + `book_tax_reconciliations` + `nolco_tracking` + `tax_credits_schedules`.
@@ -697,6 +704,89 @@ REMOVED (v3): itr_working_papers → replaced by itr_computation_runs
 REMOVED (v3): mcit_computations → subsumed into itr_computation_runs.mcit_amount + income_tax_computation_lines (is_mcit_gross_income flag)
 REMOVED (v3): nolco_schedules → replaced by nolco_tracking
 ```
+
+---
+
+## 26. Amortization Schedule Chain (Enhancement Round)
+
+```
+vendor_bills / cash_purchases (prepaid payment)
+        │
+        └── amortization_schedules (1 per prepaid item)
+              │   prepaid_account_id → chart_of_accounts
+              │   expense_account_id → chart_of_accounts
+              │   source_document_id → vendor_bills or cash_purchases
+              │
+              └── amortization_schedule_lines (1 per period — pre-computed)
+                    │
+                    └── amortization_runs (batch header, 1 per period run)
+                          │
+                          └── amortization_run_details (1 per line per run)
+                                │
+                                └── journal_entries (je_type='amortization')
+                                      │   amortization_run_detail_id → run_detail
+                                      └── journal_lines → gl_balances
+
+DR Prepaid Expense (on payment)
+CR Cash / AP
+
+Monthly amortization run:
+DR [expense_account_id] — period_amount
+CR [prepaid_account_id] — period_amount
+```
+
+---
+
+## 27. Revenue Recognition Schedule Chain (Enhancement Round)
+
+```
+sales_invoices / cash_sales (advance billing)
+        │
+        └── revenue_recognition_schedules (1 per contract)
+              │   deferred_revenue_account_id → chart_of_accounts
+              │   revenue_account_id → chart_of_accounts
+              │   source_document_id → sales_invoices or cash_sales
+              │   customer_id → customers
+              │
+              └── revenue_recognition_schedule_lines (1 per period — pre-computed)
+                    │
+                    └── revenue_recognition_runs (batch header, 1 per period run)
+                          │
+                          └── revenue_recognition_run_details (1 per line per run)
+                                │
+                                └── journal_entries (je_type='revenue_recognition')
+                                      │   revenue_recognition_run_detail_id → run_detail
+                                      └── journal_lines → gl_balances
+
+DR AR / Cash (on billing)
+CR Deferred Revenue
+
+Monthly recognition run:
+DR [deferred_revenue_account_id] — period_amount
+CR [revenue_account_id] — period_amount
+```
+
+---
+
+## 28. Auto Reversal Chain (Enhancement Round)
+
+```
+journal_entries (original — auto_reversal_flag=true, auto_reversal_date set)
+        │
+        └── auto_reversal_runs (batch header, 1 per period)
+              │
+              └── journal_entries (is_auto_reversal=true)
+                    │   reversal_of_je_id → original JE
+                    │   auto_reversal_run_id → run
+                    └── journal_lines (DR/CR swapped from original)
+
+Accrual pattern (no accrual_schedules table needed):
+  recurring_journal_templates (auto_reverse=true)
+    → [Recurring Run] → journal_entries (auto_reversal_flag=true)
+    → [Auto Reversal Run at next period start] → reversal journal_entries
+```
+
+---
 
 ### Customer Party Classification Chain (v3)
 

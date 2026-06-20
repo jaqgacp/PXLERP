@@ -440,3 +440,91 @@ DR: EWT Payable (ewt_entries.ewt_amount)     [if EWT-subject line]  account: FRO
 - `net_payable_amount = gross_amount - ewt_amount`
 - No `subsidiary_ledger_entries` with ledger_type='AP'
 - EWT is captured at purchase time; no deferred payment step required
+
+
+---
+
+## 9. Amortization Run Posting Process (Enhancement Round)
+
+The amortization run is an async batch operation (Principle 17). It processes all active `amortization_schedule_lines` where `fiscal_period_id` matches the target period and `status = 'pending'`.
+
+```
+1.  INSERT amortization_runs (status='processing', run_by, run_at)
+2.  FOR EACH amortization_schedule_line (target period, status='pending'):
+    a. CHECK fiscal period is OPEN (abort line if CLOSED)
+    b. LOAD amortization_schedule:
+       - debit_account  = amortization_schedules.expense_account_id
+       - credit_account = amortization_schedules.prepaid_account_id
+       - amount         = amortization_schedule_lines.period_amount
+    c. INSERT journal_entries:
+       - je_type             = 'amortization'
+       - source_document_type = 'amortization_schedules'
+       - source_document_id   = amortization_schedule_id
+       - amortization_run_detail_id = [set after step d]
+    d. INSERT journal_lines:
+       - DR [expense_account_id] period_amount
+       - CR [prepaid_account_id] period_amount
+    e. UPSERT gl_balances (expense account DR, prepaid account CR)
+    f. INSERT amortization_run_details:
+       - run_id, amortization_schedule_id, amortization_schedule_line_id
+       - journal_entry_id = (JE created in step c)
+       - status = 'success'
+    g. UPDATE amortization_schedule_lines: status='processed', journal_entry_id=(JE id)
+    h. UPDATE amortization_schedules.amount_amortized += period_amount
+    i. INSERT audit_logs (event_type='AMORTIZATION_ENTRY_CREATED')
+3.  UPDATE amortization_runs: status='completed', entries_created=N, completed_at=now()
+4.  INSERT audit_logs (event_type='AMORTIZATION_RUN_COMPLETED')
+```
+
+**No posting_rule_sets used.** Amortization entries are hard-coded DR expense / CR prepaid using account IDs from the schedule. The posting rule is embedded in the schedule itself.
+
+---
+
+## 10. Revenue Recognition Run Posting Process (Enhancement Round)
+
+Same pattern as amortization. Processes all active `revenue_recognition_schedule_lines` for the target period.
+
+```
+DR [deferred_revenue_account_id] period_amount
+CR [revenue_account_id]          period_amount
+```
+
+- `je_type = 'revenue_recognition'`
+- `revenue_recognition_run_detail_id` set on the generated JE
+- `source_document_type = 'revenue_recognition_schedules'`
+- Traceability: revenue_recognition_schedules → lines → runs → run_details → journal_entries → journal_lines → gl_balances
+
+---
+
+## 11. Auto Reversal Run Process (Enhancement Round)
+
+Executed at the start of each fiscal period. Processes all `journal_entries` where:
+- `auto_reversal_flag = true`
+- `auto_reversal_date` falls within the new period (or = today)
+- `auto_reversal_run_id IS NULL` (not yet reversed)
+- `status = 'posted'`
+
+```
+1.  INSERT auto_reversal_runs (status='processing', fiscal_period_id, run_by)
+2.  FOR EACH qualifying journal_entry:
+    a. CHECK fiscal period of auto_reversal_date is OPEN
+    b. INSERT journal_entries (reversal):
+       - je_type             = 'auto_reversal'
+       - is_auto_reversal    = true
+       - reversal_of_je_id   = original JE id
+       - auto_reversal_run_id = current run id
+       - document_date       = auto_reversal_date
+       - description         = 'Auto-reversal of: ' + original description
+    c. INSERT journal_lines (all lines DR/CR swapped):
+       - debit_amount  = original credit_amount
+       - credit_amount = original debit_amount
+    d. UPSERT gl_balances (reversed per account)
+    e. UPDATE original journal_entry:
+       - reversed_by_je_id   = new reversal JE id
+       - auto_reversal_run_id = current run id
+    f. INSERT audit_logs (event_type='AUTO_REVERSAL_CREATED')
+3.  UPDATE auto_reversal_runs: status='completed', entries_reversed=N
+4.  INSERT audit_logs (event_type='AUTO_REVERSAL_RUN_COMPLETED')
+```
+
+**Applicable to all source JE types:** manual accruals, system-generated recurring JEs with auto_reverse=true, and any JE marked auto_reversal_flag=true.

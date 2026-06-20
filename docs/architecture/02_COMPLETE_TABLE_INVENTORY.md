@@ -1,6 +1,6 @@
 # PXL ERP — Complete Table Inventory
 **Version:** 3.0 — Final Architecture Review (Pre-Freeze)
-**Total Tables:** ~200 (after removing 2 superseded income tax tables)
+**Total Tables:** ~209 (after removing 2 superseded income tax tables; +9 accounting schedule tables from Enhancement Round)
 **Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 Legend:
@@ -30,7 +30,15 @@ Legend:
 - Added `duplicate_tin_flags` to MODULE 28
 - Clarified Cash Sales and Cash Purchases as separate transaction headers
 
-## v3 Architecture Review Changes Applied
+## v3 Architecture Review Changes Applied (Enhancement Round — Accounting Schedules)
+
+- **MODULE 31: ACCOUNTING SCHEDULES** (new, 9 tables #201–#209): Added amortization and revenue recognition schedule system with full 4-table traceability pattern per feature, plus auto_reversal_runs batch table
+- **MODULE 16 updated**: `journal_entries` columns added (auto_reversal_flag, auto_reversal_date, auto_reversal_run_id, is_auto_reversal, amortization_run_detail_id, revenue_recognition_run_detail_id); je_type expanded; `recurring_journal_templates` gets `auto_reverse` flag
+- **Decision: Accrual Schedules NOT added** — accruals are handled by recurring_journal_templates with auto_reverse=true. Adding separate accrual_schedules would duplicate this functionality (Principle 23).
+- **Decision: Foreign Currency Revaluation NOT added** — Phase 1 exclusion per Principle 23.
+- **Decision: Intercompany Eliminations NOT added** — Phase 1 exclusion per Principle 23.
+
+## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
 
 - **MODULE 19 consolidation**: Removed `mcit_computations` (#156) and `nolco_schedules` (#157) — subsumed by MODULE 30 tables
 - **MODULE 19 rename**: `itr_working_papers` (#154) → `itr_computation_runs` — computation run header, not a static paper
@@ -509,6 +517,25 @@ Legend:
 
 ---
 
+## MODULE 31: ACCOUNTING SCHEDULES (Enhancement Round addition)
+
+| # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
+|---|---|---|---|---|---|---|---|---|
+| 201 | `amortization_schedules` | Header for each prepaid expense / deferred charge being amortized (insurance, rent, software, professional fees) | master | ✅ | ✅ | ✅ | ❌ | low |
+| 202 | `amortization_schedule_lines` | Pre-computed monthly amortization lines; allows full schedule preview before execution | master | ✅ | ❌ | ❌ | ❌ | medium |
+| 203 | `amortization_runs` | Batch execution header per fiscal period amortization run (async, Principle 17) | transaction | ✅ | ✅ | ❌ | ✅ | low |
+| 204 | `amortization_run_details` | Traceability link: run → schedule line → generated journal entry (Principles 9, 12) | bridge | ✅ | ❌ | ❌ | ✅ | medium |
+| 205 | `revenue_recognition_schedules` | Header for each deferred revenue item (annual retainers, service contracts, subscriptions) | master | ✅ | ✅ | ✅ | ❌ | low |
+| 206 | `revenue_recognition_schedule_lines` | Pre-computed monthly recognition lines; allows full schedule preview | master | ✅ | ❌ | ❌ | ❌ | medium |
+| 207 | `revenue_recognition_runs` | Batch execution header per fiscal period recognition run (async, Principle 17) | transaction | ✅ | ✅ | ❌ | ✅ | low |
+| 208 | `revenue_recognition_run_details` | Traceability link: run → schedule line → generated journal entry | bridge | ✅ | ❌ | ❌ | ✅ | medium |
+| 209 | `auto_reversal_runs` | Batch execution header for auto-reversal processing at period start | transaction | ✅ | ✅ | ❌ | ✅ | low |
+
+> **Accruals not added as separate tables.** Recurring accruals use `recurring_journal_templates` with `auto_reverse = true`. One-time accruals are manual JEs with `auto_reversal_flag = true`. The auto-reversal run processes both.
+> **Full traceability chain:** `amortization_schedules` → `amortization_schedule_lines` → `amortization_runs` → `amortization_run_details` → `journal_entries` → `journal_lines` → `gl_balances`. Same chain for revenue recognition.
+
+---
+
 ## Summary by Module
 
 | Module | Table Count |
@@ -536,6 +563,7 @@ Legend:
 | Compliance — Income Tax | +1 (income_tax_return_filings) = 6 |
 | Compliance — Percentage Tax | 3 (MODULE 29) |
 | Income Tax Computation Support | 2 (MODULE 30 — v3 addition) |
+| Accounting Schedules | 9 (MODULE 31 — Enhancement Round) |
 | Audit & CAS | 8 |
 | Attachments | 2 |
 | Workflow & Approvals | 2 |
@@ -545,7 +573,7 @@ Legend:
 | Budget | 2 |
 | Period Close | 3 |
 | Party Duplicate Management | 2 |
-| **TOTAL** | **~202** |
+| **TOTAL** | **~209** |
 
 ---
 

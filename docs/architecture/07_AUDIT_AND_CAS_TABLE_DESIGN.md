@@ -129,6 +129,15 @@ Immutable log of every system event. No soft delete. No update allowed.
 | `DUPLICATE_TIN_FLAGGED` | Duplicate TIN warning raised |
 | `PARTY_SPECIAL_CLASS_CHANGED` | customers/suppliers.party_special_class changed (affects VAT routing) |
 | `COA_FS_MAPPING_CHANGED` | fs_section/fs_group/fs_sort_order/cash_flow_category changed on a COA account |
+| `AMORTIZATION_SCHEDULE_CREATED` | New amortization schedule created |
+| `AMORTIZATION_RUN_COMPLETED` | Amortization run batch completed |
+| `AMORTIZATION_ENTRY_CREATED` | Individual amortization JE generated |
+| `REVENUE_RECOGNITION_SCHEDULE_CREATED` | New revenue recognition schedule created |
+| `REVENUE_RECOGNITION_RUN_COMPLETED` | Revenue recognition run batch completed |
+| `REVENUE_RECOGNITION_ENTRY_CREATED` | Individual revenue recognition JE generated |
+| `AUTO_REVERSAL_RUN_COMPLETED` | Auto reversal batch run completed |
+| `AUTO_REVERSAL_CREATED` | Individual auto-reversal JE generated |
+| `RECURRING_JE_GENERATED` | Journal entry generated from recurring template |
 | `ITR_COMPUTATION_RUN_CREATED` | New itr_computation_runs record created |
 | `NOLCO_UPDATED` | nolco_tracking record updated (applied amount or expiry changed) |
 | `BOOK_TAX_RECONCILIATION_COMPLETED` | book_tax_reconciliations finalized for a computation run |
