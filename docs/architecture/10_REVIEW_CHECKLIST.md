@@ -1,11 +1,11 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
-**Status:** For CPA and Developer Review — v3 Gaps Resolved
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 **Sign-off Required Before:** SQL migration authoring begins
 
 ---
 
-## v3 Architecture Review Changes Applied
+## v3 Architecture Review Changes Applied (Round 1)
 
 - Added Section 26: Chart of Accounts FS Mapping (v3)
 - Added Section 27: account_types Expansion (v3)
@@ -16,11 +16,20 @@
 - Updated Section 3 (COA) to include v3 checklist items
 - Updated Section 4 (Tax Compliance) to include vat_classification items
 
+## v3 Architecture Review Changes Applied (Round 2)
+
+- Added Section 31: Party Classification Split (customers/suppliers.vat_status split into vat_registration_status + party_special_class)
+- Added Section 32: Income Tax Table Overlap Resolution (itr_working_papers renamed, mcit_computations and nolco_schedules removed)
+- Added Section 33: Doc 03 Coverage Gap — Cross-Reference Index resolution
+- Added Section 34: COA Mapping Architecture decision (embedded fields only, Phase 1)
+- Updated sign-off block to reference Sections 1–34
+- Status corrected: "v3 In Review — Not Yet Approved for Database Freeze" (was prematurely "Gaps Resolved")
+
 ## v3 Cross-Document Consistency Validation
 
-- All gaps identified in the v3 review are now tracked as checklist items in Sections 26–30
+- All gaps identified in v3 Round 1 and Round 2 reviews are now tracked as checklist items in Sections 26–34
 - Open Decisions from v3 review are listed in each document's respective "v3 Remaining Open Decisions" section
-- No items marked [x] in this checklist until all document owners perform their review; [!] items in v3 sections flag the previously-unresolved gaps
+- No items marked [x] in this checklist until all document owners perform their review; [!] items in v3 sections flag previously-resolved gaps
 
 ---
 
@@ -518,6 +527,62 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
-**Once all items in Sections 1–30 are marked `[x]` or `[N/A]`, and all Open Decisions across all documents are resolved or explicitly deferred, SQL migration authoring may begin.**
+---
+
+## SECTION 31: Party Classification Split (v3 Round 2)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 31.1 | `customers.vat_status` RENAMED to `vat_registration_status` CHECK IN ('vat','non_vat') — confirmed; 'government','peza','boi','foreign_entity' moved out | CPA Lead | [!] | v3 Round 2 resolved |
+| 31.2 | `customers.party_special_class` NEW COLUMN NULL CHECK IN ('government','peza','boi','foreign_entity') — confirmed | CPA Lead / DB Architect | [!] | v3 Round 2 resolved |
+| 31.3 | Same split applied to `suppliers` — confirmed | DB Architect | [!] | v3 Round 2 resolved |
+| 31.4 | Transaction line tables (`sales_invoice_lines`, `cash_sale_lines`) — 'government' REMOVED from `vat_classification` CHECK — confirmed | DB Architect | [!] | v3 Round 2 resolved |
+| 31.5 | `vat_entries.vat_classification = 'government'` DERIVED at posting from `party_special_class` — posting engine updated | DB Architect | [ ] | Needs implementation verification |
+| 31.6 | PEZA and BOI party_special_class → zero-rated vat_classification routing rule confirmed | Tax Consultant / CPA Lead | [ ] | |
+| 31.7 | `party.special_class.manage` permission added to RLS design (doc 09 v3 Round 2) — requires CONTROLLER_ROLE | DB Architect | [ ] | |
+| 31.8 | `PARTY_SPECIAL_CLASS_CHANGED` audit event type added to doc 07 v3 Round 2 — confirmed | CPA Lead | [!] | v3 Round 2 resolved |
+
+---
+
+## SECTION 32: Income Tax Table Overlap Resolution (v3 Round 2)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 32.1 | `itr_working_papers` (#154) RENAMED to `itr_computation_runs` — confirmed in doc 02, doc 03, doc 04, doc 05 | DB Architect | [!] | v3 Round 2 resolved |
+| 32.2 | `mcit_computations` (#156) REMOVED — MCIT now in `itr_computation_runs.mcit_amount` + `income_tax_computation_lines` (is_mcit_gross_income flag) | CPA Lead | [!] | v3 Round 2 resolved |
+| 32.3 | `nolco_schedules` (#157) REMOVED — replaced by `nolco_tracking` in MODULE 30 | CPA Lead | [!] | v3 Round 2 resolved |
+| 32.4 | `income_tax_computation_lines.computation_run_id` FK → `itr_computation_runs.id` (changed from `itr_filing_id`) — confirmed in doc 03 § 20 | DB Architect | [!] | v3 Round 2 resolved |
+| 32.5 | `income_tax_return_filings.itr_computation_run_id` FK → `itr_computation_runs.id` (changed from itr_working_paper_id) — confirmed in doc 03 § 19 | DB Architect | [!] | v3 Round 2 resolved |
+| 32.6 | `book_tax_reconciliations` column spec added to doc 03 § 20 | CPA Lead | [!] | v3 Round 2 resolved |
+| 32.7 | `tax_credits_schedules` column spec added to doc 03 § 20 | CPA Lead | [!] | v3 Round 2 resolved |
+| 32.8 | ITR computation audit events (`ITR_COMPUTATION_RUN_CREATED`, `BOOK_TAX_RECONCILIATION_COMPLETED`, `NOLCO_UPDATED`) added to doc 07 v3 Round 2 | DB Architect | [!] | v3 Round 2 resolved |
+
+---
+
+## SECTION 33: Doc 03 Coverage Gap — Cross-Reference Index (v3 Round 2)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 33.1 | Section 21 Cross-Reference Index added to doc 03 — maps all ~200 inventory tables to spec location | DB Architect | [!] | v3 Round 2 resolved |
+| 33.2 | Tables marked SPEC REQUIRED in Section 22 cross-reference (~14 tables) — must be specced before migration | DB Architect | [ ] | Blocked: Phase 2 sprint required |
+| 33.3 | Abbreviated specs added to doc 03 § 21 for critical reference tables: currencies, payment_terms, payment_term_lines, vat_codes, atc_codes, items | DB Architect | [!] | v3 Round 2 resolved |
+| 33.4 | `exchange_rates` table — currently SPEC REQUIRED; needed before multi-currency transactions can be specced | DB Architect | [ ] | Open |
+| 33.5 | `debit_memos` / `debit_memo_lines` — currently SPEC REQUIRED; needed for purchase return flows | CPA Lead | [ ] | Open |
+
+---
+
+## SECTION 34: COA Mapping Architecture (v3 Round 2)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 34.1 | Phase 1 decision confirmed: COA-embedded FS fields ONLY — no separate `financial_statement_mappings` or `cash_flow_mapping_rules` tables | DB Architect | [!] | v3 Round 2 resolved |
+| 34.2 | `chart_of_accounts` FS fields confirmed: `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` | CPA Lead | [ ] | Needs CPA sign-off on field values |
+| 34.3 | `coa_fs_mapping` bulk import type added to doc 08 for batch updating FS fields | DB Architect | [!] | v3 Round 2 resolved |
+| 34.4 | `income_tax_mappings` bulk import type added to doc 08 for batch updating is_mcit_gross_income/is_osd_gross_revenue | CPA Lead | [!] | v3 Round 2 resolved |
+| 34.5 | `COA_FS_MAPPING_CHANGED` audit event type added to doc 07 | DB Architect | [!] | v3 Round 2 resolved |
+
+---
+
+**Once all items in Sections 1–34 are marked `[x]` or `[N/A]`, and all Open Decisions across all documents are resolved or explicitly deferred, SQL migration authoring may begin.**
 
 *Next step after sign-off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*

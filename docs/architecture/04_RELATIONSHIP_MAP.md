@@ -1,6 +1,6 @@
 # PXL ERP — Relationship Map
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 ---
 
@@ -22,6 +22,22 @@
 - Added `system_alerts` to audit section
 - Updated bridge table summary for all new tables
 - Fixed `bank_statements_lines` → `bank_statement_lines` (singular table name)
+
+## v3 Architecture Review Changes Applied
+
+- **Party classification chain updated**: Customer and supplier nodes now show `party_special_class` (government/peza/boi/foreign_entity) as separate from `vat_registration_status`. The posting engine reads `party_special_class` to set `vat_entries.vat_classification = 'government'` — this is NOT stored on transaction lines.
+- **Income tax chain rewritten**: `itr_working_papers` → renamed `itr_computation_runs`. `mcit_computations` and `nolco_schedules` REMOVED (superseded). Canonical chain: `income_tax_return_filings` → `itr_computation_runs` → `income_tax_computation_lines` + `book_tax_reconciliations` + `nolco_tracking` + `tax_credits_schedules`.
+- **COA mapping chain**: No separate mapping table chain. `chart_of_accounts` carries `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` directly. FS report generation reads COA directly.
+- **companies.tax_type**: CHECK corrected to ('vat','non_vat'). Diagram nodes updated — 'exempt' removed.
+
+## v3 Open Decisions
+
+| OD# | Decision | Status |
+|---|---|---|
+| OD-04-V3-01 | `user_branch_access` table — is this still in scope for Phase 1 or deferred? | Unresolved — verify with doc 02 |
+| OD-04-V3-02 | `fwt_entries` — separate table or part of `ewt_entries` with a direction flag? | Unresolved — check doc 06 |
+
+---
 
 ## Changes Applied (v2 → v2.1) — Principle Alignment
 
@@ -658,18 +674,37 @@ vendor_bills / cash_purchases / payments (FWT-subject, WF-series ATC)
 
 ---
 
-## 25. Income Tax Return Filing Chain
+## 25. Income Tax Return Filing Chain (v3 — Updated)
 
 ```
-itr_working_papers (one per fiscal period)
-        │
-        ├── book_tax_reconciliations (annual)
-        ├── mcit_computations (corporate only, annual)
-        ├── nolco_schedules (if applicable)
-        └── tax_credits_schedules (2307 received → income tax credits)
-                │
-                └── income_tax_return_filings
-                      ├── form_code: '1701Q' | '1701' (sole_proprietor / individual)
-                      ├── form_code: '1702Q' | '1702RT' (corporation / OPC / partnership)
-                      └── export_jobs (ITR export)
+income_tax_return_filings (1 per company per period)
+  │   form_code: '1701Q'|'1701' (sole_proprietor/individual)
+  │   form_code: '1702Q'|'1702RT' (corporation/OPC/partnership)
+  │
+  ├── itr_computation_runs (1+ per filing — on-demand computation)
+  │     │
+  │     ├── income_tax_computation_lines (per COA account, per run)
+  │     │
+  │     └── book_tax_reconciliations (reconciling items per run)
+  │
+  ├── nolco_tracking (1 per fiscal_year — carries forward across filings)
+  │
+  ├── tax_credits_schedules (2307/2306 credits applied to this filing)
+  │
+  └── export_jobs (ITR DAT/PDF export)
+
+REMOVED (v3): itr_working_papers → replaced by itr_computation_runs
+REMOVED (v3): mcit_computations → subsumed into itr_computation_runs.mcit_amount + income_tax_computation_lines (is_mcit_gross_income flag)
+REMOVED (v3): nolco_schedules → replaced by nolco_tracking
+```
+
+### Customer Party Classification Chain (v3)
+
+```
+customers
+  ├── vat_registration_status: 'vat' | 'non_vat'   (VAT registration only)
+  └── party_special_class: NULL | 'government' | 'peza' | 'boi' | 'foreign_entity'
+
+Posting engine reads party_special_class:
+  └── if 'government' → vat_entries.vat_classification = 'government' (DERIVED, not stored on line)
 ```

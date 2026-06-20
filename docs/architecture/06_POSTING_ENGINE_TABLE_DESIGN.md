@@ -1,6 +1,6 @@
 # PXL ERP — Posting Engine Table Design
-**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
-**Status:** For CPA and Developer Review — v3 Gaps Resolved
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 ---
 
@@ -10,6 +10,7 @@
 - **`system_account_config`**: Added missing keys: `PERCENTAGE_TAX_PAYABLE`, `FWT_PAYABLE`, `INCOME_TAX_PAYABLE`, `OUTPUT_VAT_NON_VAT` (for PT companies posting gross receipts without VAT)
 - **`posting_rule_lines.applies_to`**: Expanded to include `'CAPITAL_GOODS_LINES_ONLY'` and `'PT_LINES_ONLY'` for routing non-VAT company lines
 - **vat_classification routing**: Posting engine now reads `vat_classification` (not `vat_direction`) from line tables to route to `INPUT_VAT`, `INPUT_VAT_CAPITAL_GOODS`, or `INPUT_VAT_DEFERRED` per Principle 11 v3 fix
+- **Government customer routing (v3)**: When posting a sales document, the engine reads `customers.party_special_class`. If `party_special_class = 'government'`, the resulting `vat_entries` record is written with `vat_classification = 'government'`. This value is NOT stored on `sales_invoice_lines` or `cash_sale_lines` — it is derived and set at posting time. Party_special_class values: NULL (regular), 'government', 'peza', 'boi', 'foreign_entity'. Only 'government' triggers a special vat_entries classification; others affect zero-rating rules (PEZA/BOI zero-rated, foreign = export zero-rated).
 - Confirmed: EWT line routing uses ATC code series prefix (WC/WI = EWT → 1601EQ; WF = FWT → 1601FQ)
 
 ## v3 Remaining Open Decisions

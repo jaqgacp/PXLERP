@@ -1,6 +1,6 @@
 # PXL ERP — Table Column Specifications
-**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
-**Status:** For CPA and Developer Review — v3 Gaps Resolved
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 > Money fields use `numeric(18,4)`. Rates use `numeric(10,6)`. All timestamps are `timestamptz`. All PKs are `uuid DEFAULT gen_random_uuid()`.
 > Standard audit columns are listed once and assumed on all tables marked with Audit or Soft Delete in the inventory.
@@ -9,31 +9,33 @@
 
 ## v3 Architecture Review Changes Applied
 
-- **COA overhaul**: Added `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`, `control_account_type`, `is_mcit_gross_income`, `is_osd_deductible`, `tax_deductibility` to `chart_of_accounts` (replaces bare text `fs_line_mapping`)
-- **account_types expanded**: Added `cost_of_sales`, `other_income`, `other_expense`, `contra_liability`, `contra_equity` to code enum; updated `fs_category` to include `'cost_of_sales_section'` and `'other_income_expense_section'`
-- **vat_direction / vat_classification split** on ALL line tables: `sales_invoice_lines`, `cash_sale_lines`, `vendor_bill_lines`, `cash_purchase_lines` now carry two separate columns (`vat_direction` direction-only + `vat_classification` nature-only)
-- **customer_tax_profiles versioned**: Changed `UNIQUE(customer_id)` to support multiple rows with `effective_from`/`effective_to` per Principle 11
-- **companies.tax_type / business_type deprecation notice**: These columns are retained for backward-compat but superseded by `company_compliance_profiles`; marked as `[DEPRECATED — use company_compliance_profiles]`
-- **posting_rule_sets**: See doc 06 — effective_from/effective_to added
-- **system_account_config**: See doc 06 — missing keys added (PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE)
-- Added Section 20: Income Tax Computation Support Tables (income_tax_computation_lines, nolco_tracking)
+- **COA overhaul**: Added `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`, `control_account_type`, `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` to `chart_of_accounts`. FS mapping architecture decision: Phase 1 uses COA-embedded fields only — no separate mapping tables.
+- **account_types expanded**: Added `cost_of_sales`, `other_income`, `other_expense`, `contra_liability`, `contra_equity` to code enum
+- **vat_direction / vat_classification split** on ALL line tables: two separate columns per line table
+- **Party classification split**: `customers.vat_status` → split into `vat_registration_status` + `party_special_class`; same for suppliers. 'government','peza','boi','foreign_entity' moved OUT of vat_status into party_special_class. `vat_entries.vat_classification = 'government'` is DERIVED at posting from party_special_class — NOT stored on transaction lines.
+- **companies.tax_type**: CHECK corrected from ('vat','non_vat','exempt') to ('vat','non_vat'). 'exempt' is NOT a taxpayer type.
+- **customer_tax_profiles + supplier_tax_profiles**: Both versioned with effective_from/effective_to
+- **Income tax tables**: `itr_computation_runs` (renamed from itr_working_papers) added to Section 19; `nolco_tracking` and `income_tax_computation_lines` in Section 20; `itr_computation_runs.computation_run_id` references added
+- **Cross-reference index**: Section 21 added — maps all 200 inventory tables to their canonical spec location (doc 03 vs doc 06/07/08). Tables with NO spec in any document are flagged as SPEC REQUIRED.
 
 ## v3 Remaining Open Decisions
 
 | OD# | Decision | Options | Recommended |
 |---|---|---|---|
-| OD-V3-01 | `fs_line_mapping` text column — keep as alias label alongside new structured columns or drop? | Keep (display label) / Drop | Keep as optional display label |
-| OD-V3-02 | `is_osd_deductible` flag — do we compute OSD at journal line level or at income tax filing time from account totals? | Line level / Filing level | Filing level (simpler, flag is for reports only) |
-| OD-V3-03 | `control_account_type` on COA — enforce via DB trigger (prevent manual JE to control accounts) or app-layer validation? | DB trigger / App layer | App layer Phase 1, DB trigger Phase 2 |
-| OD-V3-04 | `customer_tax_profiles` versioning — is `effective_from` customer-level or company+customer-level? | Customer-level | Company+customer scoped (a customer may have different profiles per withholding company) |
+| OD-V3-01 | `fs_line_mapping` text column — keep as display label alongside structured columns or drop? | Keep / Drop | Keep as optional display label for now |
+| OD-V3-02 | `is_osd_gross_revenue` flag on COA — compute OSD at filing time from account totals or line level? | Filing level / Line level | Filing level (simpler) |
+| OD-V3-03 | `control_account_type` enforcement — DB trigger or app-layer? | DB trigger / App layer | App layer Phase 1 |
+| OD-V3-04 | Doc 03 currently lacks full column specs for ~120 tables inventoried in doc 02. Tables with specs in docs 06/07/08 are cross-referenced. Tables with NO spec anywhere are listed in Section 21 as SPEC REQUIRED. Resolve before database freeze. | Full consolidation in doc 03 / Cross-reference + flag | Cross-reference + flag for Phase 1; consolidate in Phase 2 sprint |
 
 ## v3 Cross-Document Consistency Validation
 
-- `vat_entries.vat_direction` CHECK IN ('output','input') ✓ consistent with line table fix
-- `vat_entries.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') ✓
-- `vendor_bill_lines.vat_classification` now includes 'capital_goods','services' per BIR input VAT classification
-- `system_account_config` keys referenced in doc 06 posting rules now have corresponding COA `control_account_type` values
-- `company_compliance_profiles.filing_obligations` drives form generation; `account_types` expansion enables income statement categorization for ITR computation
+- `vat_entries.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') ✓ — 'government' derived at posting from party_special_class, not stored on transaction lines
+- `sales_invoice_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt') ✓ — 'government' removed from line table
+- `vendor_bill_lines.vat_classification` includes 'capital_goods','services' ✓
+- `companies.tax_type` CHECK corrected to ('vat','non_vat') — 'exempt' removed ✓
+- `customer_tax_profiles` versioning: UNIQUE constraint updated ✓; same applied to `supplier_tax_profiles` ✓
+- `itr_computation_runs.itr_filing_id` → `income_tax_return_filings.id` ✓
+- `income_tax_computation_lines.computation_run_id` → `itr_computation_runs.id` ✓ (updated from itr_filing_id)
 
 ---
 
@@ -126,7 +128,7 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | rdo_code | text | NULL | — | Revenue District Office code |
 | bir_registered_address | text | NOT NULL | — | Address on BIR registration |
 | industry_classification | text | NULL | — | PSIC industry code |
-| tax_type | text | NOT NULL | — | CHECK IN ('vat','non_vat','exempt') — **[DEPRECATED: use company_compliance_profiles.taxpayer_type]** |
+| tax_type | text | NOT NULL | — | CHECK IN ('vat','non_vat') — **[DEPRECATED: use company_compliance_profiles.taxpayer_type. v3: 'exempt' REMOVED from CHECK — 'exempt' is a transaction-level VAT classification, not a taxpayer type]** |
 | business_type | text | NOT NULL | — | CHECK IN ('corporation','partnership','sole_proprietorship','cooperative') — **[DEPRECATED: use company_compliance_profiles.legal_type]** |
 | sec_registration_no | text | NULL | — | SEC registration number |
 | dti_registration_no | text | NULL | — | DTI registration (sole props) |
@@ -452,9 +454,10 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | customer_code | text | NOT NULL | — | Unique customer code |
 | customer_name | text | NOT NULL | — | Registered business name |
 | trade_name | text | NULL | — | |
-| customer_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') |
+| customer_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') — entity legal form |
 | tin | text | NULL | — | TIN (required for VAT customers and SLSP) |
-| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government','peza','boi','foreign_entity') |
+| vat_registration_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat') — Is the customer VAT-registered? **[v3: renamed from vat_status; removed government/peza/boi/foreign_entity which move to party_special_class]** |
+| party_special_class | text | NULL | NULL | CHECK IN ('government','peza','boi','foreign_entity') — Special entity classification for compliance routing. NULL = regular entity. **[v3 addition]** — Government → posting engine sets vat_entries.vat_classification='government' for 2550M disclosure; PEZA/foreign_entity → triggers zero-rated review |
 | payment_terms_id | uuid | NULL | — | FK → payment_terms.id |
 | ar_account_id | uuid | NULL | — | FK → chart_of_accounts.id (override) |
 | sales_account_id | uuid | NULL | — | FK → chart_of_accounts.id (default revenue) |
@@ -493,6 +496,29 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 
 ---
 
+### `supplier_tax_profiles`
+Mirror of `customer_tax_profiles` for suppliers. Versioned per Principle 11. **[v3: Previously missing from doc 03 — added]**
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| supplier_id | uuid | NOT NULL | — | FK → suppliers.id |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| tin | text | NOT NULL | — | Supplier TIN snapshot for this period |
+| bir_registered_address | text | NULL | — | Address snapshot |
+| bir_rdo_code | text | NULL | — | RDO code snapshot |
+| vat_registration_no | text | NULL | — | COR number if VAT-registered |
+| is_ewt_subject | boolean | NOT NULL | true | Subject to EWT on payments made to this supplier |
+| default_ewt_atc_id | uuid | NULL | — | FK → atc_codes.id (default ATC for EWT) |
+| effective_from | date | NOT NULL | — | Date this profile takes effect |
+| effective_to | date | NULL | — | NULL = currently active |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, supplier_id, effective_from)`
+**Partial Unique Index:** `WHERE effective_to IS NULL` — one active profile per (company_id, supplier_id)
+
+---
+
 ### `suppliers`
 | Column | Type | Null | Default | Description |
 |---|---|---|---|---|
@@ -501,9 +527,10 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | supplier_code | text | NOT NULL | — | Unique supplier code |
 | supplier_name | text | NOT NULL | — | Registered business name |
 | trade_name | text | NULL | — | |
-| supplier_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') |
+| supplier_type | text | NOT NULL | 'business' | CHECK IN ('individual','business','government') — entity legal form |
 | tin | text | NULL | — | TIN (required for 2307) |
-| vat_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat','exempt','zero_rated','government','peza','boi','foreign_entity') |
+| vat_registration_status | text | NOT NULL | 'vat' | CHECK IN ('vat','non_vat') — Is the supplier VAT-registered? **[v3: renamed from vat_status; removed government/peza/boi/foreign_entity]** |
+| party_special_class | text | NULL | NULL | CHECK IN ('government','peza','boi','foreign_entity') — Special entity classification. **[v3 addition]** — Government supplier → 5% CWT on VAT received applies |
 | payment_terms_id | uuid | NULL | — | FK → payment_terms.id |
 | ap_account_id | uuid | NULL | — | FK → chart_of_accounts.id (override) |
 | expense_account_id | uuid | NULL | — | FK → chart_of_accounts.id (default) |
@@ -1601,7 +1628,7 @@ Immutable. One row per ATC per line per source document.
 | filing_status | text | NOT NULL | 'draft' | CHECK IN ('draft','filed','amended') |
 | filing_date | date | NULL | — | |
 | bir_confirmation_no | text | NULL | — | |
-| itr_working_paper_id | uuid | NULL | — | FK → itr_working_papers.id |
+| itr_computation_run_id | uuid | NULL | — | FK → itr_computation_runs.id |
 | export_job_id | uuid | NULL | — | FK → export_jobs.id |
 | *+ standard audit columns* | | | | |
 
@@ -1624,6 +1651,34 @@ Immutable. One row per ATC per line per source document.
 
 ## SECTION 20: INCOME TAX COMPUTATION SUPPORT (v3 addition)
 
+### `itr_computation_runs`
+Header record for each ITR computation run. A computation run is triggered on-demand before filing. Multiple runs may exist per `income_tax_return_filing` (e.g., amended computations).
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| itr_filing_id | uuid | NOT NULL | — | FK → income_tax_return_filings.id |
+| run_sequence | integer | NOT NULL | 1 | 1 = initial, 2+ = recomputed |
+| regime_snapshot | text | NOT NULL | — | Snapshot of income_tax_regime at run time |
+| gross_income_amount | numeric(18,4) | NOT NULL | 0 | For MCIT comparison |
+| gross_revenue_osd | numeric(18,4) | NOT NULL | 0 | For OSD computation |
+| osd_rate | numeric(10,6) | NULL | — | OSD rate applied if OSD method used |
+| osd_amount | numeric(18,4) | NOT NULL | 0 | OSD deduction (regime='osd' only) |
+| taxable_income_amount | numeric(18,4) | NOT NULL | 0 | Final taxable income |
+| regular_tax_amount | numeric(18,4) | NOT NULL | 0 | Tax at normal rate |
+| mcit_amount | numeric(18,4) | NOT NULL | 0 | MCIT (2% × gross income, 1% under CREATE Act) |
+| tax_due_amount | numeric(18,4) | NOT NULL | 0 | Higher of regular tax or MCIT |
+| nolco_applied | numeric(18,4) | NOT NULL | 0 | NOLCO deduction applied in this run |
+| notes | text | NULL | — | CPA notes on adjustments |
+| run_at | timestamptz | NOT NULL | now() | |
+| run_by | uuid | NOT NULL | — | FK → profiles.id |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(itr_filing_id, run_sequence)`
+
+---
+
 ### `income_tax_computation_lines`
 Stores per-account breakdown used when computing income tax returns (1701Q/1701/1702Q/1702RT). Populated by the ITR computation engine from `gl_balances` + `chart_of_accounts.fs_section` classification.
 
@@ -1631,7 +1686,7 @@ Stores per-account breakdown used when computing income tax returns (1701Q/1701/
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
-| itr_filing_id | uuid | NOT NULL | — | FK → income_tax_return_filings.id |
+| computation_run_id | uuid | NOT NULL | — | FK → itr_computation_runs.id |
 | account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id |
 | account_code | text | NOT NULL | — | Snapshot |
 | account_name | text | NOT NULL | — | Snapshot |
@@ -1647,7 +1702,7 @@ Stores per-account breakdown used when computing income tax returns (1701Q/1701/
 | computed_at | timestamptz | NOT NULL | now() | |
 | computed_by | uuid | NOT NULL | — | FK → profiles.id |
 
-**Constraints:** `UNIQUE(itr_filing_id, account_id)`
+**Constraints:** `UNIQUE(computation_run_id, account_id)`
 
 ---
 
@@ -1669,6 +1724,262 @@ Net Operating Loss Carry-Over tracking per fiscal year. NOLCO may be deducted wi
 
 **Constraints:** `UNIQUE(company_id, fiscal_year_id)`
 **v3 Note:** NOLCO is only applicable for income_tax_regime = 'corporate' or 'individual' using itemized deductions. OSD users do not carry over losses.
+
+---
+
+### `book_tax_reconciliations`
+Reconciliation schedule (BIR Schedule) between book income and taxable income. One record per `itr_computation_run` for each reconciling item.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| computation_run_id | uuid | NOT NULL | — | FK → itr_computation_runs.id |
+| reconciliation_type | text | NOT NULL | — | CHECK IN ('add_back','deduction','permanent','temporary') |
+| description | text | NOT NULL | — | Description of reconciling item |
+| account_id | uuid | NULL | — | FK → chart_of_accounts.id (if account-driven) |
+| book_amount | numeric(18,4) | NOT NULL | 0 | Amount per books |
+| tax_amount | numeric(18,4) | NOT NULL | 0 | Amount per tax rules |
+| difference_amount | numeric(18,4) | NOT NULL | 0 | tax_amount - book_amount |
+| sequence_no | integer | NOT NULL | 1 | Display order |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `tax_credits_schedules`
+Creditable taxes (2307, 2306) applied against income tax due in a filing period.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| itr_filing_id | uuid | NOT NULL | — | FK → income_tax_return_filings.id |
+| credit_type | text | NOT NULL | — | CHECK IN ('ewt_2307','fwt_2306','prior_quarter_overpayment','soa_payment') |
+| certificate_id | uuid | NULL | — | FK → certificates_2307_issued.id or certificates_2306_issued.id |
+| credit_period_from | date | NOT NULL | — | |
+| credit_period_to | date | NOT NULL | — | |
+| credit_amount | numeric(18,4) | NOT NULL | 0 | |
+| payor_name | text | NULL | — | Snapshot |
+| payor_tin | text | NULL | — | Snapshot |
+| *+ standard audit columns* | | | | |
+
+---
+
+## SECTION 21: Critical Reference Tables — Abbreviated Specs
+
+> These tables appear in doc 02 inventory but do not have full column specs in doc 03. Abbreviated specs provided here for Phase 1 freeze. Full specs in Phase 2 sprint.
+
+### `currencies`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| code | text | NOT NULL | — | ISO 4217 (e.g., 'PHP', 'USD') |
+| name | text | NOT NULL | — | Full name |
+| symbol | text | NOT NULL | — | '₱', '$', etc. |
+| is_base_currency | boolean | NOT NULL | false | TRUE for PHP only |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(code)`
+
+---
+
+### `payment_terms`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| name | text | NOT NULL | — | e.g., 'Net 30', 'COD' |
+| description | text | NULL | — | |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+### `payment_term_lines`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| payment_term_id | uuid | NOT NULL | — | FK → payment_terms.id |
+| sequence_no | integer | NOT NULL | 1 | |
+| days_due | integer | NOT NULL | 0 | Days after invoice date |
+| percent_due | numeric(10,6) | NOT NULL | 1.000000 | Portion due (1.0 = 100%) |
+
+---
+
+### `vat_codes`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| code | text | NOT NULL | — | e.g., 'VAT12', 'ZR', 'EX' |
+| description | text | NOT NULL | — | |
+| rate | numeric(10,6) | NOT NULL | — | 0.12, 0.00 |
+| classification | text | NOT NULL | — | CHECK IN ('vatable','zero_rated','exempt') |
+| effective_from | date | NOT NULL | — | |
+| effective_to | date | NULL | — | NULL = active |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+---
+
+### `atc_codes`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| code | text | NOT NULL | — | BIR ATC e.g., 'WI010' |
+| description | text | NOT NULL | — | BIR official description |
+| tax_type | text | NOT NULL | — | CHECK IN ('ewt','fwt') |
+| rate | numeric(10,6) | NOT NULL | — | e.g., 0.01, 0.02, 0.05 |
+| effective_from | date | NOT NULL | — | Principle 11: effective-date versioned |
+| effective_to | date | NULL | — | NULL = currently active |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(code, effective_from)` | Partial unique index WHERE effective_to IS NULL
+
+---
+
+### `items`
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| item_code | text | NOT NULL | — | Internal SKU/code |
+| name | text | NOT NULL | — | |
+| description | text | NULL | — | |
+| item_type | text | NOT NULL | — | CHECK IN ('inventory','service','non_inventory') |
+| unit_of_measure | text | NOT NULL | 'piece' | |
+| unit_price | numeric(18,4) | NOT NULL | 0 | Default selling price |
+| unit_cost | numeric(18,4) | NOT NULL | 0 | Standard cost (overridden by FIFO layer) |
+| sales_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| purchase_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| cogs_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| inventory_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| vat_code_id | uuid | NULL | — | FK → vat_codes.id |
+| ewt_atc_id | uuid | NULL | — | FK → atc_codes.id (default EWT on purchases) |
+| is_active | boolean | NOT NULL | true | |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, item_code)`
+
+---
+
+## SECTION 22: Cross-Reference Index — All Tables to Spec Location
+
+> Every table in doc 02 is listed here with its canonical column spec location. Tables marked **SPEC REQUIRED** have no spec in any document and must be specced before database freeze.
+
+| Module | Table Name | Spec Location |
+|---|---|---|
+| MODULE 1 | companies | Doc 03 § 1 |
+| MODULE 1 | branches | Doc 03 § 1 |
+| MODULE 1 | departments | Doc 03 § 1 |
+| MODULE 1 | cost_centers | Doc 03 § 1 |
+| MODULE 1 | fiscal_years | Doc 03 § 1 |
+| MODULE 1 | fiscal_periods | Doc 03 § 1 |
+| MODULE 1 | fiscal_locks | Doc 03 § 1 |
+| MODULE 1 | company_compliance_profiles | Doc 03 § 1 |
+| MODULE 1 | company_feature_settings | Doc 03 § 1 |
+| MODULE 2 | currencies | Doc 03 § 21 |
+| MODULE 2 | exchange_rates | **SPEC REQUIRED** |
+| MODULE 2 | payment_terms | Doc 03 § 21 |
+| MODULE 2 | payment_term_lines | Doc 03 § 21 |
+| MODULE 2 | number_series | Doc 07 |
+| MODULE 2 | document_templates | Doc 03 § 14 |
+| MODULE 2 | generated_documents | Doc 03 § 14 |
+| MODULE 3 | chart_of_accounts | Doc 03 § 3 |
+| MODULE 3 | account_types | Doc 03 § 3 |
+| MODULE 3 | posting_rule_sets | Doc 06 |
+| MODULE 3 | posting_rules | Doc 06 |
+| MODULE 4 | customers | Doc 03 § 4 |
+| MODULE 4 | customer_tax_profiles | Doc 03 § 4 |
+| MODULE 4 | customer_contacts | Doc 03 § 4 |
+| MODULE 4 | customer_addresses | Doc 03 § 4 |
+| MODULE 4 | customer_credit_limits | **SPEC REQUIRED** |
+| MODULE 5 | suppliers | Doc 03 § 5 |
+| MODULE 5 | supplier_tax_profiles | Doc 03 § 5 |
+| MODULE 5 | supplier_contacts | **SPEC REQUIRED** |
+| MODULE 5 | supplier_addresses | **SPEC REQUIRED** |
+| MODULE 6 | items | Doc 03 § 21 |
+| MODULE 6 | item_categories | **SPEC REQUIRED** |
+| MODULE 6 | units_of_measure | **SPEC REQUIRED** |
+| MODULE 6 | vat_codes | Doc 03 § 21 |
+| MODULE 6 | atc_codes | Doc 03 § 21 |
+| MODULE 6 | percentage_tax_codes | **SPEC REQUIRED** |
+| MODULE 7 | sales_invoices | Doc 03 § 7 |
+| MODULE 7 | sales_invoice_lines | Doc 03 § 7 |
+| MODULE 7 | credit_memos | Doc 03 § 7 |
+| MODULE 7 | credit_memo_lines | Doc 03 § 7 |
+| MODULE 8 | cash_sales | Doc 03 § 8 |
+| MODULE 8 | cash_sale_lines | Doc 03 § 8 |
+| MODULE 9 | vendor_bills | Doc 03 § 9 |
+| MODULE 9 | vendor_bill_lines | Doc 03 § 9 |
+| MODULE 9 | debit_memos | **SPEC REQUIRED** |
+| MODULE 9 | debit_memo_lines | **SPEC REQUIRED** |
+| MODULE 10 | cash_purchases | Doc 03 § 10 |
+| MODULE 10 | cash_purchase_lines | Doc 03 § 10 |
+| MODULE 11 | official_receipts | Doc 03 § 11 |
+| MODULE 11 | official_receipt_lines | Doc 03 § 11 |
+| MODULE 11 | disbursement_vouchers | Doc 03 § 11 |
+| MODULE 11 | disbursement_voucher_lines | Doc 03 § 11 |
+| MODULE 11 | petty_cash_vouchers | Doc 03 § 11 |
+| MODULE 11 | petty_cash_voucher_lines | Doc 03 § 11 |
+| MODULE 12 | journal_entries | Doc 03 § 12 |
+| MODULE 12 | journal_entry_lines | Doc 03 § 12 |
+| MODULE 13 | gl_accounts (= chart_of_accounts) | Doc 03 § 3 |
+| MODULE 13 | gl_balances | Doc 03 § 13 |
+| MODULE 13 | gl_transactions | Doc 03 § 13 |
+| MODULE 13 | document_relationships | Doc 03 § 13 |
+| MODULE 14 | vat_entries | Doc 03 § 14 |
+| MODULE 14 | vat_period_summaries | Doc 03 § 14 |
+| MODULE 14 | vat_return_filings | Doc 03 § 14 |
+| MODULE 15 | ewt_entries | Doc 03 § 15 |
+| MODULE 15 | ewt_period_summaries | Doc 03 § 15 |
+| MODULE 15 | certificates_2307_issued | Doc 03 § 15 |
+| MODULE 15 | certificates_2306_issued | **SPEC REQUIRED** |
+| MODULE 16 | sawt_records | Doc 03 § 16 |
+| MODULE 16 | slsp_records | Doc 03 § 16 |
+| MODULE 16 | qap_records | **SPEC REQUIRED** |
+| MODULE 16 | relief_records | **SPEC REQUIRED** |
+| MODULE 17 | inventory_cost_layers | Doc 03 § 17 |
+| MODULE 17 | inventory_cost_layer_consumption | Doc 03 § 17 |
+| MODULE 17 | inventory_movements | **SPEC REQUIRED** |
+| MODULE 18 | bank_accounts | Doc 03 § 18 |
+| MODULE 18 | bank_statements | Doc 03 § 18 |
+| MODULE 18 | bank_statement_lines | Doc 03 § 18 |
+| MODULE 18 | bank_reconciliations | Doc 03 § 18 |
+| MODULE 19 | income_tax_return_filings | Doc 03 § 19 |
+| MODULE 19 | itr_computation_runs | Doc 03 § 20 |
+| MODULE 19 | income_tax_computation_lines | Doc 03 § 20 |
+| MODULE 19 | book_tax_reconciliations | Doc 03 § 20 |
+| MODULE 19 | tax_credits_schedules | Doc 03 § 20 |
+| MODULE 19 | nolco_tracking | Doc 03 § 20 |
+| MODULE 20 | percentage_tax_entries | Doc 03 § 17 |
+| MODULE 20 | percentage_tax_period_summaries | Doc 03 § 17 |
+| MODULE 20 | percentage_tax_return_filings | Doc 03 § 17 |
+| MODULE 21 | fwt_remittances_1601fq | Doc 03 § 18 |
+| MODULE 22 | attachments | Doc 03 § 21 |
+| MODULE 22 | attachment_versions | **SPEC REQUIRED** |
+| MODULE 23 | notifications | Doc 03 § 21 |
+| MODULE 23 | notification_templates | Doc 03 § 21 |
+| MODULE 24 | budgets | Doc 03 § 21 |
+| MODULE 24 | budget_lines | Doc 03 § 21 |
+| MODULE 25 | period_close_checklists | Doc 03 § 21 |
+| MODULE 25 | period_close_tasks | Doc 03 § 21 |
+| MODULE 26 | party_merge_log | **SPEC REQUIRED** |
+| MODULE 27 | import_jobs | Doc 08 |
+| MODULE 27 | import_batches | Doc 08 |
+| MODULE 27 | import_batch_rows | Doc 08 |
+| MODULE 27 | export_jobs | Doc 08 |
+| MODULE 28 | audit_logs | Doc 07 |
+| MODULE 28 | audit_log_details | Doc 07 |
+| MODULE 28 | system_alerts | Doc 07 |
+| MODULE 29 | profiles | Doc 09 |
+| MODULE 29 | user_company_access | Doc 03 § 16 |
+| MODULE 29 | roles | Doc 09 |
+| MODULE 29 | role_permissions | Doc 09 |
+| MODULE 29 | user_roles | Doc 09 |
+| MODULE 30 | posting_logs | Doc 06 |
+| MODULE 30 | posting_log_lines | Doc 06 |
+
+> **SPEC REQUIRED** count: ~14 tables. These must be fully specced in a dedicated Phase 2 doc sprint before schema migration begins.
 
 ---
 

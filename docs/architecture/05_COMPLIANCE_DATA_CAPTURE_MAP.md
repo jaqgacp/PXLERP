@@ -1,6 +1,23 @@
 # PXL ERP — Compliance Data Capture Map
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
+
+---
+
+## v3 Architecture Review Changes Applied
+
+- **`companies.name`**: All references to `companies.registered_name` corrected to `companies.name`. The canonical column in `companies` is `name` (see doc 03 § 1).
+- **Government sales routing**: `vat_classification = 'GOVERNMENT'` on `vat_entries` is DERIVED at posting from `customers.party_special_class = 'government'`. It is NOT stored on `sales_invoice_lines` or `cash_sale_lines`. Transaction lines only store ('vatable','zero_rated','exempt').
+- **Party VAT registration**: `customer_is_vat_registered` is NOT a stored column. At posting, the engine reads `customers.vat_registration_status` ('vat'|'non_vat') to populate `vat_entries` records. Remove `customer_is_vat_registered` references from compliance map — use `vat_entries.vat_classification` filter directly.
+- **Income tax table rename**: `itr_working_papers` → `itr_computation_runs`; `mcit_computations` REMOVED; `nolco_schedules` REMOVED. ITR compliance chain updated in Section 12c.
+- **vat_classification casing**: All values lowercase in database — 'vatable', 'zero_rated', 'exempt', 'government'. Prior versions used uppercase. Corrected throughout.
+
+## v3 Cross-Document Consistency
+
+- `vat_entries.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') ✓
+- `sales_invoice_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt') — 'government' NOT on lines ✓
+- `customers.vat_registration_status` CHECK IN ('vat','non_vat') — party_special_class is separate ✓
+- `companies.name` (not `registered_name`) ✓
 
 ---
 
@@ -64,13 +81,13 @@ This document maps every Philippine BIR compliance output to the specific databa
 | BIR Field | Source Table | Source Column | Notes |
 |---|---|---|---|
 | TIN of taxpayer | `companies` | `tin` | Format: 999-999-999-999 |
-| Registered name | `companies` | `registered_name` | As per BIR COR |
+| Registered name | `companies` | `name` | As per BIR COR |
 | Taxable period | `fiscal_periods` | `start_date`, `end_date` | |
-| Sales to VAT-reg customers | `vat_entries` | `net_amount WHERE vat_direction='OUTPUT' AND vat_classification='VATABLE' AND customer_is_vat_registered=true` | |
-| Sales to non-VAT customers | `vat_entries` | `net_amount WHERE vat_direction='OUTPUT' AND vat_classification='VATABLE' AND customer_is_vat_registered=false` | |
-| Zero-rated sales | `vat_entries` | `net_amount WHERE vat_direction='OUTPUT' AND vat_classification='ZERO_RATED'` | |
-| VAT-exempt sales | `vat_entries` | `net_amount WHERE vat_direction='OUTPUT' AND vat_classification='EXEMPT'` | |
-| Government sales | `vat_entries` | `net_amount WHERE vat_direction='OUTPUT' AND vat_classification='GOVERNMENT'` | |
+| Sales to VAT-reg customers | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='vatable'` + join `customers.vat_registration_status='vat'` | |
+| Sales to non-VAT customers | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='vatable'` + join `customers.vat_registration_status='non_vat'` | |
+| Zero-rated sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='zero_rated'` | |
+| VAT-exempt sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='exempt'` | |
+| Government sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='government'` | Derived at posting from customers.party_special_class='government' |
 | Output VAT | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='OUTPUT'` | |
 | Input VAT from purchases | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='INPUT'` | |
 | Input VAT carried over | `vat_period_summaries` | `input_vat_carryover` | From prior period |
@@ -85,7 +102,7 @@ This document maps every Philippine BIR compliance output to the specific databa
 
 **`sales_invoice_lines`**
 - `vat_direction` — 'OUTPUT'
-- `vat_classification` — 'VATABLE' | 'ZERO_RATED' | 'EXEMPT' | 'GOVERNMENT'
+- `vat_classification` — 'vatable' | 'zero_rated' | 'exempt' (stored on lines; 'government' only in vat_entries, derived at posting from party_special_class)
 - `net_amount` — amount before VAT
 - `vat_amount` — 12% of net_amount (or 0 for zero/exempt)
 - `account_id` → revenue account
@@ -97,7 +114,7 @@ This document maps every Philippine BIR compliance output to the specific databa
 
 **`cash_sale_lines`**
 - `vat_direction` — 'OUTPUT'
-- `vat_classification` — 'VATABLE' | 'ZERO_RATED' | 'EXEMPT' | 'GOVERNMENT'
+- `vat_classification` — 'vatable' | 'zero_rated' | 'exempt' (stored on lines; 'government' only in vat_entries, derived at posting from party_special_class)
 - `net_amount`, `vat_amount`
 
 **`vendor_bill_lines`**
@@ -121,7 +138,7 @@ This document maps every Philippine BIR compliance output to the specific databa
 | SLSP Column | Source Table | Source Column |
 |---|---|---|
 | Buyer TIN | `customers` | `tin` (joined) or `customer_tin` (snapshot on `vat_entries`) |
-| Buyer name | `customers` | `registered_name` |
+| Buyer name | `customers` | `name` |
 | Invoice/receipt number | `sales_invoices` / `cash_sales` | `document_no` |
 | Invoice/receipt date | `sales_invoices` / `cash_sales` | `document_date` |
 | Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='VATABLE'` |
@@ -137,7 +154,7 @@ Source documents: `sales_invoices` AND `cash_sales` (both contribute to SLSP)
 | RELIEF Column | Source Table | Source Column |
 |---|---|---|
 | Seller TIN | `suppliers` | `tin` (joined) or `supplier_tin` (snapshot on `vat_entries`) |
-| Seller name | `suppliers` | `registered_name` |
+| Seller name | `suppliers` | `name` |
 | Invoice number | `vendor_bills` / `cash_purchases` | `document_no` |
 | Invoice date | `vendor_bills` / `cash_purchases` | `document_date` |
 | Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_direction='INPUT' AND vat_classification='VATABLE'` |
@@ -193,7 +210,7 @@ Source documents: `vendor_bills` AND `cash_purchases` (both contribute to RELIEF
 | 2307 Field | Source Table | Source Column |
 |---|---|---|
 | Withholding agent TIN | `companies` | `tin` |
-| Withholding agent name | `companies` | `registered_name` |
+| Withholding agent name | `companies` | `name` |
 | Payee TIN | `certificates_2307_issued` | `payee_tin` (snapshot) |
 | Payee name | `certificates_2307_issued` | `payee_name` (snapshot) |
 | Payee address | `certificates_2307_issued` | `payee_address` (snapshot) |
@@ -407,8 +424,8 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | 2550M / 2550Q | `vat_entries`, `vat_period_summaries` | vat_direction, vat_classification, net_amount, vat_amount, fiscal_period_id |
 | 2551Q | `percentage_tax_entries`, `percentage_tax_period_summaries` | gross_receipts_amount, pt_rate, pt_amount, fiscal_period_id |
 | 1601FQ | `fwt_entries`, `fwt_remittances_1601fq` | atc_code (WF-series), fwt_amount, payee_tin, fiscal_period_id |
-| ITR (Individual) | `itr_working_papers`, `income_tax_return_filings` | form_code='1701Q'/'1701', taxable_income, income_tax_due |
-| ITR (Corporate) | `itr_working_papers`, `mcit_computations`, `income_tax_return_filings` | form_code='1702Q'/'1702RT', mcit_amount, income_tax_due |
+| ITR (Individual) | `income_tax_return_filings`, `itr_computation_runs`, `income_tax_computation_lines` | form_code='1701Q'/'1701', taxable_income, income_tax_due |
+| ITR (Corporate) | `income_tax_return_filings`, `itr_computation_runs`, `income_tax_computation_lines` | form_code='1702Q'/'1702RT', mcit_amount (in itr_computation_runs), income_tax_due |
 | SLSP (Sales) | `sales_invoices`, `cash_sales`, `customers`, `vat_entries` | customer_tin (snapshot), document_date, amounts |
 | SLSP (Purchases) / RELIEF | `vendor_bills`, `cash_purchases`, `suppliers`, `vat_entries` | supplier_tin (snapshot), document_date, amounts |
 | 1601EQ | `ewt_entries`, `ewt_remittances_1601eq` | atc_code, ewt_amount, fiscal_period_id |
@@ -475,9 +492,9 @@ ITR form is determined by `company_compliance_profiles.income_tax_regime`:
 | Field Required on ITR | Source Table | Column |
 |---|---|---|
 | Taxpayer TIN | `companies` | `tin` |
-| Taxable Income | `itr_working_papers` | derived from `gl_balances` |
+| Taxable Income | `itr_computation_runs` | `taxable_income_amount` (derived from gl_balances via income_tax_computation_lines) |
 | Income Tax Due | `income_tax_return_filings` | `income_tax_due` |
-| MCIT (if higher) | `mcit_computations` | `mcit_amount` |
+| MCIT (if higher) | `itr_computation_runs` | `mcit_amount` (higher of regular tax or 2%/1% × gross_income_amount) |
 | Tax Credits (2307) | `tax_credits_schedules` | from `certificates_2307_received` |
 | Net Tax Payable | `income_tax_return_filings` | `income_tax_payable` |
 

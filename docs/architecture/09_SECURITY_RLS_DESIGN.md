@@ -1,6 +1,6 @@
 # PXL ERP — Security & RLS Design
-**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
-**Status:** For CPA and Developer Review — v3 Gaps Resolved
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
 
 ---
 
@@ -8,6 +8,8 @@
 
 - Added RLS policies for `income_tax_computation_lines` and `nolco_tracking` (new MODULE 30 tables)
 - Added permissions: `compliance.itr.compute`, `compliance.nolco.view`, `compliance.nolco.manage`
+- **v3 Round 2**: Added permission `party.special_class.manage` for updating customers/suppliers.party_special_class — requires CONTROLLER_ROLE or higher (changing this field affects VAT routing at posting time)
+- **v3 Round 2**: Added RLS policies for `itr_computation_runs`, `book_tax_reconciliations`, `tax_credits_schedules` (new in doc 03 § 20)
 - Added performance index guidance for high-volume compliance tables: `vat_entries`, `ewt_entries`, `percentage_tax_entries`, `income_tax_computation_lines`
 - `customer_tax_profiles` versioning: RLS policy updated — SELECT must filter `WHERE effective_to IS NULL OR effective_to >= current_date` for active-profile lookups; historical lookups at transaction `document_date` require unfiltered access for posting engine (service role)
 

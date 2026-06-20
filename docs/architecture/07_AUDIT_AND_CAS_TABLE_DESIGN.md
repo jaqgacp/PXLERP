@@ -1,6 +1,22 @@
 # PXL ERP — Audit and CAS Table Design
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Status:** v3 In Review — Not Yet Approved for Database Freeze
+
+---
+
+## v3 Architecture Review Changes Applied
+
+- **New audit event types added**: `COA_FS_MAPPING_CHANGED`, `ITR_COMPUTATION_RUN_CREATED`, `NOLCO_UPDATED`, `BOOK_TAX_RECONCILIATION_COMPLETED`, `PARTY_SPECIAL_CLASS_CHANGED`, `POSTING_RULE_VERSIONED` — see Event Type table below.
+- **`itr_working_papers` audit events**: Events referencing `itr_working_papers` updated to `itr_computation_runs`. `MCIT_COMPUTED` and `NOLCO_SCHEDULE_UPDATED` event types superseded by new events.
+- **COA changes**: `COA_FS_MAPPING_CHANGED` covers updates to `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` fields — these are compliance-impacting changes and must be audit-logged with old/new values.
+- **Party classification change**: `PARTY_SPECIAL_CLASS_CHANGED` fires when `customers.party_special_class` or `suppliers.party_special_class` is changed — this affects VAT classification routing in the posting engine.
+
+## v3 Open Decisions
+
+| OD# | Decision | Status |
+|---|---|---|
+| OD-07-V3-01 | Should `COA_FS_MAPPING_CHANGED` store old/new values in `metadata` jsonb or in `field_change_history`? | Recommended: `field_change_history` (consistent with all master data field-level changes) |
+| OD-07-V3-02 | Should `ITR_COMPUTATION_RUN_CREATED` include `computation_run_id` in `entity_id` or the parent `itr_filing_id`? | Recommended: `entity_id` = `itr_computation_runs.id`; `metadata.itr_filing_id` for cross-reference |
 
 ---
 
@@ -111,6 +127,12 @@ Immutable log of every system event. No soft delete. No update allowed.
 | `NOTIFICATION_FAILED` | Notification delivery failed |
 | `PARTY_MERGED` | Customer/supplier records merged (duplicate TIN) |
 | `DUPLICATE_TIN_FLAGGED` | Duplicate TIN warning raised |
+| `PARTY_SPECIAL_CLASS_CHANGED` | customers/suppliers.party_special_class changed (affects VAT routing) |
+| `COA_FS_MAPPING_CHANGED` | fs_section/fs_group/fs_sort_order/cash_flow_category changed on a COA account |
+| `ITR_COMPUTATION_RUN_CREATED` | New itr_computation_runs record created |
+| `NOLCO_UPDATED` | nolco_tracking record updated (applied amount or expiry changed) |
+| `BOOK_TAX_RECONCILIATION_COMPLETED` | book_tax_reconciliations finalized for a computation run |
+| `POSTING_RULE_VERSIONED` | posting_rule_sets effective_from/effective_to versioned (new version created) |
 | `USER_ASSIGNED_ROLE` | Role assigned to user |
 | `USER_ROLE_REMOVED` | Role removed from user |
 | `APPROVAL_MATRIX_CHANGED` | Approval matrix modified |
