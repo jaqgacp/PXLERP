@@ -17,6 +17,34 @@
 - Resolved OD-01 through OD-07 with recommended defaults
 - Expanded Supabase-Specific Decisions section
 
+## v3 Architecture Review Changes Applied
+
+- **COA FS Mapping Architecture Decision**: `chart_of_accounts` expanded with structured FS mapping columns (`fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`). Financial statements generated programmatically from these columns — not from hardcoded account ranges. See doc 03 Section 3 for full column specs.
+- **Income Tax Architecture**: Added income tax computation support tables (`income_tax_computation_lines`, `nolco_tracking`). ITR form selection driven by `company_compliance_profiles.income_tax_regime`. COA accounts tagged with `is_mcit_gross_income` and `is_osd_gross_revenue` flags.
+- **vat_direction / vat_classification separation**: All transaction line tables now carry two separate columns. `vat_direction` = 'output' or 'input' only. `vat_classification` = 'vatable', 'zero_rated', 'exempt', 'government', 'capital_goods', 'services'. Posting engine routes to different GL accounts based on `vat_classification`.
+- **Posting Rule Sets versioning**: `posting_rule_sets.effective_from/effective_to` added per Principle 11. Historical documents use the rule set effective on their `document_date`.
+- **system_account_config expanded**: Added PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE keys.
+- **customer_tax_profiles versioned**: Now supports multiple rows per customer with effective_from/effective_to, same pattern as `company_compliance_profiles`.
+- **companies.tax_type / business_type marked deprecated**: Superseded by `company_compliance_profiles`. Retained for backward-compat only.
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Recommended |
+|---|---|---|
+| OD-V3-ARCH-01 | Phase 1: Generate FS from COA `fs_section` tags or maintain a separate `fs_report_sections` master table? | COA tags only for Phase 1. Separate master table in Phase 2 for custom FS layouts. |
+| OD-V3-ARCH-02 | Capital goods input VAT amortization (>PHP 1M rule): handled in Phase 1 or deferred? | Phase 1: flag at entry, compute at filing. Monthly amortization JE in Phase 2. |
+| OD-V3-ARCH-03 | `companies.tax_type` and `business_type` — remove now or keep as shadow copy synced from compliance_profiles? | Keep synced for Phase 1 to avoid breaking app-layer code; remove in Phase 2 cleanup. |
+
+## v3 Cross-Document Consistency Validation
+
+- Doc 01 architecture principles → Doc 03 column specs: all 7 v3 gap areas reconciled ✓
+- Doc 02 table inventory: updated to ~202 tables, MODULE 30 added ✓
+- Doc 06 posting engine: `posting_rule_sets` versioned, `system_account_config` expanded ✓
+- Doc 03, 06, 09 (security): `income_tax_computation_lines` and `nolco_tracking` need RLS policies (see doc 09 for required additions)
+- Doc 10 checklist: v3 checklist items to be added per review findings
+
+---
+
 ## Changes Applied (v2 → v2.1) — Principle Alignment
 
 - Added Section 5.5: Compliance Profile & Feature Settings Design (Principles 1, 2, 6, 7)

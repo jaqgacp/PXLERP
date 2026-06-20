@@ -1,7 +1,7 @@
 # PXL ERP — Complete Table Inventory
-**Version:** 2.0 — Revised for Implementation Readiness
-**Total Tables:** ~210
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
+**Total Tables:** ~202
+**Status:** For CPA and Developer Review — v3 Gaps Resolved
 
 Legend:
 - **Type:** master | transaction | ledger | setup | audit | bridge | output | config | notification
@@ -29,6 +29,34 @@ Legend:
 - Added `subledger_close_certifications` to MODULE 27
 - Added `duplicate_tin_flags` to MODULE 28
 - Clarified Cash Sales and Cash Purchases as separate transaction headers
+
+## v3 Architecture Review Changes Applied
+
+- **MODULE 29 (Percentage Tax)**: No new tables — existing 3 tables confirmed complete
+- **MODULE 30: INCOME TAX COMPUTATION** (new): Added `income_tax_computation_lines` (#199) and `nolco_tracking` (#200) for ITR working paper support
+- **`chart_of_accounts`**: Structural columns added (fs_section, fs_group, fs_sort_order, cash_flow_category, control_account_type, is_mcit_gross_income, is_osd_gross_revenue, tax_deductibility) — no new table, columns added to existing table
+- **`account_types`**: Code enum expanded — no new table, code values expanded
+- **`posting_rule_sets`**: `effective_from`/`effective_to` added (Principle 11)
+- **`system_account_config`**: 4 missing keys added (PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE, OUTPUT_VAT_NON_VAT)
+- **`customer_tax_profiles`**: Versioned — UNIQUE constraint changed, effective_from/effective_to added
+- **All sales/purchase line tables**: `vat_classification` column added alongside `vat_direction`
+- Total count corrected to ~202 (was reported as ~198, adding 2 new income tax tables)
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Owner |
+|---|---|---|
+| OD-V3-T1 | Should `income_tax_computation_lines` be created on-demand per ITR computation run, or maintained continuously as journal lines post? | CPA Lead |
+| OD-V3-T2 | Phase 1: Is a separate `fs_report_sections` table needed, or are the COA columns sufficient for FS generation? | ERP Architect |
+
+## v3 Cross-Document Consistency Validation
+
+- All new tables have RLS required (company_id present) ✓
+- `income_tax_computation_lines.itr_filing_id` → `income_tax_return_filings.id` FK consistent with doc 03 Sections 19 + 20 ✓
+- `posting_rule_sets.effective_from/to` versioning consistent with doc 03 `company_compliance_profiles` pattern ✓
+- `system_account_config` key additions consistent with doc 03 `chart_of_accounts.control_account_type` expansion ✓
+
+---
 
 ## Changes Applied (v2 → v2.1) — Principle Alignment
 
@@ -456,6 +484,18 @@ Legend:
 
 ---
 
+## MODULE 30: INCOME TAX COMPUTATION SUPPORT (v3 addition)
+
+| # | Table Name | Purpose | Type | RLS | Audit | Soft Delete | Immutable | Volume |
+|---|---|---|---|---|---|---|---|---|
+| 199 | `income_tax_computation_lines` | Per-account breakdown used when computing ITR (1701Q/1701/1702Q/1702RT); populated on-demand per filing run | output | ✅ | ❌ | ❌ | ✅ | medium |
+| 200 | `nolco_tracking` | Net Operating Loss Carry-Over tracking per fiscal year; supports 3-year carry-over deduction per NIRC | ledger | ✅ | ✅ | ❌ | ❌ | low |
+
+> Income tax computation tables are Phase 1 inclusions. `income_tax_computation_lines` is recreated per computation run (idempotent). `nolco_tracking` persists across years and is updated when annual ITR is filed.
+> NOLCO applies only when `company_compliance_profiles.income_tax_regime IN ('corporate','individual')` and company uses itemized deductions (not OSD).
+
+---
+
 ## Summary by Module
 
 | Module | Table Count |
@@ -481,7 +521,8 @@ Legend:
 | Compliance — VAT | 5 |
 | Compliance — EWT | +1 (fwt_remittances_1601fq) = 10 |
 | Compliance — Income Tax | +1 (income_tax_return_filings) = 6 |
-| Compliance — Percentage Tax | 3 (new MODULE 29) |
+| Compliance — Percentage Tax | 3 (MODULE 29) |
+| Income Tax Computation Support | 2 (MODULE 30 — v3 addition) |
 | Audit & CAS | 8 |
 | Attachments | 2 |
 | Workflow & Approvals | 2 |
@@ -491,7 +532,7 @@ Legend:
 | Budget | 2 |
 | Period Close | 3 |
 | Party Duplicate Management | 2 |
-| **TOTAL** | **~198** |
+| **TOTAL** | **~202** |
 
 ---
 

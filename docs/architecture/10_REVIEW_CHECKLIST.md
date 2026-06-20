@@ -1,7 +1,26 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
+**Status:** For CPA and Developer Review — v3 Gaps Resolved
 **Sign-off Required Before:** SQL migration authoring begins
+
+---
+
+## v3 Architecture Review Changes Applied
+
+- Added Section 26: Chart of Accounts FS Mapping (v3)
+- Added Section 27: account_types Expansion (v3)
+- Added Section 28: vat_direction / vat_classification Split on Line Tables (v3)
+- Added Section 29: Posting Engine — versioning and system_account_config completeness (v3)
+- Added Section 30: Income Tax Computation Support Tables (v3)
+- Updated sign-off block to reference Sections 1–30
+- Updated Section 3 (COA) to include v3 checklist items
+- Updated Section 4 (Tax Compliance) to include vat_classification items
+
+## v3 Cross-Document Consistency Validation
+
+- All gaps identified in the v3 review are now tracked as checklist items in Sections 26–30
+- Open Decisions from v3 review are listed in each document's respective "v3 Remaining Open Decisions" section
+- No items marked [x] in this checklist until all document owners perform their review; [!] items in v3 sections flag the previously-unresolved gaps
 
 ---
 
@@ -65,11 +84,13 @@ Each item requires explicit sign-off from the responsible party before proceedin
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 3.1 | Account type hierarchy (Asset, Liability, Equity, Revenue, Expense, Contra) confirmed | CPA Lead | [ ] | |
+| 3.1 | Account type hierarchy (Asset, Liability, Equity, Revenue, Cost of Sales, Expense, Other Income, Other Expense, Contra variants) confirmed — **v3: expanded from v2** | CPA Lead | [!] | v3 expansion in Section 27 |
 | 3.2 | Normal balance side per account type defined | CPA Lead | [ ] | |
 | 3.3 | Parent-child account hierarchy (self-referencing) confirmed | CPA Lead | [ ] | |
-| 3.4 | Account used as control accounts (AR, AP, VAT, EWT) defined in `system_account_config` | CPA Lead | [ ] | |
-| 3.5 | System-seeded account types and default COA template reviewed | CPA Lead | [ ] | |
+| 3.4 | Control accounts (AR, AP, VAT, EWT, PT, FWT, Income Tax) defined BOTH in `system_account_config` AND tagged via `control_account_type` on COA — **v3: COA must carry the tag** | CPA Lead | [!] | v3 gap resolved |
+| 3.5 | System-seeded account types and default COA template reviewed with full v3 columns | CPA Lead | [ ] | |
+| 3.6 | FS mapping strategy confirmed: `fs_section` + `fs_group` + `fs_sort_order` drives FS generation — no hardcoded account ranges — **v3 addition** | CPA Lead / ERP Architect | [!] | v3 gap resolved |
+| 3.7 | Cash flow classification per account confirmed: `cash_flow_category` and `is_cash_equivalent` reviewed | CPA Lead | [ ] | |
 
 ---
 
@@ -423,6 +444,80 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
-**Once all items in Sections 1–25 are marked `[x]` or `[N/A]`, and all Open Decisions in Section 13 are resolved, SQL migration authoring may begin.**
+---
+
+## SECTION 26: Chart of Accounts — FS Mapping & Tax Classification (v3)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 26.1 | `chart_of_accounts.fs_section` — 10-value enum confirmed: current_assets, non_current_assets, current_liabilities, non_current_liabilities, equity, revenue, cost_of_sales, operating_expenses, other_income, other_expenses | CPA Lead | [!] | v3 gap resolved — was missing entirely |
+| 26.2 | `chart_of_accounts.fs_group` — free-text sub-group label confirmed (e.g., 'cash_and_equivalents','trade_receivables') for grouping on FS | CPA Lead | [ ] | |
+| 26.3 | `chart_of_accounts.fs_sort_order` — integer sort within fs_group confirmed | DB Architect | [ ] | |
+| 26.4 | `chart_of_accounts.cash_flow_category` CHECK IN ('operating','investing','financing') — confirmed NULL for accounts not on direct cash flow | CPA Lead | [ ] | |
+| 26.5 | `chart_of_accounts.control_account_type` — 9-value enum confirmed; app-layer posting prevention for control accounts confirmed for Phase 1 | DB Architect | [!] | v3 gap resolved — control accounts were only in system_account_config, not on COA itself |
+| 26.6 | `chart_of_accounts.is_mcit_gross_income` — tagging convention confirmed with CPA: which revenue accounts form MCIT gross income base? | CPA Lead / Tax Consultant | [ ] | Requires explicit list of qualifying accounts |
+| 26.7 | `chart_of_accounts.is_osd_gross_revenue` — tagging convention confirmed: which accounts form OSD 40% computation base? | CPA Lead / Tax Consultant | [ ] | |
+| 26.8 | `chart_of_accounts.tax_deductibility` CHECK IN ('fully_deductible','partially_deductible','non_deductible','not_applicable') — reviewed by Tax Consultant | Tax Consultant | [ ] | |
+| 26.9 | Default COA seed template reviewed and updated with fs_section, fs_group, fs_sort_order, cash_flow_category values for all seeded accounts | CPA Lead | [ ] | |
+
+---
+
+## SECTION 27: account_types Expansion (v3)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 27.1 | `account_types.code` expanded: added 'cost_of_sales','other_income','other_expense','contra_liability','contra_equity' — confirmed with CPA | CPA Lead | [!] | v3 gap resolved — P&L sub-sections were missing |
+| 27.2 | `account_types.fs_category` expanded: 'cost_of_sales_section','other_income_expense_section' — confirmed maps to correct FS section | CPA Lead | [ ] | |
+| 27.3 | All existing seeded accounts re-assigned to correct expanded account_type (cost_of_sales vs expense, other_income vs revenue, etc.) | CPA Lead | [ ] | |
+| 27.4 | Normal balance side confirmed for each new account_type: cost_of_sales=debit, other_income=credit, other_expense=debit, contra_liability=debit, contra_equity=debit | CPA Lead | [ ] | |
+
+---
+
+## SECTION 28: vat_direction / vat_classification Split on Line Tables (v3)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 28.1 | `sales_invoice_lines.vat_direction` now CHECK IN ('output') only — confirmed; classification moved to `vat_classification` | CPA Lead | [!] | v3 gap resolved — was mixing direction+classification |
+| 28.2 | `sales_invoice_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') — confirmed complete for sales transactions | CPA Lead | [ ] | |
+| 28.3 | `cash_sale_lines.vat_direction` and `vat_classification` — same pattern confirmed | CPA Lead | [!] | v3 gap resolved |
+| 28.4 | `vendor_bill_lines.vat_direction` now CHECK IN ('input') only — confirmed | CPA Lead | [!] | v3 gap resolved |
+| 28.5 | `vendor_bill_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt','capital_goods','services') — confirmed; 'capital_goods' triggers PHP 1M threshold check | CPA Lead / Tax Consultant | [ ] | |
+| 28.6 | `cash_purchase_lines.vat_direction` and `vat_classification` — same pattern confirmed | CPA Lead | [!] | v3 gap resolved |
+| 28.7 | Posting engine routing logic confirmed: capital_goods → INPUT_VAT_CAPITAL_GOODS; services → INPUT_VAT (or INPUT_VAT_DEFERRED); vatable → INPUT_VAT | DB Architect | [ ] | |
+| 28.8 | `vat_entries` table `vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') — confirmed consistent with sales line tables (capital_goods is purchase-only classification, not in vat_entries) | CPA Lead | [ ] | |
+
+---
+
+## SECTION 29: Posting Engine — Versioning & System Account Config (v3)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 29.1 | `posting_rule_sets.effective_from` and `effective_to` added — confirmed per Principle 11 | DB Architect | [!] | v3 gap resolved — Principle 11 violation fixed |
+| 29.2 | Historical transaction posting uses rule set effective on `document_date` — confirmed in posting engine logic | DB Architect | [ ] | |
+| 29.3 | `system_account_config` key `PERCENTAGE_TAX_PAYABLE` added — company setup wizard prompts for this when `taxpayer_type = 'non_vat'` | DB Architect | [!] | v3 gap resolved |
+| 29.4 | `system_account_config` key `FWT_PAYABLE` added — required when company has FWT obligations in `filing_obligations` | DB Architect | [!] | v3 gap resolved |
+| 29.5 | `system_account_config` key `INCOME_TAX_PAYABLE` added — required for quarterly/annual income tax posting | DB Architect | [!] | v3 gap resolved |
+| 29.6 | Posting engine abort behavior confirmed: missing required `system_account_config` key causes abort with clear error message (not silent failure) | DB Architect | [ ] | |
+| 29.7 | `company_compliance_profiles.filing_obligations` array drives which `system_account_config` keys are required at setup | CPA Lead | [ ] | |
+
+---
+
+## SECTION 30: Income Tax Computation Support (v3)
+
+| # | Item | Owner | Status | Comments |
+|---|---|---|---|---|
+| 30.1 | `income_tax_computation_lines` table design reviewed — on-demand population per ITR computation run, idempotent | CPA Lead / DB Architect | [ ] | |
+| 30.2 | ITR form selection logic confirmed: income_tax_regime='corporate' → 1702Q/1702RT; 'individual' → 1701Q/1701; subject to MCIT flag | CPA Lead / Tax Consultant | [ ] | |
+| 30.3 | MCIT computation: `is_mcit_gross_income = true` accounts on COA form gross income base; 2% × gross income vs regular tax; whichever is higher is the tax due | Tax Consultant | [ ] | |
+| 30.4 | OSD computation: `is_osd_gross_revenue = true` accounts on COA form gross revenue base; 40% × gross revenue = deductible expenses under OSD | Tax Consultant | [ ] | |
+| 30.5 | `nolco_tracking` reviewed: only applicable for itemized deduction taxpayers; OSD users cannot carry over losses | Tax Consultant | [ ] | |
+| 30.6 | NOLCO 3-year carry-over enforcement: `applied_fy1_amount + applied_fy2_amount + applied_fy3_amount ≤ nolco_amount` constraint confirmed | CPA Lead | [ ] | |
+| 30.7 | Quarterly income tax: `income_tax_computation_lines` used per quarter filing; annual computation uses same table with fiscal_year scope | CPA Lead | [ ] | |
+| 30.8 | 2307 received from customers (certificates_2307_received) — confirmed as creditable tax reducing income_tax_payable | CPA Lead / Tax Consultant | [ ] | |
+| 30.9 | RLS on `income_tax_computation_lines` and `nolco_tracking` reviewed per doc 09 v3 additions | DB Architect | [ ] | |
+
+---
+
+**Once all items in Sections 1–30 are marked `[x]` or `[N/A]`, and all Open Decisions across all documents are resolved or explicitly deferred, SQL migration authoring may begin.**
 
 *Next step after sign-off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*

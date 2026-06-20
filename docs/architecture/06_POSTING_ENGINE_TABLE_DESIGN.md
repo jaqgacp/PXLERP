@@ -1,6 +1,31 @@
 # PXL ERP — Posting Engine Table Design
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
+**Status:** For CPA and Developer Review — v3 Gaps Resolved
+
+---
+
+## v3 Architecture Review Changes Applied
+
+- **`posting_rule_sets`**: Added `effective_from` and `effective_to` columns (Principle 11 — all rule/rate tables must be versioned)
+- **`system_account_config`**: Added missing keys: `PERCENTAGE_TAX_PAYABLE`, `FWT_PAYABLE`, `INCOME_TAX_PAYABLE`, `OUTPUT_VAT_NON_VAT` (for PT companies posting gross receipts without VAT)
+- **`posting_rule_lines.applies_to`**: Expanded to include `'CAPITAL_GOODS_LINES_ONLY'` and `'PT_LINES_ONLY'` for routing non-VAT company lines
+- **vat_classification routing**: Posting engine now reads `vat_classification` (not `vat_direction`) from line tables to route to `INPUT_VAT`, `INPUT_VAT_CAPITAL_GOODS`, or `INPUT_VAT_DEFERRED` per Principle 11 v3 fix
+- Confirmed: EWT line routing uses ATC code series prefix (WC/WI = EWT → 1601EQ; WF = FWT → 1601FQ)
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Options | Recommended |
+|---|---|---|---|
+| OD-PE-01 | `posting_rule_sets` — are rules company-specific or system-wide (seeded)? | Company-specific (customizable) / System-seeded (immutable) | System-seeded with `is_system=true`; companies get copies they can clone |
+| OD-PE-02 | When `taxpayer_type = 'non_vat'`, do `vat_entries` get created with zero VAT or skipped entirely? | Create zero-rate vat_entries / Skip vat_entries, create pt_entries only | Skip vat_entries; create percentage_tax_entries directly |
+| OD-PE-03 | Capital goods input VAT (>PHP 1M) — Phase 1: accrue monthly amortization via recurring JE or compute at filing time? | Recurring JE / Compute at filing | Phase 1: Compute at filing; recurring JE in Phase 2 |
+
+## v3 Cross-Document Consistency Validation
+
+- `posting_rule_lines.account_config_key` values match `system_account_config` keys (expanded list) ✓
+- `vat_classification` values on line tables align with `posting_rule_lines.applies_to` routing logic ✓
+- `percentage_tax_entries` → `PERCENTAGE_TAX_PAYABLE` config key → `chart_of_accounts.control_account_type = 'PT_PAYABLE_CONTROL'` ✓ (see doc 03 v3)
+- `fwt_remittances_1601fq` → `FWT_PAYABLE` config key → `chart_of_accounts.control_account_type = 'FWT_PAYABLE_CONTROL'` ✓
 
 ---
 
@@ -59,10 +84,15 @@ Defines the top-level rule set for each transaction type.
 | `description` | text | NULL | |
 | `is_active` | boolean | NOT NULL DEFAULT true | |
 | `is_system` | boolean | NOT NULL DEFAULT false | System rules cannot be deleted |
+| `effective_from` | date | NOT NULL | Date this rule set takes effect — **[v3 addition: Principle 11 versioning]** |
+| `effective_to` | date | NULL | NULL = currently active — **[v3 addition: Principle 11]** |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `created_by` | uuid | FK auth.users | |
 | `updated_at` | timestamptz | NULL | |
 | `updated_by` | uuid | FK auth.users | |
+
+**Constraints:** `UNIQUE(company_id, rule_set_code, effective_from)`. Partial unique index `WHERE effective_to IS NULL` ensures one active rule per code per company.
+**v3 Principle 11 Note:** If BIR changes VAT rate or EWT rates, a new `posting_rule_set` with updated `effective_from` is inserted. Historical transactions use the rule set active on their `document_date`. Do NOT update existing active rule sets — insert new versions.
 
 **Valid `transaction_type` values:**
 `sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `inventory_adjustment` | `asset_depreciation` | `bank_deposit` | `bank_withdrawal` | `bank_transfer` | `journal_entry` | `stock_transfer` | `asset_disposal`
@@ -113,8 +143,28 @@ Maps semantic account keys to actual GL accounts per company.
 
 UNIQUE: `(company_id, config_key, branch_id, effective_from)`
 
-**Standard config keys:**
-`AR_TRADE` | `AP_TRADE` | `OUTPUT_VAT` | `INPUT_VAT` | `INPUT_VAT_DEFERRED` | `INPUT_VAT_CAPITAL_GOODS` | `EWT_PAYABLE` | `CASH_ON_HAND` | `CASH_IN_BANK` | `INVENTORY_CONTROL` | `COST_OF_GOODS_SOLD` | `RETAINED_EARNINGS` | `INCOME_SUMMARY`
+**Standard config keys (v3 expanded):**
+
+| Key | Description | COA control_account_type |
+|---|---|---|
+| `AR_TRADE` | Accounts Receivable — Trade | AR_CONTROL |
+| `AP_TRADE` | Accounts Payable — Trade | AP_CONTROL |
+| `OUTPUT_VAT` | Output VAT Payable (VAT companies) | OUTPUT_VAT_CONTROL |
+| `INPUT_VAT` | Input VAT (standard 12%) | INPUT_VAT_CONTROL |
+| `INPUT_VAT_DEFERRED` | Input VAT — Deferred (pending validation) | INPUT_VAT_CONTROL |
+| `INPUT_VAT_CAPITAL_GOODS` | Input VAT — Capital Goods (amortized) | INPUT_VAT_CONTROL |
+| `EWT_PAYABLE` | Expanded Withholding Tax Payable (1601EQ) | EWT_PAYABLE_CONTROL |
+| `FWT_PAYABLE` | Final Withholding Tax Payable (1601FQ) — **[v3 addition]** | FWT_PAYABLE_CONTROL |
+| `PERCENTAGE_TAX_PAYABLE` | Percentage Tax Payable (2551Q, non-VAT) — **[v3 addition]** | PT_PAYABLE_CONTROL |
+| `INCOME_TAX_PAYABLE` | Income Tax Payable (1702Q/1701Q quarterly) — **[v3 addition]** | INCOME_TAX_PAYABLE_CONTROL |
+| `CASH_ON_HAND` | Cash on Hand (petty cash, over-the-counter) | — |
+| `CASH_IN_BANK` | Cash in Bank (default checking account) | — |
+| `INVENTORY_CONTROL` | Inventory — Trading Goods / Raw Materials | INVENTORY_CONTROL |
+| `COST_OF_GOODS_SOLD` | Cost of Goods Sold | — |
+| `RETAINED_EARNINGS` | Retained Earnings (year-end closing) | — |
+| `INCOME_SUMMARY` | Income Summary (closing account) | — |
+
+**v3 Note:** `PERCENTAGE_TAX_PAYABLE`, `FWT_PAYABLE`, and `INCOME_TAX_PAYABLE` were missing in v2.1. Their absence would cause posting engine abort for non-VAT companies (PT posting) and companies with FWT/income tax obligations. These keys are now required at company setup — the setup wizard must prompt for account assignment when the corresponding compliance obligation is enabled in `company_compliance_profiles.filing_obligations`.
 
 ---
 

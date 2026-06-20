@@ -1,9 +1,39 @@
 # PXL ERP — Table Column Specifications
-**Version:** 2.0 — Revised for Implementation Readiness
-**Status:** For CPA and Developer Review
+**Version:** 3.0 — Final Architecture Review (Database Freeze Candidate)
+**Status:** For CPA and Developer Review — v3 Gaps Resolved
 
 > Money fields use `numeric(18,4)`. Rates use `numeric(10,6)`. All timestamps are `timestamptz`. All PKs are `uuid DEFAULT gen_random_uuid()`.
 > Standard audit columns are listed once and assumed on all tables marked with Audit or Soft Delete in the inventory.
+
+---
+
+## v3 Architecture Review Changes Applied
+
+- **COA overhaul**: Added `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`, `control_account_type`, `is_mcit_gross_income`, `is_osd_deductible`, `tax_deductibility` to `chart_of_accounts` (replaces bare text `fs_line_mapping`)
+- **account_types expanded**: Added `cost_of_sales`, `other_income`, `other_expense`, `contra_liability`, `contra_equity` to code enum; updated `fs_category` to include `'cost_of_sales_section'` and `'other_income_expense_section'`
+- **vat_direction / vat_classification split** on ALL line tables: `sales_invoice_lines`, `cash_sale_lines`, `vendor_bill_lines`, `cash_purchase_lines` now carry two separate columns (`vat_direction` direction-only + `vat_classification` nature-only)
+- **customer_tax_profiles versioned**: Changed `UNIQUE(customer_id)` to support multiple rows with `effective_from`/`effective_to` per Principle 11
+- **companies.tax_type / business_type deprecation notice**: These columns are retained for backward-compat but superseded by `company_compliance_profiles`; marked as `[DEPRECATED — use company_compliance_profiles]`
+- **posting_rule_sets**: See doc 06 — effective_from/effective_to added
+- **system_account_config**: See doc 06 — missing keys added (PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE)
+- Added Section 20: Income Tax Computation Support Tables (income_tax_computation_lines, nolco_tracking)
+
+## v3 Remaining Open Decisions
+
+| OD# | Decision | Options | Recommended |
+|---|---|---|---|
+| OD-V3-01 | `fs_line_mapping` text column — keep as alias label alongside new structured columns or drop? | Keep (display label) / Drop | Keep as optional display label |
+| OD-V3-02 | `is_osd_deductible` flag — do we compute OSD at journal line level or at income tax filing time from account totals? | Line level / Filing level | Filing level (simpler, flag is for reports only) |
+| OD-V3-03 | `control_account_type` on COA — enforce via DB trigger (prevent manual JE to control accounts) or app-layer validation? | DB trigger / App layer | App layer Phase 1, DB trigger Phase 2 |
+| OD-V3-04 | `customer_tax_profiles` versioning — is `effective_from` customer-level or company+customer-level? | Customer-level | Company+customer scoped (a customer may have different profiles per withholding company) |
+
+## v3 Cross-Document Consistency Validation
+
+- `vat_entries.vat_direction` CHECK IN ('output','input') ✓ consistent with line table fix
+- `vat_entries.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') ✓
+- `vendor_bill_lines.vat_classification` now includes 'capital_goods','services' per BIR input VAT classification
+- `system_account_config` keys referenced in doc 06 posting rules now have corresponding COA `control_account_type` values
+- `company_compliance_profiles.filing_obligations` drives form generation; `account_types` expansion enables income statement categorization for ITR computation
 
 ---
 
@@ -96,8 +126,8 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | rdo_code | text | NULL | — | Revenue District Office code |
 | bir_registered_address | text | NOT NULL | — | Address on BIR registration |
 | industry_classification | text | NULL | — | PSIC industry code |
-| tax_type | text | NOT NULL | — | CHECK IN ('vat','non_vat','exempt') |
-| business_type | text | NOT NULL | — | CHECK IN ('corporation','partnership','sole_proprietorship','cooperative') |
+| tax_type | text | NOT NULL | — | CHECK IN ('vat','non_vat','exempt') — **[DEPRECATED: use company_compliance_profiles.taxpayer_type]** |
+| business_type | text | NOT NULL | — | CHECK IN ('corporation','partnership','sole_proprietorship','cooperative') — **[DEPRECATED: use company_compliance_profiles.legal_type]** |
 | sec_registration_no | text | NULL | — | SEC registration number |
 | dti_registration_no | text | NULL | — | DTI registration (sole props) |
 | logo_url | text | NULL | — | Supabase Storage URL |
@@ -324,18 +354,31 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | account_code | text | NOT NULL | — | e.g., '1010-001' |
 | account_name | text | NOT NULL | — | |
 | account_type_id | uuid | NOT NULL | — | FK → account_types.id |
-| parent_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| level | integer | NOT NULL | 1 | Hierarchy level (1=group) |
-| is_detail_account | boolean | NOT NULL | true | Only detail accounts can have JE lines |
+| parent_account_id | uuid | NULL | — | FK → chart_of_accounts.id (self-ref hierarchy) |
+| level | integer | NOT NULL | 1 | Hierarchy level (1=group, higher=detail) |
+| is_detail_account | boolean | NOT NULL | true | Only detail accounts receive JE lines |
 | normal_balance | text | NOT NULL | — | CHECK IN ('debit','credit') |
-| is_cash_equivalent | boolean | NOT NULL | false | For Cash Flow statement |
-| fs_line_mapping | text | NULL | — | Financial statement line reference |
-| vat_account_type | text | NULL | — | 'input_vat','output_vat','vat_payable', etc. |
+| **FS Mapping Columns (v3 addition)** | | | | |
+| fs_section | text | NULL | — | CHECK IN ('current_assets','non_current_assets','current_liabilities','non_current_liabilities','equity','revenue','cost_of_sales','operating_expenses','other_income','other_expenses') — maps to FS statement section |
+| fs_group | text | NULL | — | Sub-group label within section (e.g., 'cash_and_equivalents','trade_receivables','inventories','ppe_net') for grouping lines on FS |
+| fs_line_mapping | text | NULL | — | Human-readable FS line label (e.g., 'Cash on Hand', 'Trade Receivables – Net') — display alias |
+| fs_sort_order | integer | NULL | — | Display sort order within fs_group on financial statements |
+| cash_flow_category | text | NULL | — | CHECK IN ('operating','investing','financing') — NULL = not on direct cash flow statement |
+| is_cash_equivalent | boolean | NOT NULL | false | TRUE = include in 'Cash and Cash Equivalents' opening balance of cash flow |
+| **Control Account Columns (v3 addition)** | | | | |
+| control_account_type | text | NULL | — | CHECK IN ('AR_CONTROL','AP_CONTROL','INVENTORY_CONTROL','OUTPUT_VAT_CONTROL','INPUT_VAT_CONTROL','EWT_PAYABLE_CONTROL','PT_PAYABLE_CONTROL','FWT_PAYABLE_CONTROL','INCOME_TAX_PAYABLE_CONTROL') — maps to system_account_config keys; prevents direct JE posting at app layer |
+| vat_account_type | text | NULL | — | 'input_vat','output_vat','vat_payable','input_vat_deferred','input_vat_capital_goods' — VAT sub-classification |
+| **Income Tax Classification Columns (v3 addition)** | | | | |
+| is_mcit_gross_income | boolean | NOT NULL | false | Revenue accounts forming MCIT gross income base (2% of gross income vs regular corporate tax, whichever is higher) |
+| is_osd_gross_revenue | boolean | NOT NULL | false | Revenue accounts forming OSD computation base (40% of gross revenue replaces itemized deductions) |
+| tax_deductibility | text | NOT NULL | 'fully_deductible' | CHECK IN ('fully_deductible','partially_deductible','non_deductible','not_applicable') — for income tax itemized deduction classification |
 | is_active | boolean | NOT NULL | true | |
 | import_batch_id | uuid | NULL | — | FK → import_batches.id |
 | *+ standard audit columns* | | | | |
 
 **Constraints:** `UNIQUE(company_id, account_code)`
+**Indexes:** `idx_coa_company_id`, `idx_coa_account_code`, `idx_coa_fs_section`, `idx_coa_parent_account_id`
+**v3 Note:** `fs_section` + `fs_group` + `fs_sort_order` are the structured replacement for the old bare-text `fs_line_mapping`. `fs_line_mapping` is retained as an optional display label. The combination enables programmatic FS generation without hardcoded account ranges.
 
 ---
 
@@ -343,11 +386,23 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | Column | Type | Null | Default | Description |
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
-| code | text | NOT NULL | — | 'asset','liability','equity','revenue','expense','contra_asset','contra_revenue' |
-| name | text | NOT NULL | — | |
+| code | text | NOT NULL | — | CHECK IN ('asset','liability','equity','revenue','cost_of_sales','expense','other_income','other_expense','contra_asset','contra_liability','contra_equity','contra_revenue','contra_expense') — **v3: added cost_of_sales, other_income, other_expense, contra_liability, contra_equity** |
+| name | text | NOT NULL | — | Display name |
 | normal_balance | text | NOT NULL | — | CHECK IN ('debit','credit') |
-| fs_category | text | NOT NULL | — | 'balance_sheet','income_statement' |
+| fs_category | text | NOT NULL | — | CHECK IN ('balance_sheet','income_statement','cost_of_sales_section','other_income_expense_section') — **v3: expanded for P&L sub-sections** |
 | sort_order | integer | NOT NULL | 0 | Display order |
+
+**v3 Note — account_type code semantics:**
+- `revenue` — Operating revenue (Sales, Service Income)
+- `cost_of_sales` — Cost of Goods Sold / Cost of Services (separate P&L section)
+- `expense` — Operating expenses (SG&A, payroll, depreciation)
+- `other_income` — Non-operating income (interest income, gain on sale)
+- `other_expense` — Non-operating expense (interest expense, bank charges)
+- `contra_asset` — Accumulated depreciation, allowance for doubtful accounts
+- `contra_revenue` — Sales returns, discounts
+- `contra_liability` — Bond discount, deferred revenue reversal
+- `contra_equity` — Treasury stock
+- `contra_expense` — Purchase returns
 
 ---
 
@@ -421,17 +476,20 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | customer_id | uuid | NOT NULL | — | FK → customers.id |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| tin | text | NOT NULL | — | Customer TIN |
-| bir_registered_address | text | NULL | — | |
-| bir_rdo_code | text | NULL | — | |
+| company_id | uuid | NOT NULL | — | FK → companies.id (scoped: same customer may have different profiles per withholding company) |
+| tin | text | NOT NULL | — | Customer TIN snapshot for this period |
+| bir_registered_address | text | NULL | — | Address snapshot |
+| bir_rdo_code | text | NULL | — | RDO code snapshot |
 | vat_registration_no | text | NULL | — | |
-| is_ewt_agent | boolean | NOT NULL | false | |
+| is_ewt_agent | boolean | NOT NULL | false | Customer withholds EWT from payments to us |
 | default_ewt_atc_id | uuid | NULL | — | FK → atc_codes.id |
-| effective_date | date | NOT NULL | — | When this profile takes effect |
+| effective_from | date | NOT NULL | — | Date this profile takes effect **[v3: renamed from effective_date]** |
+| effective_to | date | NULL | — | NULL = currently active; set when profile changes **[v3 addition — Principle 11]** |
 | *+ standard audit columns* | | | | |
 
-**Constraints:** `UNIQUE(customer_id)` — one tax profile per customer
+**Constraints:** `UNIQUE(company_id, customer_id, effective_from)` — one profile per customer per effective date per company
+**Partial Unique Index:** `WHERE effective_to IS NULL` — enforces only one active profile per (company_id, customer_id)
+**v3 Change:** Removed `UNIQUE(customer_id)`. Customers can have multiple versioned profiles. Historical transactions use the profile active on their `document_date`. This mirrors `company_compliance_profiles` versioning per Principle 11.
 
 ---
 
@@ -565,13 +623,16 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | discount_amount | numeric(18,4) | NOT NULL | 0 | |
 | net_amount | numeric(18,4) | NOT NULL | — | After discount, before VAT |
 | vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output','zero_rated','exempt','government') |
-| vat_rate | numeric(10,6) | NOT NULL | 0 | Snapshot of rate |
+| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output') — always output for sales; direction is immutable on this table **[v3 fix: removed misplaced classification values]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','government') — nature of the VAT treatment **[v3 addition: separate column from direction]** |
+| vat_rate | numeric(10,6) | NOT NULL | 0 | Snapshot of rate at time of posting |
 | vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | net_amount + vat_amount |
 | revenue_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
 | warehouse_id | uuid | NULL | — | FK → warehouses.id (for inventory items) |
 | *+ standard audit columns* | | | | |
+
+**v3 Note:** `vat_direction` is always 'output' on sales lines. `vat_classification` drives the SLSP category, the zero-rated export documentation requirement, and the government customer treatment.
 
 ---
 
@@ -615,7 +676,8 @@ Cash sales — immediate collection, no AR created.
 | discount_amount | numeric(18,4) | NOT NULL | 0 | |
 | net_amount | numeric(18,4) | NOT NULL | — | |
 | vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output','zero_rated','exempt','government') |
+| vat_direction | text | NOT NULL | 'output' | CHECK IN ('output') — always output for cash sales **[v3 fix]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','government') **[v3 addition]** |
 | vat_rate | numeric(10,6) | NOT NULL | 0 | |
 | vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | |
@@ -702,16 +764,19 @@ AR collection — applied against sales invoices.
 | unit_cost | numeric(18,4) | NOT NULL | — | |
 | net_amount | numeric(18,4) | NOT NULL | — | Before VAT |
 | input_vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input','input_deferred','capital_goods','exempt','zero_rated') |
+| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input') — always input for purchase lines **[v3 fix: removed misplaced classification values]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','capital_goods','services') — determines input VAT treatment and amortization **[v3 addition]** |
 | input_vat_rate | numeric(10,6) | NOT NULL | 0 | Snapshot |
 | input_vat_amount | numeric(18,4) | NOT NULL | 0 | |
-| total_amount | numeric(18,4) | NOT NULL | — | net_amount + vat_amount |
+| total_amount | numeric(18,4) | NOT NULL | — | net_amount + input_vat_amount |
 | ewt_atc_id | uuid | NULL | — | FK → atc_codes.id |
 | ewt_rate | numeric(10,6) | NOT NULL | 0 | |
 | ewt_amount | numeric(18,4) | NOT NULL | 0 | |
 | expense_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
 | warehouse_id | uuid | NULL | — | FK → warehouses.id |
 | *+ standard audit columns* | | | | |
+
+**v3 Note:** `vat_classification = 'capital_goods'` triggers special input VAT treatment (60-month amortization for amounts > PHP 1M per BIR rules). `vat_classification = 'services'` (input VAT on services) has distinct RELIEF reporting treatment. The posting engine must read `vat_classification` to route to the correct GL account (INPUT_VAT vs INPUT_VAT_CAPITAL_GOODS vs INPUT_VAT_DEFERRED).
 
 ---
 
@@ -751,7 +816,8 @@ Cash purchases — immediate payment, no AP created.
 | unit_cost | numeric(18,4) | NOT NULL | — | |
 | net_amount | numeric(18,4) | NOT NULL | — | |
 | input_vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input','input_deferred','capital_goods','exempt','zero_rated') |
+| vat_direction | text | NOT NULL | 'input' | CHECK IN ('input') — always input for cash purchases **[v3 fix]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','capital_goods','services') **[v3 addition]** |
 | input_vat_rate | numeric(10,6) | NOT NULL | 0 | |
 | input_vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | |
@@ -1554,9 +1620,63 @@ Immutable. One row per ATC per line per source document.
 | OD-CS-05 | `document_no` assigned at DRAFT or at POST? | Recommended: At DRAFT (allocated from `number_series` with SELECT FOR UPDATE). Voided drafts consume their number per ATP rules. | all transaction tables |
 | OD-CS-06 | `cash_sales.customer_id` — require or allow NULL for walk-in customers? | Recommended: NULL allowed. BIR allows aggregated walk-in sales below PHP threshold in SLSP. | cash_sales |
 
+---
+
+## SECTION 20: INCOME TAX COMPUTATION SUPPORT (v3 addition)
+
+### `income_tax_computation_lines`
+Stores per-account breakdown used when computing income tax returns (1701Q/1701/1702Q/1702RT). Populated by the ITR computation engine from `gl_balances` + `chart_of_accounts.fs_section` classification.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| itr_filing_id | uuid | NOT NULL | — | FK → income_tax_return_filings.id |
+| account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id |
+| account_code | text | NOT NULL | — | Snapshot |
+| account_name | text | NOT NULL | — | Snapshot |
+| fs_section | text | NOT NULL | — | Snapshot from COA at computation time |
+| tax_deductibility | text | NOT NULL | — | Snapshot from COA |
+| is_mcit_gross_income | boolean | NOT NULL | false | Snapshot from COA |
+| is_osd_gross_revenue | boolean | NOT NULL | false | Snapshot from COA |
+| period_ytd_debit | numeric(18,4) | NOT NULL | 0 | YTD debit from gl_balances |
+| period_ytd_credit | numeric(18,4) | NOT NULL | 0 | YTD credit from gl_balances |
+| book_amount | numeric(18,4) | NOT NULL | 0 | Net book balance (positive = income/expense) |
+| tax_adjustment | numeric(18,4) | NOT NULL | 0 | Book-to-tax difference (add-back or deduction) |
+| taxable_amount | numeric(18,4) | NOT NULL | 0 | book_amount + tax_adjustment |
+| computed_at | timestamptz | NOT NULL | now() | |
+| computed_by | uuid | NOT NULL | — | FK → profiles.id |
+
+**Constraints:** `UNIQUE(itr_filing_id, account_id)`
+
+---
+
+### `nolco_tracking`
+Net Operating Loss Carry-Over tracking per fiscal year. NOLCO may be deducted within 3 consecutive taxable years following the year of loss.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id — year the loss was incurred |
+| nolco_amount | numeric(18,4) | NOT NULL | 0 | Net operating loss for the year |
+| applied_fy1_amount | numeric(18,4) | NOT NULL | 0 | Amount applied in year +1 |
+| applied_fy2_amount | numeric(18,4) | NOT NULL | 0 | Amount applied in year +2 |
+| applied_fy3_amount | numeric(18,4) | NOT NULL | 0 | Amount applied in year +3 |
+| remaining_balance | numeric(18,4) | NOT NULL | 0 | nolco_amount - sum of applied amounts |
+| is_expired | boolean | NOT NULL | false | True after 3 carry-over years lapse |
+| *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, fiscal_year_id)`
+**v3 Note:** NOLCO is only applicable for income_tax_regime = 'corporate' or 'individual' using itemized deductions. OSD users do not carry over losses.
+
+---
+
 ## Implementation Notes
 
 - All `{party}_tin` snapshot columns on compliance tables (`vat_entries`, `ewt_entries`, etc.) must be populated at document posting time by copying from the master record. They must NOT be updated if the master TIN changes later.
-- `vat_direction` replaces the ambiguous `vat_type` column from v1. Direction is either 'output' (sales) or 'input' (purchases). Classification (vatable/zero_rated/exempt) is separate.
+- `vat_direction` replaces the ambiguous `vat_type` column from v1. Direction is either 'output' (sales) or 'input' (purchases). Classification (vatable/zero_rated/exempt) is separate. **v3: All line tables now carry both `vat_direction` AND `vat_classification` as separate columns.**
 - `cash_sales` and `cash_purchases` share the same structural pattern as `sales_invoices` and `vendor_bills` but have no AR/AP ledger impact.
 - `petty_cash_voucher_lines` was missing in v1 — now fully specified. EWT on petty cash is captured at the line level, not deferred to replenishment.
+- **v3: COA `fs_section` + `fs_group` + `fs_sort_order` enable programmatic generation of FS reports (BS, P&L, SOCE) without hardcoded account ranges. The posting engine is not affected — it still posts to account_id regardless of FS classification.**
+- **v3: `income_tax_computation_lines` and `nolco_tracking` are Phase 1 inclusion. They are computed tables — populated on-demand when ITR computation is triggered, not updated continuously.**
