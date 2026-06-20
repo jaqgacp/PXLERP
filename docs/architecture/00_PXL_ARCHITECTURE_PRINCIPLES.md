@@ -1,83 +1,285 @@
 # PXL ERP — Architecture Principles
-**Version:** 1.0 — Blueprint Locked
-**Status:** Active — All decisions must reference this document
+**Version:** 2.0 — Constitutional Foundation
+**Status:** Active — All decisions must reference this document before implementation
 
 ---
 
 ## Purpose
 
-This document defines the non-negotiable design principles of PXL ERP.
+This document defines the non-negotiable architectural principles of PXL ERP.
 
-All blueprint, database, UI/UX, compliance, posting engine, and implementation decisions must follow these principles.
+All future decisions involving:
+
+- Blueprint
+- UI/UX
+- Database Design
+- Supabase Architecture
+- Security
+- Compliance
+- Posting Engine
+- Reporting
+- Audit Trail
+- Import/Export
+- Integrations
+- Automation
+
+must follow these principles.
+
+If a future design conflicts with these principles, these principles take precedence.
+
+These principles are the constitutional foundation of PXL ERP.
 
 ---
 
-## 1. Relevance-First User Experience
+## PRINCIPLE 1 — RELEVANCE-FIRST ERP
 
-Users should only see the modules, menus, reports, dashboards, fields, and actions that are relevant to their company setup, role, permissions, and compliance profile.
+Users should only see:
 
-Examples:
+- modules they use
+- reports applicable to them
+- compliance obligations they have
+- actions they are authorized to perform
+- setup options relevant to their company profile
 
-- A Non-VAT company should not see VAT returns as active workflows.
-- A VAT company should see VAT dashboards, VAT reports, and VAT validation.
-- A sole proprietor should not see corporate-only tax features such as MCIT if not applicable.
-- A corporation should see corporate income tax features when applicable.
-- A company without inventory enabled should not see inventory workflows.
-- A user without posting permission should not see posting actions.
+The ERP should adapt to the company. The company should not adapt to the ERP.
 
-**Principle:** Do not overwhelm the user with irrelevant ERP complexity.
+### VAT Company
+
+**Show:**
+- VAT Dashboard
+- VAT Reports
+- VAT Returns
+- VAT Reconciliation
+- Output VAT Review
+- Input VAT Review
+
+**Hide:**
+- Percentage Tax Dashboard
+- 2551Q Workflows
 
 ---
 
-## 2. One Database, Configurable Behavior
+### NON-VAT Company
 
-PXL should not create separate systems for VAT, Non-VAT, service, trading, branch-based, or inventory-based clients.
+**Show:**
+- Percentage Tax Dashboard
+- 2551Q Workflows
+- Percentage Tax Reports
 
-Use one database architecture.
+**Hide:**
+- VAT Dashboard
+- VAT Returns
+- VAT Working Papers
 
-Behavior should be driven by:
+---
+
+### Sole Proprietor
+
+**Show:**
+- Individual income tax workflows
+
+**Hide:**
+- MCIT
+- Corporate tax schedules
+
+---
+
+### Corporation / OPC
+
+**Show:**
+- MCIT
+- Corporate tax schedules
+- Corporate compliance dashboards
+
+---
+
+### Company Without Inventory
+
+**Hide:**
+- Warehouses
+- Stock Transfers
+- Inventory Valuation
+- Inventory Ledger
+
+---
+
+### Company Without Fixed Assets
+
+**Hide:**
+- Asset Register
+- Depreciation Run
+- Asset Disposal
+
+---
+
+### User Without Posting Rights
+
+**Hide:**
+- Post
+- Reverse
+- Fiscal Lock
+- Reopen Period
+
+**Principle:** Only show what is relevant.
+
+---
+
+## PRINCIPLE 2 — ONE DATABASE, CONFIGURABLE BEHAVIOR
+
+PXL must never create separate systems for:
+
+- VAT companies
+- NON-VAT companies
+- Service businesses
+- Trading businesses
+- Multi-branch businesses
+- Inventory businesses
+
+There must be one architecture.
+
+Behavior must be driven by:
 
 - `company_compliance_profiles`
 - `company_feature_settings`
-- user roles and permissions
+- user roles
+- permissions
 - transaction classifications
-- posting rule sets
+- posting rules
 - validation rules
 
-**Principle:** Different client behavior should come from configuration, not duplicated systems.
+**Principle:** Configuration, not duplication.
 
 ---
 
-## 3. Company Scope Must Stay Focused
+## PRINCIPLE 3 — SEPARATE BUSINESS DRIVERS
 
-PXL Phase 1 targets normal Philippine private-sector businesses only.
+Never mix unrelated business concepts.
 
-**Supported company taxpayer types:**
+PXL uses independent business drivers.
+
+---
+
+### Driver 1 — Company Taxpayer Type
+
+Determines VAT vs Percentage Tax behavior.
+
+**Values:** `VAT` | `NON_VAT`
+
+**Affects:**
+- Sales
+- Purchasing
+- Compliance
+- Reports
+- Posting Rules
+- Dashboards
+
+---
+
+### Driver 2 — Income Tax Regime
+
+Determines income tax treatment.
+
+**Values:** `CORPORATE` | `INDIVIDUAL` | `PARTNERSHIP` | `COOPERATIVE`
+
+**Affects:**
+- Income Tax Dashboard
+- Quarterly ITR
+- Annual ITR
+- MCIT
+- OSD
+- NOLCO
+- Book-to-Tax
+- Tax Credits
+
+---
+
+### Driver 3 — Legal Type
+
+Determines legal structure.
+
+**Values:** `SOLE_PROPRIETOR` | `REGULAR_CORPORATION` | `OPC` | `PARTNERSHIP` | `COOPERATIVE`
+
+**Affects:**
+- Company Setup
+- Registration Requirements
+- Compliance Reminders
+- Company Profile
+
+---
+
+### Driver 4 — Enabled Features
+
+**Examples:** Inventory | Fixed Assets | Petty Cash | Bank Reconciliation | Budgeting
+
+**Affects:**
+- Menus
+- Dashboards
+- Navigation
+- Reports
+
+---
+
+### Driver 5 — Transaction Tax Classification
+
+Determines transaction-level tax treatment.
+
+**Values:** `VATABLE` | `ZERO_RATED` | `EXEMPT` | `NON_VAT`
+
+**Affects:**
+- VAT
+- Percentage Tax
+- Compliance
+- Reports
+- Posting
+
+> ZERO_RATED and EXEMPT are transaction classifications. They are not automatically company classifications.
+
+---
+
+### Driver 6 — User Security Context
+
+Determines access.
+
+**Values:** Role | Permission | Company Access | Branch Access | Department Access
+
+**Affects:**
+- Visibility
+- Edit Rights
+- Approval Rights
+- Posting Rights
+
+---
+
+## PRINCIPLE 4 — COMPANY SCOPE MUST STAY FOCUSED
+
+Phase 1 supports:
+
+**Company Taxpayer Types:**
 - VAT
 - NON_VAT
 
-**Supported company legal types:**
+**Company Legal Types:**
 - SOLE_PROPRIETOR
 - REGULAR_CORPORATION
 - OPC
 - PARTNERSHIP
 - COOPERATIVE
 
-**Out of scope as client/company profiles:**
-- GOVERNMENT
-- PEZA
-- BOI
-- FOREIGN_ENTITY
+**Out of Scope:**
+- Government Entities
+- PEZA Entities
+- BOI Entities
+- Foreign Entities
 
-**Principle:** Do not overbuild company/client scope before the core market is stable.
+**Principle:** Master the core PH private-sector market first.
 
 ---
 
-## 4. Customer/Supplier Scope Is Broader Than Company Scope
+## PRINCIPLE 5 — CUSTOMER AND SUPPLIER SCOPE IS BROADER
 
-Even if PXL does not target Government, PEZA, BOI, or Foreign entities as client companies, PXL users may transact with those parties.
+Even though PXL does not target Government, PEZA, BOI, or Foreign entities as clients, users may transact with them.
 
-Therefore customer and supplier tax profiles may support:
+Customer and Supplier classifications may include:
 
 - VAT
 - NON_VAT
@@ -87,95 +289,82 @@ Therefore customer and supplier tax profiles may support:
 - BOI
 - FOREIGN_ENTITY
 
-**Principle:** Company scope is narrow. Party transaction classification must be broad enough for real-world PH transactions.
+**Principle:** Company scope and transaction scope are different.
 
 ---
 
-## 5. Separate Legal Type, Taxpayer Type, and Income Tax Regime
+## PRINCIPLE 6 — COMPLIANCE PROFILE DRIVES COMPLIANCE
 
-Do not mix legal form, VAT status, and income tax treatment.
+Compliance behavior must come from `company_compliance_profiles`.
 
-These are separate drivers:
+Contents include:
 
-**`legal_type`:**
-- SOLE_PROPRIETOR
-- REGULAR_CORPORATION
-- OPC
-- PARTNERSHIP
-- COOPERATIVE
-
-**`taxpayer_type`:**
-- VAT
-- NON_VAT
-
-**`income_tax_regime`:**
-- CORPORATE
-- INDIVIDUAL
-- PARTNERSHIP
-- COOPERATIVE
-
-Examples:
-- OPC → `legal_type` OPC, `income_tax_regime` CORPORATE
-- Sole Proprietor → `legal_type` SOLE_PROPRIETOR, `income_tax_regime` INDIVIDUAL
-- Regular Corporation → `legal_type` REGULAR_CORPORATION, `income_tax_regime` CORPORATE
-
-**Principle:** Correct tax behavior requires separate classification dimensions.
-
----
-
-## 6. Compliance Profile Drives Compliance Logic
-
-Compliance behavior should be driven by `company_compliance_profiles`, not hardcoded UI assumptions.
-
-`company_compliance_profiles` should determine:
-
-- VAT or Non-VAT treatment
-- percentage tax applicability
-- income tax regime
-- withholding agent status
-- RDO
+- `taxpayer_type`
+- `legal_type`
+- `income_tax_regime`
+- `withholding_agent_status`
 - filing obligations
+- RDO
+- registration dates
 - effective dates
 
-**Principle:** Compliance settings must be versioned, auditable, and effective-date aware.
+Compliance logic must not be hardcoded in UI.
+
+**Principle:** Compliance must be configurable, versioned, and auditable.
 
 ---
 
-## 7. Feature Settings Drive Visibility, Not Accounting Logic
+## PRINCIPLE 7 — FEATURE SETTINGS DRIVE VISIBILITY ONLY
 
-`company_feature_settings` may control visibility of optional modules such as:
+`company_feature_settings` may control:
 
 - Inventory
 - Fixed Assets
 - Petty Cash
 - Bank Reconciliation
 - Budgeting
-- Cash Sales
-- Cash Purchases
 
-But feature settings must not override accounting or tax logic.
+Feature settings must never determine:
 
-Example:
-- VAT logic comes from compliance profile.
-- Inventory visibility comes from feature settings.
-- Permissions come from roles/RLS.
+- VAT treatment
+- Tax treatment
+- Accounting treatment
+- Posting behavior
 
 **Principle:** Visibility settings are not accounting rules.
 
 ---
 
-## 8. Transaction Tables Must Capture Complete Source Data
+## PRINCIPLE 8 — TABLES FIRST, UI SECOND
 
-Every transaction must preserve source details needed for:
+Before UI implementation:
 
-- accounting
-- tax compliance
-- audit
-- reporting
-- reversal
-- traceability
+- Every menu must map to tables
+- Every table must have columns
+- Every table must have relationships
+- Every posting path must be documented
+- Every compliance output must be mapped
 
-Transaction tables must include, where applicable:
+**Principle:** UI follows architecture. Never the reverse.
+
+---
+
+## PRINCIPLE 9 — COMPLETE DATA CAPTURE
+
+Transactions must capture everything required for:
+
+- Accounting
+- Compliance
+- Audit
+- Reporting
+- Reversals
+- Traceability
+
+Reports must not reconstruct missing information.
+
+**Principle:** Capture once. Reuse forever.
+
+Standard transaction columns that must be present where applicable:
 
 | Column | Purpose |
 |---|---|
@@ -202,232 +391,328 @@ Transaction tables must include, where applicable:
 | `source_document_id` | FK to originating document |
 | `source_document_type` | Table name of originating document |
 
-**Principle:** Capture complete data at the source. Reports should not require guessing later.
+---
+
+## PRINCIPLE 10 — SNAPSHOT CRITICAL COMPLIANCE DATA
+
+Transactions must preserve compliance snapshots at time of transaction.
+
+Examples:
+
+- TIN
+- Registered Name
+- Registered Address
+- VAT Status
+- ATC
+- Tax Rate
+- Currency Rate
+- Company Registration Data
+
+Changing master data must never alter historical compliance documents.
+
+**Principle:** Compliance documents must remain historically correct.
 
 ---
 
-## 9. Transaction Tax Classification Is Separate From Company Taxpayer Type
+## PRINCIPLE 11 — EFFECTIVE-DATE VERSIONING
 
-Company taxpayer type determines whether the company is VAT or Non-VAT.
+PXL must preserve historical configurations.
 
-Transaction tax classification determines how each line is treated.
+Examples:
 
-`transaction_tax_classification` should support:
+- VAT rate changes
+- Percentage Tax rate changes
+- EWT rate changes
+- ATC changes
+- Posting rule changes
+- Compliance profile changes
+- Financial statement mappings
 
-- VATABLE
-- ZERO_RATED
-- EXEMPT
-- NON_VAT
+Transactions must use the configuration effective on the transaction date.
 
-**Principle:** A company can have different transaction classifications. Do not oversimplify tax treatment.
+**Principle:** History must remain historically accurate.
 
 ---
 
-## 10. Posting Must Be Rule-Based and Traceable
+## PRINCIPLE 12 — POSTING MUST BE RULE-BASED
 
-All automatic journal entries must come from `posting_rule_sets` and `posting_rule_lines`.
+All accounting entries must originate from:
+
+- `posting_rule_sets`
+- `posting_rule_lines`
 
 Posting must be:
 
-- balanced
-- traceable
-- repeatable
-- auditable
-- idempotent
-- blocked if the fiscal period is closed or locked
+- Balanced
+- Traceable
+- Repeatable
+- Auditable
+- Idempotent
+- Blocked if the fiscal period is closed or locked
 
-Every posted transaction must link to:
+Every posting must link:
 
-- `journal_entries`
-- `journal_lines`
-- source document
-- posting rule set
-- audit log
+- Source Document
+- Journal Entry
+- Journal Lines
+- Posting Rule
+- Audit Trail
 
 **Principle:** No hidden accounting logic.
 
 ---
 
-## 11. Posted Transactions Are Immutable
+## PRINCIPLE 13 — POSTED TRANSACTIONS ARE IMMUTABLE
 
-Posted transactions must not be edited or deleted.
+Posted transactions must never be edited.
 
-Corrections must be done through:
+Corrections must occur through:
 
-- reversal
-- credit memo
-- debit memo
-- void process
-- adjustment journal entry
+- Reversal
+- Credit Memo
+- Debit Memo
+- Adjustment Entry
+- Void Process
 
-**Principle:** No silent edits after posting.
+**Principle:** No silent modifications after posting.
 
 ---
 
-## 12. Every Compliance Output Must Have Source Traceability
+## PRINCIPLE 14 — COMPLIANCE MUST BE TRACEABLE
 
-Every compliance report or export must trace back to source transactions.
+Every compliance report must trace back to source transactions.
 
 | Compliance Output | Source Chain |
 |---|---|
-| VAT Return | `vat_entries` → sales/purchase lines |
-| SLSP | `sales_invoices` / `cash_sales` |
-| RELIEF | `vendor_bills` / `cash_purchases` |
-| QAP | `ewt_entries` |
-| SAWT | `certificates_2307_received` |
-| 1601EQ | `ewt_entries` |
-| 2551Q | percentage tax entries |
-| CAS Books | posted journal entries and source documents |
+| VAT Return | VAT Entries → Invoice Lines → Source Documents |
+| 2551Q | Percentage Tax Entries → Source Documents |
+| SLSP | Sales Invoices / Cash Sales |
+| RELIEF | Vendor Bills / Cash Purchases |
+| QAP | EWT Entries → Payee / ATC |
+| SAWT | 2307 Received → Receipts → Source Documents |
+| 1601EQ | EWT Entries → Period Aggregation |
+| CAS Books | Posted Journal Entries → Source Documents |
 
-**Principle:** Compliance must be explainable down to the document line level.
-
----
-
-## 13. Audit Trail Is Non-Negotiable
-
-PXL must maintain auditability at three levels:
-
-1. **Record-level** — audit columns (`created_by`, `updated_by`, `deleted_by`) on every table
-2. **Field-level** — `field_change_history` captures before/after per field
-3. **Event-level** — `audit_logs` and `user_activity_logs` capture every significant action
-
-Audit must cover:
-
-- master data changes
-- setup changes
-- tax profile changes
-- posting rule changes
-- document status changes
-- approvals
-- posting
-- voiding
-- reversals
-- exports
-- generated documents
-- login/session activity
-
-**Principle:** If it affects accounting, compliance, security, or reporting, it must be auditable.
+**Principle:** Every compliance figure must be explainable.
 
 ---
 
-## 14. Import and Bulk Creation Are First-Class Requirements
+## PRINCIPLE 15 — AUDIT TRAIL IS NON-NEGOTIABLE
 
-Setup and master data must support import/bulk creation, not only one-by-one CRUD.
+PXL requires three levels of audit:
 
-Import must support:
+### Record-Level Audit
+- `created_by`
+- `updated_by`
+- `deleted_by`
 
-- chart of accounts
-- customers
-- suppliers
-- items
-- services
-- branches
-- departments
-- cost centers
-- opening balances
-- inventory opening
-- fixed asset opening
-- tax setup
-- payment terms
+### Field-Level Audit
+- `old_value`
+- `new_value`
+- field name, table name, changed_by, changed_at
 
-**Principle:** MSME onboarding must be practical and scalable.
+### Event-Level Audit
+- Login / logout
+- Approval actions
+- Posting
+- Reversal
+- Export
+- Print
+- Generated documents
+- Period close / lock
 
----
-
-## 15. Reports Are Outputs, Not Separate Truths
-
-Reports must derive from source transactions, ledgers, compliance entries, and generated output tables.
-
-Reports should not create independent accounting truth.
-
-**Principle:** There must be one source of accounting truth.
+**Principle:** Anything affecting accounting, compliance, or security must be auditable.
 
 ---
 
-## 16. Tables Must Be Designed Before UI
+## PRINCIPLE 16 — IMPORT IS A FIRST-CLASS FEATURE
 
-UI must follow data architecture.
+Bulk onboarding must be supported for:
 
-Do not build UI first and force tables to fit later.
+- Customers
+- Suppliers
+- Items
+- Services
+- Chart of Accounts
+- Branches
+- Departments
+- Cost Centers
+- Opening Balances
+- Fixed Assets
+- Inventory Openings
+- Payment Terms
+- ATC Codes
+- Warehouses
 
-Before implementation:
-
-- every menu item must map to tables or computed views
-- every table must have columns
-- every table must have relationships
-- every posting path must be defined
-- every compliance output must be mapped
-
-**Principle:** Tables first. UI second.
-
----
-
-## 17. Blueprint and Database Must Stay Aligned
-
-The blueprint, table inventory, column specifications, relationship map, compliance map, posting design, audit design, import/export design, and security design must agree.
-
-No table should exist in one document and be missing in another.
-
-**Principle:** Documentation inconsistency is an architecture bug.
+**Principle:** ERP onboarding must be practical and scalable.
 
 ---
 
-## 18. Avoid Overengineering, But Do Not Under-Capture
+## PRINCIPLE 17 — ASYNCHRONOUS BULK PROCESSING
 
-Do not build modules outside Phase 1 scope.
+Large operations must run asynchronously.
 
-**Out of scope for Phase 1:**
+Examples:
+
+- Bulk Imports
+- DAT Generation
+- SAWT Generation
+- SLSP Generation
+- RELIEF Generation
+- Report Exports
+- Depreciation Runs
+- Inventory Revaluations
+
+Users should submit jobs and monitor progress. The UI must provide live feedback via job status.
+
+**Principle:** Long-running processes must never block the system.
+
+---
+
+## PRINCIPLE 18 — REPORTS ARE OUTPUTS, NOT SOURCES OF TRUTH
+
+Sources of truth:
+
+- Transactions
+- Ledgers
+- Compliance Entries
+- Journal Entries
+
+Reports are outputs derived from these sources. Reports must not create independent accounting truth.
+
+**Principle:** One accounting truth.
+
+---
+
+## PRINCIPLE 19 — BLUEPRINT, TABLES, AND DOCUMENTATION MUST MATCH
+
+The following must always agree:
+
+- Blueprint
+- Table Inventory
+- Column Specifications
+- Relationship Map
+- Compliance Map
+- Posting Design
+- Audit Design
+- Import/Export Design
+- Security Design
+
+**Principle:** Documentation inconsistency is an architecture defect.
+
+---
+
+## PRINCIPLE 20 — PH COMPLIANCE FIRST
+
+PXL's primary competitive advantage is Philippine tax and regulatory compliance.
+
+Prioritize these before non-essential ERP features:
+
+| Form / Report | Description |
+|---|---|
+| VAT — 2550M / 2550Q | Monthly/Quarterly VAT Return |
+| Percentage Tax — 2551Q | Quarterly Percentage Tax Return |
+| EWT — 1601EQ | Quarterly Expanded Withholding Tax |
+| FWT — 1601FQ | Quarterly Final Withholding Tax |
+| Annual EWT — 1604E | Annual Alphalist of Payees |
+| 2307 | Certificate of Creditable Tax Withheld |
+| 2306 | Certificate of Final Tax Withheld |
+| SAWT | Summary Alphalist of Withholding Tax |
+| QAP | Quarterly Alphalist of Payees |
+| SLSP | Summary List of Sales and Purchases |
+| RELIEF | Reconciliation of Listings for Enforcement |
+| Books of Accounts | BIR-required books |
+| CAS | Computerized Accounting System audit requirements |
+
+**Principle:** Compliance first.
+
+---
+
+## PRINCIPLE 21 — PERFORMANCE BY DESIGN
+
+Performance must be considered during architecture design, not after.
+
+Requirements:
+
+- `company_id` on all operational tables (RLS hot path)
+- Indexed foreign keys on all join columns
+- Optimized RLS helper functions (`auth.user_company_ids()` must be indexed)
+- Efficient joins — no unnecessary cross-joins
+- Scalable audit architecture (insert-only, partitioned if needed)
+- Async processing for high-volume operations (see Principle 17)
+
+**Principle:** Performance is an architecture responsibility.
+
+---
+
+## PRINCIPLE 22 — DESIGN FOR SUPABASE
+
+Architecture must respect Supabase/PostgreSQL platform realities:
+
+- PostgreSQL constraints and triggers
+- Row Level Security (RLS)
+- Supabase Edge Functions (posting engine, compliance exports)
+- Supabase Storage (attachments, generated documents, DAT files)
+- Supabase Realtime (approval events, notifications, job status)
+- `auth.users` integration (never duplicate user management)
+- Migrations (one schema, forward-only)
+- Service role safety (never expose to client)
+
+**Principle:** Design for the actual platform.
+
+---
+
+## PRINCIPLE 23 — AVOID OVERENGINEERING
+
+Do not build in Phase 1:
+
 - Payroll
 - POS
-- Full Manufacturing
 - CRM
 - HRMS
-- PEZA/BOI/Government client support
-- Foreign entity client support
+- Manufacturing
+- Government ERP
+- PEZA ERP
+- BOI ERP
+- Foreign Entity ERP
+- Multi-currency / FX revaluation
+- Budget approval workflows
+- Project costing
+- Inter-company transactions
 
-But do not under-capture data required for:
-
-- accounting
-- PH compliance
-- audit
-- reporting
-- future migration
-
-**Principle:** Keep scope focused, but make the data model complete.
-
----
-
-## 19. Supabase Must Be Treated as the Core Platform
-
-Architecture must respect Supabase/PostgreSQL realities:
-
-- Row Level Security
-- Edge Functions
-- Storage
-- Realtime
-- service role safety
-- indexing
-- constraints
-- triggers
-- migrations
-- `auth.users` integration
-
-**Principle:** Design for the actual platform, not an abstract ERP.
+**Principle:** Stay focused. Build the core well before expanding.
 
 ---
 
-## 20. Finality Requires Review Discipline
+## PRINCIPLE 24 — NO FINAL WITHOUT REVIEW
 
-No document should be marked final unless:
+Nothing is final until:
 
-- open decisions are resolved
-- blueprint is aligned with tables
-- tables are aligned with columns
-- relationships are complete
-- posting is mapped
-- compliance is mapped
-- audit is mapped
-- RLS is mapped
-- UI visibility drivers are mapped
+- Open decisions are resolved
+- Blueprint is aligned with tables
+- Tables are aligned with columns
+- Relationships are complete and consistent
+- Posting is mapped for every transaction type
+- Compliance is mapped to source fields
+- Audit trail is mapped
+- RLS is designed for every table
+- UI visibility drivers are mapped to configuration
 
-**Principle:** Slow review now prevents painful rebuilds later.
+**Principle:** Slow review now prevents expensive redesign later.
+
+---
+
+## FINAL RULE
+
+Whenever Claude, Codex, Lovable, ChatGPT, Cursor, or any future developer works on PXL ERP:
+
+**Read this document first.**
+
+Every design decision must be validated against these principles before implementation begins.
+
+Any proposal that conflicts with these principles must either:
+
+1. Justify the exception explicitly, or
+2. Be revised to align with these principles.
+
+There are no silent exceptions.
