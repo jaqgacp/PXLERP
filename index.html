@@ -722,13 +722,11 @@
 </div>
 
 <script>
-  // Close dropdowns when clicking outside
   document.addEventListener('click', e => {
     if (!e.target.closest('.nav-item')) {
       document.querySelectorAll('.nav-item.pinned').forEach(el => el.classList.remove('pinned'));
     }
   });
-  // Click to pin/unpin
   document.querySelectorAll('.nav-label').forEach(label => {
     label.addEventListener('click', e => {
       e.stopPropagation();
@@ -738,7 +736,6 @@
       if (!wasPinned) item.classList.add('pinned');
     });
   });
-  // Dashboard cards navigate
   document.querySelectorAll('.module-card').forEach((card, i) => {
     card.addEventListener('click', () => {
       const labels = document.querySelectorAll('.nav-label');
