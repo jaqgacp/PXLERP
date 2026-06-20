@@ -353,10 +353,10 @@ CR: Output VAT Payable (vat_amount)
 
 **Cash Purchase posting (goods):**
 ```
-DR: Inventory / Expense Account (net_amount)
+DR: Inventory / Expense Account (gross_amount)
 DR: Input VAT (vat_amount)
-CR: Cash / Bank (gross_amount - ewt_amount)
-DR: EWT Payable (ewt_amount)   [if EWT-subject]
+CR: Cash / Bank (gross_amount + vat_amount - ewt_amount)
+CR: EWT Payable (ewt_amount)   [if EWT-subject]  ← liability, credited
 ```
 
 ---
