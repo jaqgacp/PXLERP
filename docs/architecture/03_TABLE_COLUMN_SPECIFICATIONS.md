@@ -1,6 +1,6 @@
 # PXL ERP — Table Column Specifications
-**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
-**Status:** v3 In Review — Not Yet Approved for Database Freeze
+**Version:** 3.1 — Normalization Complete
+**Status:** v3.1 — All 209 Table Specs Complete. Not Yet Migration-Approved Until Checklist Cleared.
 
 > Money fields use `numeric(18,4)`. Rates use `numeric(10,6)`. All timestamps are `timestamptz`. All PKs are `uuid DEFAULT gen_random_uuid()`.
 > Standard audit columns are listed once and assumed on all tables marked with Audit or Soft Delete in the inventory.
@@ -1166,6 +1166,8 @@ Immutable. One row per taxable line per source document.
 ### `ewt_entries`
 Immutable. One row per ATC per line per source document.
 
+> **BLOCKER 4 RESOLVED — Column Normalization:** `supplier_id`/`supplier_name`/`supplier_tin`/`supplier_address` are RENAMED to the normalized payee columns below to support EWT on both supplier and customer payments (e.g., professional fees paid to individuals who may be on AR side). Index note updated to use `payee_tin`.
+
 | Column | Type | Null | Default | Description |
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
@@ -1179,10 +1181,11 @@ Immutable. One row per ATC per line per source document.
 | document_id | uuid | NOT NULL | — | FK to source |
 | document_no | text | NOT NULL | — | Snapshot |
 | line_id | uuid | NULL | — | FK to source line (NULL if header-level EWT) |
-| supplier_id | uuid | NOT NULL | — | FK → suppliers.id |
-| supplier_name | text | NOT NULL | — | Snapshot |
-| supplier_tin | text | NOT NULL | — | Snapshot — CRITICAL for 2307/QAP |
-| supplier_address | text | NULL | — | Snapshot |
+| payee_id | uuid | NULL | — | FK → suppliers.id or customers.id (NULL if payee is individual not in system) |
+| payee_type | text | NOT NULL | — | CHECK IN ('supplier','customer') |
+| payee_tin | text | NOT NULL | — | Snapshot — CRITICAL for 2307/QAP |
+| payee_registered_name | text | NOT NULL | — | Snapshot |
+| payee_registered_address | text | NULL | — | Snapshot |
 | atc_id | uuid | NOT NULL | — | FK → atc_codes.id |
 | atc_code | text | NOT NULL | — | Snapshot e.g., 'WC010' |
 | ewt_base_amount | numeric(18,4) | NOT NULL | 0 | Gross income subject to EWT |
@@ -1191,6 +1194,8 @@ Immutable. One row per ATC per line per source document.
 | certificate_2307_id | uuid | NULL | — | FK → certificates_2307_issued.id (set on certificate generation) |
 
 **Immutable. Never updated after creation.**
+
+**Indexes:** `idx_ewt_entries_payee_tin`, `idx_ewt_entries_fiscal_period`, `idx_ewt_entries_document`
 
 ---
 
