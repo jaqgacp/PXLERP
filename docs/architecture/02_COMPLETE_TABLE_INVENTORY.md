@@ -1,7 +1,7 @@
 # PXL ERP — Complete Table Inventory
-**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
-**Total Tables:** ~209 (after removing 2 superseded income tax tables; +9 accounting schedule tables from Enhancement Round)
-**Status:** v3 In Review — Not Yet Approved for Database Freeze
+**Version:** 3.1 — Normalization Pass
+**Total Tables:** 207 active tables (removed: `financial_statement_mappings` #31, `mcit_computations` #156, `nolco_schedules` #157 — total slots = 209, 3 marked REMOVED)
+**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
 
 Legend:
 - **Type:** master | transaction | ledger | setup | audit | bridge | output | config | notification
@@ -144,7 +144,7 @@ Legend:
 | 28 | `currencies` | Currency master (PHP, USD, etc.) | master | ✅ | ✅ | ✅ | ❌ | low |
 | 29 | `exchange_rates` | Exchange rate history | master | ✅ | ✅ | ❌ | ✅ | medium |
 | 30 | `opening_balance_entries` | Opening balances per account/branch pre-posting | transaction | ✅ | ✅ | ❌ | ✅ | medium |
-| 31 | `financial_statement_mappings` | COA → FS line item mapping | setup | ✅ | ✅ | ✅ | ❌ | low |
+| 31 | ~~`financial_statement_mappings`~~ | **REMOVED (v3)** — COA embedded fields (`fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`) replace this table. Phase 1 uses COA-embedded FS mapping only (doc 01 Section A). | — | — | — | — | — | — |
 | 32 | `system_account_config` | Semantic account key → GL account mapping | config | ✅ | ✅ | ✅ | ❌ | low |
 
 ---
@@ -371,7 +371,7 @@ Legend:
 | 146 | `fwt_entries` | Final withholding tax entries (WF-series ATC codes) | ledger | ✅ | ❌ | ❌ | ✅ | medium |
 | 147 | `certificates_2307_issued` | 2307 certificates issued to suppliers | output | ✅ | ✅ | ❌ | ✅ | medium |
 | 148 | `certificates_2307_received` | 2307 certificates received from customers | transaction | ✅ | ✅ | ❌ | ✅ | medium |
-| 149 | `certificates_2306` | 2306 final withholding certificates | output | ✅ | ✅ | ❌ | ✅ | low |
+| 149 | `certificates_2306_issued` | 2306 final withholding certificates issued to payees — **v3.1: renamed** from `certificates_2306` for consistency with `certificates_2307_issued` | output | ✅ | ✅ | ❌ | ✅ | low |
 | 150 | `ewt_remittances_1601eq` | 1601EQ quarterly remittance filing | transaction | ✅ | ✅ | ❌ | ✅ | low |
 | 150a | `fwt_remittances_1601fq` | 1601FQ quarterly final withholding tax remittance filing | transaction | ✅ | ✅ | ❌ | ✅ | low |
 | 151 | `qap_exports` | QAP export batch records | output | ✅ | ✅ | ❌ | ✅ | low |
@@ -594,3 +594,228 @@ Legend:
 - `subsidiary_ledger_entries` was in doc 06 but not in v1 of this inventory — now added to Module 16
 - `system_account_config` was in doc 06 but not in v1 inventory — now added to Module 4 (Accounting Setup)
 - `posting_rule_sets` replaces the v1 name `posting_rules` for consistency with doc 06
+
+---
+
+## Canonical Table Name Registry (v3.1)
+
+This registry is the authoritative source for table names. Any table name used in migrations, foreign keys, or application code must match the canonical name listed here.
+
+**Lifecycle values:** ACTIVE (in Phase 1 scope) | REMOVED (excluded; do not create) | DEFERRED (design-complete but excluded from Phase 1 migration)
+
+| # | Canonical Table Name | Lifecycle | Notes |
+|---|---|---|---|
+| 1 | `profiles` | ACTIVE | |
+| 2 | `roles` | ACTIVE | |
+| 3 | `permissions` | ACTIVE | |
+| 4 | `role_permissions` | ACTIVE | |
+| 5 | `user_roles` | ACTIVE | |
+| 6 | `user_company_access` | ACTIVE | |
+| 7 | `user_branch_access` | ACTIVE | |
+| 8 | `user_department_access` | ACTIVE | |
+| 9 | `companies` | ACTIVE | |
+| 10 | `branches` | ACTIVE | |
+| 11 | `departments` | ACTIVE | |
+| 12 | `cost_centers` | ACTIVE | |
+| 13 | `cas_registrations` | ACTIVE | |
+| 14 | `company_bank_accounts` | ACTIVE | |
+| 14a | `company_compliance_profiles` | ACTIVE | |
+| 14b | `company_feature_settings` | ACTIVE | |
+| 15 | `number_series` | ACTIVE | |
+| 16 | `number_series_atp` | ACTIVE | |
+| 17 | `atp_usage_logs` | ACTIVE | |
+| 18 | `approval_matrix` | ACTIVE | |
+| 19 | `approval_matrix_steps` | ACTIVE | |
+| 20 | `document_controls` | ACTIVE | |
+| 21 | `validation_rules` | ACTIVE | |
+| 22 | `system_parameters` | ACTIVE | |
+| 23 | `fiscal_years` | ACTIVE | |
+| 24 | `fiscal_periods` | ACTIVE | |
+| 25 | `fiscal_locks` | ACTIVE | |
+| 26 | `chart_of_accounts` | ACTIVE | |
+| 27 | `account_types` | ACTIVE | |
+| 28 | `currencies` | ACTIVE | |
+| 29 | `exchange_rates` | ACTIVE | |
+| 30 | `opening_balance_entries` | ACTIVE | |
+| 31 | ~~`financial_statement_mappings`~~ | **REMOVED** | Phase 1 uses COA-embedded FS fields; no separate mapping table |
+| 32 | `system_account_config` | ACTIVE | |
+| 33 | `bir_form_configurations` | ACTIVE | |
+| 34 | `tax_codes` | ACTIVE | |
+| 35 | `vat_codes` | ACTIVE | |
+| 36 | `ewt_codes` | ACTIVE | |
+| 36a | `fwt_codes` | ACTIVE | |
+| 36b | `percentage_tax_codes` | ACTIVE | |
+| 37 | `atc_codes` | ACTIVE | |
+| 38 | `tax_calendar` | ACTIVE | |
+| 39 | `customers` | ACTIVE | |
+| 40 | `customer_addresses` | ACTIVE | |
+| 41 | `customer_contacts` | ACTIVE | |
+| 42 | `customer_tax_profiles` | ACTIVE | |
+| 43 | `customer_credit_profiles` | ACTIVE | |
+| 44 | `suppliers` | ACTIVE | |
+| 45 | `supplier_addresses` | ACTIVE | |
+| 46 | `supplier_contacts` | ACTIVE | |
+| 47 | `supplier_tax_profiles` | ACTIVE | |
+| 48 | `supplier_bank_details` | ACTIVE | |
+| 49 | `personnel` | ACTIVE | Approver name resolution only — not a payroll table |
+| 50 | `payment_terms` | ACTIVE | |
+| 50a | `payment_term_lines` | ACTIVE | Due date installment lines per payment term |
+| 51 | `item_categories` | ACTIVE | |
+| 52 | `units_of_measure` | ACTIVE | |
+| 53 | `uom_conversions` | ACTIVE | |
+| 54 | `items` | ACTIVE | |
+| 55 | `item_prices` | ACTIVE | |
+| 56 | `services` | ACTIVE | |
+| 57 | `warehouses` | ACTIVE | |
+| 58 | `warehouse_stock_settings` | ACTIVE | |
+| 59 | `inventory_balances` | ACTIVE | |
+| 60 | `inventory_cost_layers` | ACTIVE | |
+| 61 | `quotations` | ACTIVE | |
+| 62 | `quotation_lines` | ACTIVE | |
+| 63 | `sales_orders` | ACTIVE | |
+| 64 | `sales_order_lines` | ACTIVE | |
+| 65 | `delivery_receipts` | ACTIVE | |
+| 66 | `delivery_receipt_lines` | ACTIVE | |
+| 67 | `sales_invoices` | ACTIVE | |
+| 68 | `sales_invoice_lines` | ACTIVE | |
+| 69 | `cash_sales` | ACTIVE | |
+| 70 | `cash_sale_lines` | ACTIVE | |
+| 71 | `receipts` | ACTIVE | Official receipts (customer payment collection) |
+| 72 | `receipt_lines` | ACTIVE | |
+| 73 | `sales_credit_memos` | ACTIVE | |
+| 74 | `sales_credit_memo_lines` | ACTIVE | |
+| 75 | `sales_debit_memos` | ACTIVE | |
+| 76 | `sales_debit_memo_lines` | ACTIVE | |
+| 77 | `customer_returns` | ACTIVE | |
+| 78 | `customer_return_lines` | ACTIVE | |
+| 79 | `purchase_orders` | ACTIVE | |
+| 80 | `purchase_order_lines` | ACTIVE | |
+| 81 | `receiving_reports` | ACTIVE | |
+| 82 | `receiving_report_lines` | ACTIVE | |
+| 83 | `vendor_bills` | ACTIVE | |
+| 84 | `vendor_bill_lines` | ACTIVE | |
+| 85 | `cash_purchases` | ACTIVE | |
+| 86 | `cash_purchase_lines` | ACTIVE | |
+| 87 | `payment_vouchers` | ACTIVE | |
+| 88 | `payment_voucher_lines` | ACTIVE | |
+| 89 | `vendor_credits` | ACTIVE | |
+| 90 | `vendor_credit_lines` | ACTIVE | |
+| 91 | `supplier_debit_memos` | ACTIVE | |
+| 92 | `supplier_debit_memo_lines` | ACTIVE | |
+| 93 | `purchase_returns` | ACTIVE | |
+| 94 | `purchase_return_lines` | ACTIVE | |
+| 95 | `petty_cash_funds` | ACTIVE | |
+| 96 | `petty_cash_vouchers` | ACTIVE | |
+| 97 | `petty_cash_voucher_lines` | ACTIVE | |
+| 98 | `petty_cash_replenishments` | ACTIVE | |
+| 99 | `petty_cash_count_sheets` | ACTIVE | |
+| 100 | `petty_cash_count_lines` | ACTIVE | |
+| 101 | `bank_fund_transfers` | ACTIVE | |
+| 102 | `inter_branch_transfers` | ACTIVE | |
+| 103 | `bank_adjustments` | ACTIVE | |
+| 104 | `bank_reconciliations` | ACTIVE | |
+| 105 | `bank_reconciliation_lines` | ACTIVE | |
+| 106 | `bank_statement_lines` | ACTIVE | |
+| 107 | `outstanding_checks` | ACTIVE | |
+| 108 | `deposits_in_transit` | ACTIVE | |
+| 109 | `stock_adjustments` | ACTIVE | |
+| 110 | `stock_adjustment_lines` | ACTIVE | |
+| 111 | `stock_transfers` | ACTIVE | |
+| 112 | `stock_transfer_lines` | ACTIVE | |
+| 113 | `goods_issues` | ACTIVE | |
+| 114 | `goods_issue_lines` | ACTIVE | |
+| 115 | `physical_count_entries` | ACTIVE | |
+| 116 | `physical_count_lines` | ACTIVE | |
+| 117 | `inventory_movements` | ACTIVE | |
+| 118 | `inventory_cost_layer_consumption` | ACTIVE | |
+| 119 | `asset_categories` | ACTIVE | |
+| 120 | `depreciation_profiles` | ACTIVE | |
+| 121 | `fixed_assets` | ACTIVE | |
+| 122 | `asset_depreciation_schedules` | ACTIVE | |
+| 123 | `asset_acquisitions` | ACTIVE | |
+| 124 | `depreciation_runs` | ACTIVE | |
+| 125 | `depreciation_run_lines` | ACTIVE | |
+| 126 | `asset_disposals` | ACTIVE | |
+| 127 | `asset_transfers` | ACTIVE | |
+| 128 | `asset_impairments` | ACTIVE | |
+| 129 | `journal_entries` | ACTIVE | |
+| 130 | `journal_lines` | ACTIVE | |
+| 131 | `subsidiary_ledger_entries` | ACTIVE | |
+| 132 | `recurring_journal_templates` | ACTIVE | |
+| 133 | `recurring_journal_template_lines` | ACTIVE | |
+| 134 | `gl_balances` | ACTIVE | |
+| 135 | `document_relationships` | ACTIVE | |
+| 136 | `posting_rule_sets` | ACTIVE | |
+| 137 | `posting_rule_lines` | ACTIVE | |
+| 138 | `posting_batches` | ACTIVE | |
+| 139 | `posting_errors` | ACTIVE | |
+| 140 | `vat_entries` | ACTIVE | |
+| 141 | `vat_period_summaries` | ACTIVE | |
+| 142 | `vat_return_filings` | ACTIVE | |
+| 143 | `slsp_exports` | ACTIVE | |
+| 144 | `relief_exports` | ACTIVE | |
+| 145 | `ewt_entries` | ACTIVE | Party fields renamed to payee_id/payee_type/payee_tin/payee_registered_name (v3.1) |
+| 146 | `fwt_entries` | ACTIVE | |
+| 147 | `certificates_2307_issued` | ACTIVE | |
+| 148 | `certificates_2307_received` | ACTIVE | |
+| 149 | `certificates_2306_issued` | ACTIVE | **v3.1: renamed** from `certificates_2306` |
+| 150 | `ewt_remittances_1601eq` | ACTIVE | |
+| 150a | `fwt_remittances_1601fq` | ACTIVE | |
+| 151 | `qap_exports` | ACTIVE | |
+| 152 | `sawt_exports` | ACTIVE | |
+| 153 | `ewt_period_summaries` | ACTIVE | |
+| 154 | `itr_computation_runs` | ACTIVE | v3: renamed from `itr_working_papers` |
+| 155 | `book_tax_reconciliations` | ACTIVE | |
+| 156 | ~~`mcit_computations`~~ | **REMOVED** | Subsumed by `income_tax_computation_lines` filtered by `is_mcit_gross_income` |
+| 157 | ~~`nolco_schedules`~~ | **REMOVED** | Replaced by `nolco_tracking` (#200) |
+| 158 | `tax_credits_schedules` | ACTIVE | |
+| 158a | `income_tax_return_filings` | ACTIVE | |
+| 159 | `audit_logs` | ACTIVE | |
+| 160 | `field_change_history` | ACTIVE | |
+| 161 | `user_activity_logs` | ACTIVE | |
+| 162 | `system_parameter_logs` | ACTIVE | |
+| 163 | `document_void_register` | ACTIVE | |
+| 164 | `dat_generation_logs` | ACTIVE | |
+| 165 | `export_history` | ACTIVE | |
+| 166 | `system_alerts` | ACTIVE | |
+| 167 | `attachments` | ACTIVE | |
+| 168 | `attachment_versions` | ACTIVE | |
+| 169 | `approval_requests` | ACTIVE | |
+| 170 | `approval_actions` | ACTIVE | |
+| 171 | `import_batches` | ACTIVE | |
+| 172 | `import_rows` | ACTIVE | |
+| 173 | `import_validation_errors` | ACTIVE | |
+| 174 | `import_templates` | ACTIVE | |
+| 175 | `export_jobs` | ACTIVE | |
+| 176 | `generated_report_files` | ACTIVE | |
+| 177 | `notification_templates` | ACTIVE | |
+| 178 | `notifications` | ACTIVE | |
+| 179 | `notification_delivery_logs` | ACTIVE | |
+| 180 | `document_templates` | ACTIVE | |
+| 181 | `generated_documents` | ACTIVE | |
+| 182 | `generated_document_versions` | ACTIVE | |
+| 183 | `budgets` | ACTIVE | |
+| 184 | `budget_lines` | ACTIVE | |
+| 185 | `period_close_checklists` | ACTIVE | |
+| 186 | `period_close_tasks` | ACTIVE | |
+| 187 | `subledger_close_certifications` | ACTIVE | |
+| 188 | `duplicate_tin_flags` | ACTIVE | |
+| 189 | `party_merge_logs` | ACTIVE | |
+| 190 | `percentage_tax_entries` | ACTIVE | |
+| 191 | `percentage_tax_period_summaries` | ACTIVE | |
+| 192 | `percentage_tax_return_filings` | ACTIVE | |
+| 199 | `income_tax_computation_lines` | ACTIVE | |
+| 200 | `nolco_tracking` | ACTIVE | |
+| 201 | `amortization_schedules` | ACTIVE | |
+| 202 | `amortization_schedule_lines` | ACTIVE | |
+| 203 | `amortization_runs` | ACTIVE | |
+| 204 | `amortization_run_details` | ACTIVE | |
+| 205 | `revenue_recognition_schedules` | ACTIVE | |
+| 206 | `revenue_recognition_schedule_lines` | ACTIVE | |
+| 207 | `revenue_recognition_runs` | ACTIVE | |
+| 208 | `revenue_recognition_run_details` | ACTIVE | |
+| 209 | `auto_reversal_runs` | ACTIVE | |
+
+> **Total ACTIVE tables: 207** (slots 1–209 with 3 REMOVED: #31, #156, #157)
+> **Naming convention rule:** All canonical names use snake_case. `_issued` suffix on certificate output tables. `_entries` suffix on compliance ledger tables. `_runs` suffix on batch execution headers. `_lines` suffix on line-item tables. No abbreviations except: `ewt`, `fwt`, `vat`, `itr`, `gl`, `ar`, `ap`, `uom`, `coa`, `atp`.
+
