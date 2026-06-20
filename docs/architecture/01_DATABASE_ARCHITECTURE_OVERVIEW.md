@@ -1,7 +1,23 @@
 # PXL ERP — Database Architecture Overview
-**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
+**Version:** 3.1 — Normalization Pass
 **Prepared by:** PXL Database Architecture Team
-**Status:** v3 In Review — Not Yet Approved for Database Freeze
+**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+
+---
+
+## UI Mockup — Prototype Disclaimer (v3.1 — BLOCKER 7 RESOLVED)
+
+> **The `index.html` file in the repository root is a VISUAL PROTOTYPE ONLY.**
+>
+> It is a navigation mockup used to validate module organization, dropdown structure, and feature groupings with stakeholders. It is NOT:
+> - A functional application
+> - A representation of final UI design, color scheme, or component library
+> - Evidence that backend features are implemented
+> - A deliverable in itself
+>
+> **Architecture decisions based on the mockup:** The mockup confirms the module groupings used in this architecture document set. The Accounting dropdown structure (Journal Entries, Schedules, Period Management groups) reflects the architectural decisions in docs 02–10. The mockup will be replaced by actual application UI during development sprints.
+>
+> **Do not use the mockup as a source of truth for:** column names, business logic, workflow steps, BIR form configurations, or any technical specification. Use docs 02–10 for those.
 
 ---
 

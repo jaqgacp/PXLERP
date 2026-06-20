@@ -1,6 +1,6 @@
 # PXL ERP — Relationship Map
-**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
-**Status:** v3 In Review — Not Yet Approved for Database Freeze
+**Version:** 3.1 — Normalization Pass
+**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
 
 ---
 

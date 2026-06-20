@@ -1,6 +1,6 @@
 # PXL ERP — Posting Engine Table Design
-**Version:** 3.0 — Final Architecture Review (Pre-Freeze)
-**Status:** v3 In Review — Not Yet Approved for Database Freeze
+**Version:** 3.1 — Normalization Pass
+**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
 
 ---
 
@@ -432,12 +432,13 @@ CR: Output VAT Payable (vat_entries.vat_amount)        account: FROM_SYSTEM_CONF
 ### Cash Purchase Posting (No AP Created)
 
 ```
-DR: Inventory / Expense Account (cash_purchase_lines.net_amount)    account: FROM_ITEM or FROM_LINE
+DR: Inventory / Expense Account (cash_purchase_lines.gross_amount)  account: FROM_ITEM or FROM_LINE
 DR: Input VAT (vat_entries.vat_amount)                              account: FROM_SYSTEM_CONFIG 'INPUT_VAT'
 CR: Cash / Bank (cash_purchases.net_payable_amount)                 account: FROM_SYSTEM_CONFIG 'CASH_ON_HAND' or 'CASH_IN_BANK'
-DR: EWT Payable (ewt_entries.ewt_amount)     [if EWT-subject line]  account: FROM_SYSTEM_CONFIG 'EWT_PAYABLE'
+CR: EWT Payable (ewt_entries.ewt_amount)     [if EWT-subject line]  account: FROM_SYSTEM_CONFIG 'EWT_PAYABLE'
 ```
-- `net_payable_amount = gross_amount - ewt_amount`
+- `net_payable_amount = gross_amount + vat_amount - ewt_amount`
+- EWT Payable is **credited** because the company withholds from the supplier and owes that amount to the BIR — it is a liability, not a deduction from the expense.
 - No `subsidiary_ledger_entries` with ledger_type='AP'
 - EWT is captured at purchase time; no deferred payment step required
 
