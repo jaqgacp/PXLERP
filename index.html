@@ -89,6 +89,7 @@
   .mega-dd {
     display: none;
     position: fixed;
+
     top: 68px;
     background: var(--dd-bg);
     border: 1px solid var(--dd-border);
@@ -203,7 +204,7 @@
   <!-- SETUP -->
   <div class="nav-item">
     <div class="nav-label">⚙️ Setup <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">🏢 Organization</div>
         <a class="dd-item"><span class="dot"></span>Company Setup</a>
@@ -264,7 +265,7 @@
   <!-- MASTER DATA -->
   <div class="nav-item">
     <div class="nav-label">🗂️ Master Data <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">👥 Parties</div>
         <a class="dd-item"><span class="dot"></span>Customers</a>
@@ -301,7 +302,7 @@
   <!-- SALES -->
   <div class="nav-item">
     <div class="nav-label">🛒 Sales <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">📄 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Sales Invoices</a>
@@ -338,7 +339,7 @@
   <!-- PURCHASING -->
   <div class="nav-item">
     <div class="nav-label">🏪 Purchasing <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">📄 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Purchase Orders</a>
@@ -373,7 +374,7 @@
   <!-- PETTY CASH -->
   <div class="nav-item">
     <div class="nav-label">💵 Petty Cash <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">💵 Petty Cash</div>
         <a class="dd-item"><span class="dot"></span>Petty Cash Fund Setup</a>
@@ -387,7 +388,7 @@
   <!-- BANK -->
   <div class="nav-item">
     <div class="nav-label">🏦 Bank <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">💸 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Fund Transfers</a>
@@ -409,7 +410,7 @@
   <!-- INVENTORY -->
   <div class="nav-item">
     <div class="nav-label">📦 Inventory <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">🔄 Transactions</div>
         <a class="dd-item"><span class="dot"></span>Stock Adjustments</a>
@@ -432,7 +433,7 @@
   <!-- FIXED ASSETS -->
   <div class="nav-item">
     <div class="nav-label">🏗️ Fixed Assets <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">⚙️ Setup</div>
         <a class="dd-item"><span class="dot"></span>Asset Categories</a>
@@ -461,7 +462,7 @@
   <!-- ACCOUNTING -->
   <div class="nav-item">
     <div class="nav-label">📒 Accounting <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">✏️ Journal Entries</div>
         <a class="dd-item"><span class="dot"></span>Journal Entries</a>
@@ -487,10 +488,10 @@
     </div>
   </div>
 
-  <!-- COMPLIANCE -->
-  <div class="nav-item">
+  <!-- COMPLIANCE — right-aligned -->
+  <div class="nav-item" id="nav-compliance">
     <div class="nav-label">📑 Compliance <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="right:0">
       <div class="dd-col">
         <div class="dd-group-head">🧾 VAT</div>
         <a class="dd-item"><span class="dot"></span>VAT Dashboard</a>
@@ -564,10 +565,10 @@
     </div>
   </div>
 
-  <!-- REPORTS -->
-  <div class="nav-item">
+  <!-- REPORTS — right-aligned -->
+  <div class="nav-item" id="nav-reports">
     <div class="nav-label">📊 Reports <span class="arrow">▼</span></div>
-    <div class="mega-dd">
+    <div class="mega-dd" style="right:0">
       <div class="dd-col">
         <div class="dd-group-head">📈 Financial Statements</div>
         <a class="dd-item"><span class="dot"></span>Balance Sheet</a>
@@ -665,12 +666,14 @@
 </div>
 
 <script>
+
   function positionDropdown(navItem) {
     const dd = navItem.querySelector('.mega-dd');
     if (!dd) return;
     dd.style.left = '';
     dd.style.right = '';
     const rect = navItem.getBoundingClientRect();
+
     // Temporarily show to measure
     const prev = dd.style.display;
     dd.style.visibility = 'hidden';
@@ -691,11 +694,13 @@
     item.addEventListener('mouseenter', () => positionDropdown(item));
   });
 
+
   document.addEventListener('click', e => {
     if (!e.target.closest('.nav-item')) {
       document.querySelectorAll('.nav-item.pinned').forEach(el => el.classList.remove('pinned'));
     }
   });
+
 
   document.querySelectorAll('.nav-label').forEach(label => {
     label.addEventListener('click', e => {
@@ -707,6 +712,7 @@
       if (!wasPinned) item.classList.add('pinned');
     });
   });
+
 
   document.querySelectorAll('.module-card').forEach((card, i) => {
     card.addEventListener('click', () => {
