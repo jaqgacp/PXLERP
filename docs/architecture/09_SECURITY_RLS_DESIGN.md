@@ -1,10 +1,10 @@
 # PXL ERP — Security & RLS Design
-**Version:** 3.8 — Implementation Contract Completion Pass
-**Status:** v3.8 — Security and RLS design complete. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## Branch Access Security Boundary Decision (v3.1 — BLOCKER 6 RESOLVED)
+## Branch Access Security Boundary Decision
 
 **Decision: Option A — Company-level RLS. Branch is a UI/query filter, NOT a security boundary.**
 
@@ -53,27 +53,13 @@ When client contracts require hard branch isolation (e.g., franchise networks wh
 
 ---
 
-## v3 Architecture Review Changes Applied
+## Resolved Architectural Decisions
 
-- Added RLS policies for `income_tax_computation_lines` and `nolco_tracking` (new MODULE 30 tables)
-- Added permissions: `compliance.itr.compute`, `compliance.nolco.view`, `compliance.nolco.manage`
-- **v3 Round 2**: Added permission `party.special_class.manage` for updating customers/suppliers.party_special_class — requires CONTROLLER_ROLE or higher (changing this field affects VAT routing at posting time)
-- **v3 Round 2**: Added RLS policies for `itr_computation_runs`, `book_tax_reconciliations`, `tax_credits_schedules` (new in doc 03 § 20)
-- Added performance index guidance for high-volume compliance tables: `vat_entries`, `ewt_entries`, `percentage_tax_entries`, `income_tax_computation_lines`
-- `customer_tax_profiles` versioning: RLS policy updated — SELECT must filter `WHERE effective_to IS NULL OR effective_to >= current_date` for active-profile lookups; historical lookups at transaction `document_date` require unfiltered access for posting engine (service role)
-
-## v3 Open Decisions — ALL RESOLVED (v3.7)
-
-| OD# | Decision | **RESOLUTION** |
-|---|---|---|
-| OD-SEC-V3-01 | `income_tax_computation_lines` — user-visible or service-role-only? | **RESOLVED v3.7:** User-visible for ACCOUNTANT, CONTROLLER, and COMPANY_ADMIN roles (SELECT). Computation (INSERT/DELETE) is service-role-only via the ITR computation Edge Function. RLS policy: `SELECT: USING (company_id = auth.jwt()->>'company_id' AND EXISTS (SELECT 1 FROM user_roles WHERE user_id=auth.uid() AND role IN ('accountant','controller','company_admin')))`. No direct user INSERT/UPDATE/DELETE allowed — these only come via the Edge Function running as service role. |
-| OD-SEC-V3-02 | `nolco_tracking` — ACCOUNTANT update or COMPANY_ADMIN only? | **RESOLVED v3.7:** ACCOUNTANT can INSERT and UPDATE (compute NOLCO amounts, update carry-forward balances). COMPANY_ADMIN can additionally mark records as `is_locked=true` to prevent further changes. RLS: INSERT/UPDATE allowed for roles `('accountant','controller','company_admin')`; UPDATE of `is_locked` field restricted to `('controller','company_admin')` — enforced via Row Security Check trigger: `IF NEW.is_locked <> OLD.is_locked AND current_user_role NOT IN ('controller','company_admin') THEN RAISE EXCEPTION`. |
-
-## v3 Cross-Document Consistency Validation
-
-- All new Module 30 tables (`income_tax_computation_lines`, `nolco_tracking`) have `company_id` FK — standard RLS pattern applies ✓
-- `posting_rule_sets` versioning: posting engine runs as service role (bypasses RLS) — no RLS change needed ✓
-- `customer_tax_profiles` RLS must expose all versions (not just active) to the posting engine for historical transaction resolution ✓
+| Decision | Resolution |
+|---|---|
+| `income_tax_computation_lines` — user-visible or service-role-only? | User-visible for ACCOUNTANT, CONTROLLER, and COMPANY_ADMIN roles (SELECT). Computation (INSERT/DELETE) is service-role-only via the ITR computation Edge Function. No direct user INSERT/UPDATE/DELETE allowed. |
+| `nolco_tracking` — ACCOUNTANT update or COMPANY_ADMIN only? | ACCOUNTANT can INSERT and UPDATE. COMPANY_ADMIN can additionally mark records as `is_locked=true`. UPDATE of `is_locked` field restricted to `('controller','company_admin')` — enforced via Row Security Check trigger. |
+| `customer_tax_profiles` RLS scope | SELECT must filter `WHERE effective_to IS NULL OR effective_to >= current_date` for active-profile lookups. Historical lookups at transaction `document_date` require unfiltered access for the posting engine (service role). |
 
 ## v3 Required Indexes (Performance — High Volume Tables)
 
@@ -83,14 +69,14 @@ CREATE INDEX idx_vat_entries_company_period ON vat_entries(company_id, fiscal_pe
 CREATE INDEX idx_vat_entries_direction_class ON vat_entries(company_id, vat_direction, vat_classification);
 CREATE INDEX idx_vat_entries_party_tin ON vat_entries(company_id, party_tin) WHERE party_tin IS NOT NULL;
 
--- ewt_entries: QAP and 2307 queries (v3.1: supplier_tin renamed to payee_tin)
+-- ewt_entries: QAP and 2307 queries
 CREATE INDEX idx_ewt_entries_company_quarter ON ewt_entries(company_id, year, quarter);
 CREATE INDEX idx_ewt_entries_payee_tin ON ewt_entries(company_id, payee_tin);
 
 -- percentage_tax_entries: PT period summaries
 CREATE INDEX idx_pt_entries_company_period ON percentage_tax_entries(company_id, fiscal_period_id);
 
--- income_tax_computation_lines (linked to computation_run_id per v3 rename)
+-- income_tax_computation_lines
 CREATE INDEX idx_itc_lines_run ON income_tax_computation_lines(computation_run_id);
 CREATE INDEX idx_itc_lines_account ON income_tax_computation_lines(computation_run_id, account_id);
 

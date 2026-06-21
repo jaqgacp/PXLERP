@@ -1,45 +1,17 @@
 # PXL ERP — Import & Export Table Design
-**Version:** 3.8 — Implementation Contract Completion Pass
-**Status:** v3.8 — Import and export contracts complete. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## v3 Architecture Review Changes Applied
+## Resolved Architectural Decisions
 
-- **New import types added**: `coa_fs_mapping`, `income_tax_mappings`, `party_special_class` — see Import Types table below.
-- **`itr_working_papers` export**: Renamed to `itr_computation_runs` in export_jobs export_type list.
-- **`mcit_computations` export**: REMOVED (subsumed into `itr_computation_runs` record; no separate export).
-- **`nolco_schedules` export**: REMOVED; replaced by `nolco_tracking` export type.
-- **Party classification import**: `party_special_class` bulk import allows updating customers/suppliers.party_special_class in batch — needed for companies migrating from systems where government/PEZA customers were not separately flagged.
-
-## v3 Open Decisions — ALL RESOLVED (v3.7)
-
-| OD# | Decision | **RESOLUTION** |
-|---|---|---|
-| OD-08-V3-01 | `coa_fs_mapping` import — partial update or always overwrite? | **RESOLVED v3.7:** Always overwrite with explicit confirmation prompt. The import UI must display a "This will overwrite all existing FS mapping classifications for your COA. Proceed?" warning before import begins. Always overwrite (not merge) ensures the imported CPA-approved template is applied cleanly without old stale values mixing in. Developer: on import execution, run `UPDATE chart_of_accounts SET fs_section=?, fs_group=?, fs_sort_order=?, cash_flow_category=? WHERE company_id=? AND account_code=?` for each row. |
-| OD-08-V3-02 | `income_tax_mappings` import — require CPA review flag? | **RESOLVED v3.7:** Yes. The import_type `income_tax_mappings` (updates `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` on COA) requires the caller to have role `CONTROLLER` or `COMPANY_ADMIN`. The Edge Function checks this before processing. Developer: `IF auth.uid() NOT IN (SELECT user_id FROM user_roles WHERE company_id=? AND role IN ('controller','company_admin')) THEN ABORT`. |
-
----
-
-## Changes Applied (v1 → v2)
-
-- Expanded `import_type` list to include all Setup and Master Data modules (payment_terms, approval_matrix, atc_codes, warehouses, units_of_measure, etc.) — not only transactional data
-- Added `attachment_versions` full table specification (new in v2)
-- Added `file_hash_sha256` to `attachments` table
-- Confirmed `export_jobs` table name (was `export_batches` in v1 doc 02 — now consistent across all docs)
-- Added `cash_sale` and `cash_purchase` to export types (new transaction types in v2)
-- Added compliance output export types: `compliance_report_run_id` link on export_jobs
-- Added `import_batch_id` column reference note: all master data tables carry this column
-- Added `EMPLOYEES` import type marked as OUT OF SCOPE for Phase 1
-
----
-
-## Open Decisions — ALL RESOLVED (v3.7)
-
-| OD # | Question | **RESOLUTION** |
-|---|---|---|
-| OD-17 | Single bucket or per-company bucket for attachments? | **RESOLVED v3.7:** Single shared Supabase Storage bucket named `erp-attachments` with path structure `{company_id}/{entity_type}/{entity_id}/{filename}`. Supabase Storage RLS policies restrict download to authenticated users whose `company_id` matches the path prefix. Developer: `attachments.storage_path = '{company_id}/{entity_type}/{entity_id}/{uuid}_{original_filename}'`. The storage bucket name is `erp-attachments`. RLS policy: `USING (auth.uid() IN (SELECT user_id FROM user_company_access WHERE company_id = (storage.foldername(name))[1]::uuid))`. |
-| OD-18 | Save import column mapping templates? | **RESOLVED v3.7:** Phase 2. In Phase 1, `import_batches.column_mapping jsonb` stores the mapping used for each individual import. The user must re-map columns on each import. The `import_templates` table (#174) exists in the schema but the column mapping save/load feature is Phase 2. Developer: `import_templates` table may be created in Phase 1 migration but the UI save/load feature is deferred. |
+| Decision | Resolution |
+|---|---|
+| `coa_fs_mapping` import — partial update or always overwrite? | Always overwrite with explicit confirmation prompt. The import UI must display a warning before import begins. Always overwrite (not merge) ensures the imported CPA-approved template is applied cleanly. On import execution: `UPDATE chart_of_accounts SET fs_section=?, fs_group=?, fs_sort_order=?, cash_flow_category=? WHERE company_id=? AND account_code=?` for each row. |
+| `income_tax_mappings` import — require controller role? | Yes. The import_type `income_tax_mappings` (updates `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` on COA) requires the caller to have role `CONTROLLER` or `COMPANY_ADMIN`. The Edge Function checks this before processing. |
+| Single bucket or per-company bucket for attachments? | Single shared Supabase Storage bucket named `erp-attachments` with path structure `{company_id}/{entity_type}/{entity_id}/{filename}`. Supabase Storage RLS policies restrict download to authenticated users whose `company_id` matches the path prefix. `attachments.storage_path = '{company_id}/{entity_type}/{entity_id}/{uuid}_{original_filename}'`. |
+| Save import column mapping templates? | Phase 2 deferred. Phase 1: `import_batches.column_mapping jsonb` stores the mapping used for each individual import. The `import_templates` table (#174) exists in the schema but the save/load feature is Phase 2. |
 
 ---
 

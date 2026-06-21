@@ -1,12 +1,10 @@
 # PXL ERP — Relationship Map
-**Version:** 3.2 — Brutal Audit Fix Pass
-**Status:** v3.2 — Ghost Table Names Cleaned Up. Pending overall freeze gate.
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
-## Ghost Table Name Cleanup (v3.2)
+## Canonical Table Name Reference
 
-All non-canonical table names found in diagrams replaced with canonical names from Doc 02 registry:
-
-| Ghost Name (removed) | Canonical Name (Doc 02 Registry) | Doc 02 Table # |
+| Ghost Name | Canonical Name (Doc 02 Registry) | Doc 02 Table # |
 |---|---|---|
 | `credit_memos` | `sales_credit_memos` | #73 |
 | `credit_memo_lines` | `sales_credit_memo_lines` | #74 |
@@ -38,63 +36,14 @@ All non-canonical table names found in diagrams replaced with canonical names fr
 
 ---
 
-## Changes Applied (v1 → v2)
+## Resolved Architectural Decisions
 
-- Updated posting engine references: `posting_rules` → `posting_rule_sets`
-- Updated compliance references: `vat_summary_period` → `vat_period_summaries`
-- Updated document number column: `document_number` → `document_no`
-- Updated date column: `invoice_date`/`bill_date` → `document_date`
-- Added Cash Sales and Cash Purchases relationship chains (OD-08 resolved)
-- Added Notification relationship chain (Section 13)
-- Added Document Template and Generated Output relationship chain (Section 14)
-- Added Budget relationship chain (Section 15)
-- Added Period Close relationship chain (Section 16)
-- Added Party Duplicate Management relationship chain (Section 17)
-- Added `inventory_cost_layer_consumption` to inventory section
-- Added `bank_statement_lines` to bank reconciliation section
-- Added `attachment_versions` to attachments section
-- Added `system_alerts` to audit section
-- Updated bridge table summary for all new tables
-- Fixed `bank_statements_lines` → `bank_statement_lines` (singular table name)
-
-## v3 Architecture Review Changes Applied (Enhancement Round)
-
-- **Section 26: Amortization Schedule Chain** added
-- **Section 27: Revenue Recognition Schedule Chain** added
-- **Section 28: Auto Reversal Chain** added
-- **journal_entries** chain updated — new FK columns (auto_reversal_run_id, amortization_run_detail_id, revenue_recognition_run_detail_id) reflected
-
-## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
-
-- **Party classification chain updated**: Customer and supplier nodes now show `party_special_class` (government/peza/boi/foreign_entity) as separate from `vat_registration_status`. The posting engine reads `party_special_class` to set `vat_entries.vat_classification = 'government'` — this is NOT stored on transaction lines.
-- **Income tax chain rewritten**: `itr_working_papers` → renamed `itr_computation_runs`. `mcit_computations` and `nolco_schedules` REMOVED (superseded). Canonical chain: `income_tax_return_filings` → `itr_computation_runs` → `income_tax_computation_lines` + `book_tax_reconciliations` + `nolco_tracking` + `tax_credits_schedules`.
-- **COA mapping chain**: No separate mapping table chain. `chart_of_accounts` carries `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` directly. FS report generation reads COA directly.
-- **companies.tax_type**: CHECK corrected to ('vat','non_vat'). Diagram nodes updated — 'exempt' removed.
-
-## v3 Open Decisions
-
-| OD# | Decision | Status |
-|---|---|---|
-| OD-04-V3-01 | `user_branch_access` table — is this still in scope for Phase 1 or deferred? | **RESOLVED** — `user_branch_access` is ACTIVE (#7 in Doc 02 registry). Phase 1 uses it for UI-layer branch filtering per Doc 09 Option A. No separate security boundary RLS needed Phase 1. |
-| OD-04-V3-02 | `fwt_entries` — separate table or part of `ewt_entries` with a direction flag? | **RESOLVED** — Separate table confirmed: `fwt_entries` (#146 in Doc 02). WF-series ATC codes only. Separate from `ewt_entries` (#145) WC/WI-series. BIR requires separate 1601FQ form vs 1601EQ — separate tables are correct. |
-
----
-
-## Changes Applied (v2 → v2.1) — Principle Alignment
-
-- Added Section 22: Compliance Profile Chain (Principle 6)
-- Added Section 23: Percentage Tax Chain (Principle 20)
-- Added Section 24: FWT / 1601FQ Chain (Principle 20)
-- Added Section 25: Income Tax Return Filing Chain
-
----
-
-## Open Decisions Remaining
-
-| OD # | Question | Status |
-|---|---|---|
-| OD-09 | Should `document_relationships` also link notification events to their source documents? | **RESOLVED v3.8:** No. `document_relationships` links operational documents only (invoice → receipt, bill → payment, etc.). Notification-to-source linking is handled by `notifications.entity_type` + `notifications.entity_id` columns — these point directly to the source document without using `document_relationships`. Phase 2 may add a `notification_relationships` table if cross-document notification threading is needed. |
-| OD-10 | Should `generated_documents` link to `export_jobs` when a PDF is produced as part of an export? | **RESOLVED v3.8:** Yes — `generated_documents.export_job_id` (FK → `export_jobs.id`, nullable). When a PDF (invoice, 2307, etc.) is generated as part of an export job, the `export_job_id` is set. When generated on-demand from a single document view, `export_job_id` is NULL. This allows filtering all documents produced by a given export job for audit purposes. Developer: add `export_job_id uuid NULL FK export_jobs` to `generated_documents` spec in Doc03. |
+| Decision | Resolution |
+|---|---|
+| `user_branch_access` table scope | ACTIVE (#7 in Doc 02 registry). Phase 1 uses it for UI-layer branch filtering per Doc 09 Option A. No separate security boundary RLS needed Phase 1. |
+| `fwt_entries` — separate table or merged with `ewt_entries`? | Separate table confirmed: `fwt_entries` (#146 in Doc 02). WF-series ATC codes only. Separate from `ewt_entries` (#145) WC/WI-series. BIR requires separate 1601FQ form vs 1601EQ. |
+| `document_relationships` scope for notification events | No. `document_relationships` links operational documents only (invoice → receipt, bill → payment, etc.). Notification-to-source linking is handled by `notifications.entity_type` + `notifications.entity_id` columns. Phase 2 may add `notification_relationships` if needed. |
+| `generated_documents` link to `export_jobs` | Yes — `generated_documents.export_job_id` (FK → `export_jobs.id`, nullable). Set when PDF is generated as part of an export job; NULL when generated on-demand from a single document view. |
 
 ---
 

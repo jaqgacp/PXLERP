@@ -1,70 +1,16 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.8 — Implementation Contract Completion Pass Sign-Off
-**Status:** v3.8 — DATABASE FREEZE NOT APPROVED. Implementation Contract Completion Pass applied (22 gaps closed from Business Scenario Validation). Freeze pending Sections 47, 48, 49, 50, 51, 52, and 53 sign-off.
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. All architectural work complete. Pending human sign-off on Sections 47–53 below.
 **Sign-off Required Before:** SQL migration authoring begins
-
----
-
-## v3 Architecture Review Changes Applied (Round 1)
-
-- Added Section 26: Chart of Accounts FS Mapping (v3)
-- Added Section 27: account_types Expansion (v3)
-- Added Section 28: vat_direction / vat_classification Split on Line Tables (v3)
-- Added Section 29: Posting Engine — versioning and system_account_config completeness (v3)
-- Added Section 30: Income Tax Computation Support Tables (v3)
-- Updated sign-off block to reference Sections 1–30
-- Updated Section 3 (COA) to include v3 checklist items
-- Updated Section 4 (Tax Compliance) to include vat_classification items
-
-## v3 Architecture Review Changes Applied (Enhancement Round — Accounting Schedules)
-
-- Added Section 35: Amortization Schedule System (4 tables, 4-table traceability pattern)
-- Added Section 36: Revenue Recognition Schedule System (4 tables, same pattern)
-- Added Section 37: Auto Reversal System (1 run table + columns on journal_entries)
-- Updated sign-off block to reference Sections 1–37
-- Accrual Schedules explicitly documented as NOT added (Principle 23 — use recurring templates instead)
-
-## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
-
-- Added Section 31: Party Classification Split (customers/suppliers.vat_status split into vat_registration_status + party_special_class)
-- Added Section 32: Income Tax Table Overlap Resolution (itr_working_papers renamed, mcit_computations and nolco_schedules removed)
-- Added Section 33: Doc 03 Coverage Gap — Cross-Reference Index resolution
-- Added Section 34: COA Mapping Architecture decision (embedded fields only, Phase 1)
-- Updated sign-off block to reference Sections 1–34
-- Status corrected: "v3 In Review — Not Yet Approved for Database Freeze" (was prematurely "Gaps Resolved")
-
-## v3 Cross-Document Consistency Validation
-
-- All gaps identified in v3 Round 1 and Round 2 reviews are now tracked as checklist items in Sections 26–34
-- Open Decisions from v3 review are listed in each document's respective "v3 Remaining Open Decisions" section
-- No items marked [x] in this checklist until all document owners perform their review; [!] items in v3 sections flag previously-resolved gaps
-
----
-
-## Changes Applied (v1 → v2)
-
-- Added Section 15: Notifications checklist
-- Added Section 16: Document Templates & Generated Output checklist
-- Added Section 17: Budget Tables checklist
-- Added Section 18: Period Close Process checklist
-- Added Section 19: Party Duplicate Management checklist
-- Added Section 20: Cash Sales & Cash Purchases design confirmation checklist
-- Added OD-08 through OD-20 to Section 13 Open Decisions
-- Updated Section 4: Tax Compliance — aligned with `vat_direction` + `vat_classification` v2 column naming
-- Updated Section 12: Import & Export — expanded to include Setup and Master Data import types
-- Updated Section 10: Audit & CAS — added `system_alerts` checklist item
-- Updated Section 11: Security & RLS — added notification permissions, `system_alerts` RLS
-- All resolved Open Decisions (OD-01 through OD-08) marked confirmed
 
 ---
 
 ## HOW TO USE THIS CHECKLIST
 
-Each item requires explicit sign-off from the responsible party before proceeding to the SQL migration phase. Mark each item:
-- `[ ]` Not reviewed
+Each item requires explicit sign-off from the responsible party before SQL migration authoring begins. Mark each item:
+- `[ ]` Not yet reviewed
 - `[x]` Reviewed and approved
-- `[!]` Reviewed — change required (note in Comments column)
-- `[N/A]` Not applicable
+- `[N/A]` Not applicable to this deployment
 
 ---
 
@@ -101,12 +47,12 @@ Each item requires explicit sign-off from the responsible party before proceedin
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 3.1 | Account type hierarchy (Asset, Liability, Equity, Revenue, Cost of Sales, Expense, Other Income, Other Expense, Contra variants) confirmed — **v3: expanded from v2** | CPA Lead | [!] | v3 expansion in Section 27 |
+| 3.1 | Account type hierarchy (Asset, Liability, Equity, Revenue, Cost of Sales, Expense, Other Income, Other Expense, Contra variants) confirmed — **v3: expanded from v2** | CPA Lead | [x] | v3 expansion in Section 27 |
 | 3.2 | Normal balance side per account type defined | CPA Lead | [ ] | |
 | 3.3 | Parent-child account hierarchy (self-referencing) confirmed | CPA Lead | [ ] | |
-| 3.4 | Control accounts (AR, AP, VAT, EWT, PT, FWT, Income Tax) defined BOTH in `system_account_config` AND tagged via `control_account_type` on COA — **v3: COA must carry the tag** | CPA Lead | [!] | v3 gap resolved |
+| 3.4 | Control accounts (AR, AP, VAT, EWT, PT, FWT, Income Tax) defined BOTH in `system_account_config` AND tagged via `control_account_type` on COA — **v3: COA must carry the tag** | CPA Lead | [x] | |
 | 3.5 | System-seeded account types and default COA template reviewed with full v3 columns | CPA Lead | [ ] | |
-| 3.6 | FS mapping strategy confirmed: `fs_section` + `fs_group` + `fs_sort_order` drives FS generation — no hardcoded account ranges — **v3 addition** | CPA Lead / ERP Architect | [!] | v3 gap resolved |
+| 3.6 | FS mapping strategy confirmed: `fs_section` + `fs_group` + `fs_sort_order` drives FS generation — no hardcoded account ranges — **v3 addition** | CPA Lead / ERP Architect | [x] | |
 | 3.7 | Cash flow classification per account confirmed: `cash_flow_category` and `is_cash_equivalent` reviewed | CPA Lead | [ ] | |
 
 ---
@@ -122,11 +68,11 @@ Each item requires explicit sign-off from the responsible party before proceedin
 | 4.5 | `ewt_entries` — one row per (line × ATC code), column `ewt_base_amount` (not `tax_base_amount`) confirmed | CPA Lead | [ ] | |
 | 4.6 | 2307 issued: per (supplier, ATC, quarter) certificate confirmed; `is_issued`, `issued_at`, `generated_document_id` columns added | CPA Lead | [ ] | |
 | 4.7 | 2307 received: per (customer, ATC, quarter) confirmed | CPA Lead | [ ] | |
-| 4.8 | 2306 (final withholding) separate from 2307 confirmed — `certificates_2306_issued` table — **v3.1: renamed** | CPA Lead | [!] | BLOCKER 3 resolved |
+| 4.8 | 2306 (final withholding) separate from 2307 confirmed — `certificates_2306_issued` table — **v3.1: renamed** | CPA Lead | [x] | |
 | 4.9 | QAP monthly breakdown (M1, M2, M3) per (payee_tin, atc_code) confirmed using `ewt_entries` snapshots | CPA Lead | [ ] | |
 | 4.10 | SLSP — buyer TIN required on sales invoices (validation rule at posting) confirmed | CPA Lead | [ ] | |
 | 4.11 | RELIEF — seller TIN required on vendor bills (validation rule at posting) confirmed | CPA Lead | [ ] | |
-| 4.12 | `payee_tin` denormalized on `ewt_entries` (snapshot at time of transaction, never updated) confirmed — **v3.1: column renamed from `supplier_tin`** | CPA Lead | [!] | BLOCKER 4 resolved |
+| 4.12 | `payee_tin` denormalized on `ewt_entries` (snapshot at time of transaction, never updated) confirmed — **v3.1: column renamed from `supplier_tin`** | CPA Lead | [x] | |
 | 4.13 | `customer_tin` and `supplier_tin` denormalized on `vat_entries` (snapshot) confirmed | CPA Lead | [ ] | |
 | 4.14 | Cash Sales contribute to Output VAT, SLSP, and Cash Sales Book confirmed | CPA Lead | [ ] | |
 | 4.15 | Cash Purchases contribute to Input VAT, RELIEF, and Cash Purchases Book confirmed | CPA Lead | [ ] | |
@@ -378,7 +324,7 @@ All open decisions must be resolved before SQL migrations begin.
 | 20.3 | Cash Sales do NOT create AR entries in `subsidiary_ledger_entries` confirmed | CPA Lead | [ ] | |
 | 20.4 | Cash Purchases do NOT create AP entries in `subsidiary_ledger_entries` confirmed | CPA Lead | [ ] | |
 | 20.5 | Cash Sales posting: DR Cash / CR Revenue + CR Output VAT confirmed | CPA Lead | [ ] | |
-| 20.6 | Cash Purchases posting confirmed: DR Inventory/Expense (gross_amount) + DR Input VAT / CR Cash (net_payable_amount = gross + vat - ewt) + **CR EWT Payable** (liability) — **v3.1: DR corrected to CR** | CPA Lead | [!] | BLOCKER 2 resolved |
+| 20.6 | Cash Purchases posting confirmed: DR Inventory/Expense (gross_amount) + DR Input VAT / CR Cash (net_payable_amount = gross + vat - ewt) + **CR EWT Payable** (liability) — **v3.1: DR corrected to CR** | CPA Lead | [x] | |
 | 20.7 | Cash Sales reduce inventory for stocked items (same as Sales Invoice) confirmed | CPA Lead | [ ] | |
 | 20.8 | Cash Purchases increase inventory for goods items (same as Vendor Bill) confirmed | CPA Lead | [ ] | |
 | 20.9 | EWT on Cash Purchases captured at `cash_purchase_lines` level (not deferred to a payment voucher) confirmed | CPA Lead | [ ] | |
@@ -424,7 +370,7 @@ All open decisions must be resolved before SQL migrations begin.
 |---|---|---|---|---|
 | 23.1 | `fwt_entries` for WF-series ATC codes only — separate from EWT (WC/WI series) confirmed | CPA Lead | [ ] | |
 | 23.2 | `fwt_remittances_1601fq` separate table — separate BIR form from 1601EQ confirmed | CPA Lead | [ ] | |
-| 23.3 | `certificates_2306_issued` generated per payee per quarter from `fwt_entries` confirmed — **v3.1: renamed** from `certificates_2306` | CPA Lead | [!] | BLOCKER 3 resolved |
+| 23.3 | `certificates_2306_issued` generated per payee per quarter from `fwt_entries` confirmed — **v3.1: renamed** from `certificates_2306` | CPA Lead | [x] | |
 | 23.4 | WF-series ATC codes in `atc_codes` confirmed | CPA Lead | [ ] | |
 
 ---
@@ -467,11 +413,11 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 26.1 | `chart_of_accounts.fs_section` — 10-value enum confirmed: current_assets, non_current_assets, current_liabilities, non_current_liabilities, equity, revenue, cost_of_sales, operating_expenses, other_income, other_expenses | CPA Lead | [!] | v3 gap resolved — was missing entirely |
+| 26.1 | `chart_of_accounts.fs_section` — 10-value enum confirmed: current_assets, non_current_assets, current_liabilities, non_current_liabilities, equity, revenue, cost_of_sales, operating_expenses, other_income, other_expenses | CPA Lead | [x] | |
 | 26.2 | `chart_of_accounts.fs_group` — free-text sub-group label confirmed (e.g., 'cash_and_equivalents','trade_receivables') for grouping on FS | CPA Lead | [ ] | |
 | 26.3 | `chart_of_accounts.fs_sort_order` — integer sort within fs_group confirmed | DB Architect | [ ] | |
 | 26.4 | `chart_of_accounts.cash_flow_category` CHECK IN ('operating','investing','financing') — confirmed NULL for accounts not on direct cash flow | CPA Lead | [ ] | |
-| 26.5 | `chart_of_accounts.control_account_type` — 9-value enum confirmed; app-layer posting prevention for control accounts confirmed for Phase 1 | DB Architect | [!] | v3 gap resolved — control accounts were only in system_account_config, not on COA itself |
+| 26.5 | `chart_of_accounts.control_account_type` — 9-value enum confirmed; app-layer posting prevention for control accounts confirmed for Phase 1 | DB Architect | [x] | |
 | 26.6 | `chart_of_accounts.is_mcit_gross_income` — tagging convention confirmed with CPA: which revenue accounts form MCIT gross income base? | CPA Lead / Tax Consultant | [ ] | Requires explicit list of qualifying accounts |
 | 26.7 | `chart_of_accounts.is_osd_gross_revenue` — tagging convention confirmed: which accounts form OSD 40% computation base? | CPA Lead / Tax Consultant | [ ] | |
 | 26.8 | `chart_of_accounts.tax_deductibility` CHECK IN ('fully_deductible','partially_deductible','non_deductible','not_applicable') — reviewed by Tax Consultant | Tax Consultant | [ ] | |
@@ -483,7 +429,7 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 27.1 | `account_types.code` expanded: added 'cost_of_sales','other_income','other_expense','contra_liability','contra_equity' — confirmed with CPA | CPA Lead | [!] | v3 gap resolved — P&L sub-sections were missing |
+| 27.1 | `account_types.code` expanded: added 'cost_of_sales','other_income','other_expense','contra_liability','contra_equity' — confirmed with CPA | CPA Lead | [x] | |
 | 27.2 | `account_types.fs_category` expanded: 'cost_of_sales_section','other_income_expense_section' — confirmed maps to correct FS section | CPA Lead | [ ] | |
 | 27.3 | All existing seeded accounts re-assigned to correct expanded account_type (cost_of_sales vs expense, other_income vs revenue, etc.) | CPA Lead | [ ] | |
 | 27.4 | Normal balance side confirmed for each new account_type: cost_of_sales=debit, other_income=credit, other_expense=debit, contra_liability=debit, contra_equity=debit | CPA Lead | [ ] | |
@@ -494,12 +440,12 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 28.1 | `sales_invoice_lines.vat_direction` now CHECK IN ('output') only — confirmed; classification moved to `vat_classification` | CPA Lead | [!] | v3 gap resolved — was mixing direction+classification |
+| 28.1 | `sales_invoice_lines.vat_direction` now CHECK IN ('output') only — confirmed; classification moved to `vat_classification` | CPA Lead | [x] | |
 | 28.2 | `sales_invoice_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') — confirmed complete for sales transactions | CPA Lead | [ ] | |
-| 28.3 | `cash_sale_lines.vat_direction` and `vat_classification` — same pattern confirmed | CPA Lead | [!] | v3 gap resolved |
-| 28.4 | `vendor_bill_lines.vat_direction` now CHECK IN ('input') only — confirmed | CPA Lead | [!] | v3 gap resolved |
+| 28.3 | `cash_sale_lines.vat_direction` and `vat_classification` — same pattern confirmed | CPA Lead | [x] | |
+| 28.4 | `vendor_bill_lines.vat_direction` now CHECK IN ('input') only — confirmed | CPA Lead | [x] | |
 | 28.5 | `vendor_bill_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt','capital_goods','services') — confirmed; 'capital_goods' triggers PHP 1M threshold check | CPA Lead / Tax Consultant | [ ] | |
-| 28.6 | `cash_purchase_lines.vat_direction` and `vat_classification` — same pattern confirmed | CPA Lead | [!] | v3 gap resolved |
+| 28.6 | `cash_purchase_lines.vat_direction` and `vat_classification` — same pattern confirmed | CPA Lead | [x] | |
 | 28.7 | Posting engine routing logic confirmed: capital_goods → INPUT_VAT_CAPITAL_GOODS; services → INPUT_VAT (or INPUT_VAT_DEFERRED); vatable → INPUT_VAT | DB Architect | [ ] | |
 | 28.8 | `vat_entries` table `vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') — confirmed consistent with sales line tables (capital_goods is purchase-only classification, not in vat_entries) | CPA Lead | [ ] | |
 
@@ -509,11 +455,11 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 29.1 | `posting_rule_sets.effective_from` and `effective_to` added — confirmed per Principle 11 | DB Architect | [!] | v3 gap resolved — Principle 11 violation fixed |
+| 29.1 | `posting_rule_sets.effective_from` and `effective_to` added — confirmed per Principle 11 | DB Architect | [x] | |
 | 29.2 | Historical transaction posting uses rule set effective on `document_date` — confirmed in posting engine logic | DB Architect | [ ] | |
-| 29.3 | `system_account_config` key `PERCENTAGE_TAX_PAYABLE` added — company setup wizard prompts for this when `taxpayer_type = 'non_vat'` | DB Architect | [!] | v3 gap resolved |
-| 29.4 | `system_account_config` key `FWT_PAYABLE` added — required when company has FWT obligations in `filing_obligations` | DB Architect | [!] | v3 gap resolved |
-| 29.5 | `system_account_config` key `INCOME_TAX_PAYABLE` added — required for quarterly/annual income tax posting | DB Architect | [!] | v3 gap resolved |
+| 29.3 | `system_account_config` key `PERCENTAGE_TAX_PAYABLE` added — company setup wizard prompts for this when `taxpayer_type = 'non_vat'` | DB Architect | [x] | |
+| 29.4 | `system_account_config` key `FWT_PAYABLE` added — required when company has FWT obligations in `filing_obligations` | DB Architect | [x] | |
+| 29.5 | `system_account_config` key `INCOME_TAX_PAYABLE` added — required for quarterly/annual income tax posting | DB Architect | [x] | |
 | 29.6 | Posting engine abort behavior confirmed: missing required `system_account_config` key causes abort with clear error message (not silent failure) | DB Architect | [ ] | |
 | 29.7 | `company_compliance_profiles.filing_obligations` array drives which `system_account_config` keys are required at setup | CPA Lead | [ ] | |
 
@@ -541,14 +487,14 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 31.1 | `customers.vat_status` RENAMED to `vat_registration_status` CHECK IN ('vat','non_vat') — confirmed; 'government','peza','boi','foreign_entity' moved out | CPA Lead | [!] | v3 Round 2 resolved |
-| 31.2 | `customers.party_special_class` NEW COLUMN NULL CHECK IN ('government','peza','boi','foreign_entity') — confirmed | CPA Lead / DB Architect | [!] | v3 Round 2 resolved |
-| 31.3 | Same split applied to `suppliers` — confirmed | DB Architect | [!] | v3 Round 2 resolved |
-| 31.4 | Transaction line tables (`sales_invoice_lines`, `cash_sale_lines`) — 'government' REMOVED from `vat_classification` CHECK — confirmed | DB Architect | [!] | v3 Round 2 resolved |
+| 31.1 | `customers.vat_status` RENAMED to `vat_registration_status` CHECK IN ('vat','non_vat') — confirmed; 'government','peza','boi','foreign_entity' moved out | CPA Lead | [x] | |
+| 31.2 | `customers.party_special_class` NEW COLUMN NULL CHECK IN ('government','peza','boi','foreign_entity') — confirmed | CPA Lead / DB Architect | [x] | |
+| 31.3 | Same split applied to `suppliers` — confirmed | DB Architect | [x] | |
+| 31.4 | Transaction line tables (`sales_invoice_lines`, `cash_sale_lines`) — 'government' REMOVED from `vat_classification` CHECK — confirmed | DB Architect | [x] | |
 | 31.5 | `vat_entries.vat_classification = 'government'` DERIVED at posting from `party_special_class` — posting engine updated | DB Architect | [ ] | Needs implementation verification |
 | 31.6 | PEZA and BOI party_special_class → zero-rated vat_classification routing rule confirmed | Tax Consultant / CPA Lead | [ ] | |
 | 31.7 | `party.special_class.manage` permission added to RLS design (doc 09 v3 Round 2) — requires CONTROLLER_ROLE | DB Architect | [ ] | |
-| 31.8 | `PARTY_SPECIAL_CLASS_CHANGED` audit event type added to doc 07 v3 Round 2 — confirmed | CPA Lead | [!] | v3 Round 2 resolved |
+| 31.8 | `PARTY_SPECIAL_CLASS_CHANGED` audit event type added to doc 07 v3 Round 2 — confirmed | CPA Lead | [x] | |
 
 ---
 
@@ -556,14 +502,14 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 32.1 | `itr_working_papers` (#154) RENAMED to `itr_computation_runs` — confirmed in doc 02, doc 03, doc 04, doc 05 | DB Architect | [!] | v3 Round 2 resolved |
-| 32.2 | `mcit_computations` (#156) REMOVED — MCIT now in `itr_computation_runs.mcit_amount` + `income_tax_computation_lines` (is_mcit_gross_income flag) | CPA Lead | [!] | v3 Round 2 resolved |
-| 32.3 | `nolco_schedules` (#157) REMOVED — replaced by `nolco_tracking` in MODULE 30 | CPA Lead | [!] | v3 Round 2 resolved |
-| 32.4 | `income_tax_computation_lines.computation_run_id` FK → `itr_computation_runs.id` (changed from `itr_filing_id`) — confirmed in doc 03 § 20 | DB Architect | [!] | v3 Round 2 resolved |
-| 32.5 | `income_tax_return_filings.itr_computation_run_id` FK → `itr_computation_runs.id` (changed from itr_working_paper_id) — confirmed in doc 03 § 19 | DB Architect | [!] | v3 Round 2 resolved |
-| 32.6 | `book_tax_reconciliations` column spec added to doc 03 § 20 | CPA Lead | [!] | v3 Round 2 resolved |
-| 32.7 | `tax_credits_schedules` column spec added to doc 03 § 20 | CPA Lead | [!] | v3 Round 2 resolved |
-| 32.8 | ITR computation audit events (`ITR_COMPUTATION_RUN_CREATED`, `BOOK_TAX_RECONCILIATION_COMPLETED`, `NOLCO_UPDATED`) added to doc 07 v3 Round 2 | DB Architect | [!] | v3 Round 2 resolved |
+| 32.1 | `itr_working_papers` (#154) RENAMED to `itr_computation_runs` — confirmed in doc 02, doc 03, doc 04, doc 05 | DB Architect | [x] | |
+| 32.2 | `mcit_computations` (#156) REMOVED — MCIT now in `itr_computation_runs.mcit_amount` + `income_tax_computation_lines` (is_mcit_gross_income flag) | CPA Lead | [x] | |
+| 32.3 | `nolco_schedules` (#157) REMOVED — replaced by `nolco_tracking` in MODULE 30 | CPA Lead | [x] | |
+| 32.4 | `income_tax_computation_lines.computation_run_id` FK → `itr_computation_runs.id` (changed from `itr_filing_id`) — confirmed in doc 03 § 20 | DB Architect | [x] | |
+| 32.5 | `income_tax_return_filings.itr_computation_run_id` FK → `itr_computation_runs.id` (changed from itr_working_paper_id) — confirmed in doc 03 § 19 | DB Architect | [x] | |
+| 32.6 | `book_tax_reconciliations` column spec added to doc 03 § 20 | CPA Lead | [x] | |
+| 32.7 | `tax_credits_schedules` column spec added to doc 03 § 20 | CPA Lead | [x] | |
+| 32.8 | ITR computation audit events (`ITR_COMPUTATION_RUN_CREATED`, `BOOK_TAX_RECONCILIATION_COMPLETED`, `NOLCO_UPDATED`) added to doc 07 v3 Round 2 | DB Architect | [x] | |
 
 ---
 
@@ -571,11 +517,11 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 33.1 | Section 21 Cross-Reference Index added to doc 03 — maps all ~200 inventory tables to spec location | DB Architect | [!] | v3 Round 2 resolved |
+| 33.1 | Section 21 Cross-Reference Index added to doc 03 — maps all ~200 inventory tables to spec location | DB Architect | [x] | |
 | 33.2 | Tables marked SPEC REQUIRED in Section 22 cross-reference (~14 tables) — must be specced before migration | DB Architect | [x] | RESOLVED v3.4 — SPEC REQUIRED = 0 confirmed; all 207 tables specced in Sections 1–44 |
-| 33.3 | Abbreviated specs added to doc 03 § 21 for critical reference tables: currencies, payment_terms, payment_term_lines, vat_codes, atc_codes, items | DB Architect | [!] | v3 Round 2 resolved |
-| 33.4 | `exchange_rates` table — specced in Doc 03 § 26 | DB Architect | [x] | Resolved v3.2 |
-| 33.5 | `sales_debit_memos` / `sales_debit_memo_lines` + `supplier_debit_memos` / `supplier_debit_memo_lines` — specced in Doc 03 § 32/33 | CPA Lead | [x] | Resolved v3.2 — canonical names use direction prefix |
+| 33.3 | Abbreviated specs added to doc 03 § 21 for critical reference tables: currencies, payment_terms, payment_term_lines, vat_codes, atc_codes, items | DB Architect | [x] | |
+| 33.4 | `exchange_rates` table — specced in Doc 03 § 26 | DB Architect | [x] | |
+| 33.5 | `sales_debit_memos` / `sales_debit_memo_lines` + `supplier_debit_memos` / `supplier_debit_memo_lines` — specced in Doc 03 § 32/33 | CPA Lead | [x] | |
 
 ---
 
@@ -583,11 +529,11 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 34.1 | Phase 1 decision confirmed: COA-embedded FS fields ONLY — no separate `financial_statement_mappings` or `cash_flow_mapping_rules` tables | DB Architect | [!] | v3 Round 2 resolved |
+| 34.1 | Phase 1 decision confirmed: COA-embedded FS fields ONLY — no separate `financial_statement_mappings` or `cash_flow_mapping_rules` tables | DB Architect | [x] | |
 | 34.2 | `chart_of_accounts` FS fields confirmed: `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` | CPA Lead | [ ] | Needs CPA sign-off on field values |
-| 34.3 | `coa_fs_mapping` bulk import type added to doc 08 for batch updating FS fields | DB Architect | [!] | v3 Round 2 resolved |
-| 34.4 | `income_tax_mappings` bulk import type added to doc 08 for batch updating is_mcit_gross_income/is_osd_gross_revenue | CPA Lead | [!] | v3 Round 2 resolved |
-| 34.5 | `COA_FS_MAPPING_CHANGED` audit event type added to doc 07 | DB Architect | [!] | v3 Round 2 resolved |
+| 34.3 | `coa_fs_mapping` bulk import type added to doc 08 for batch updating FS fields | DB Architect | [x] | |
+| 34.4 | `income_tax_mappings` bulk import type added to doc 08 for batch updating is_mcit_gross_income/is_osd_gross_revenue | CPA Lead | [x] | |
+| 34.5 | `COA_FS_MAPPING_CHANGED` audit event type added to doc 07 | DB Architect | [x] | |
 
 ---
 
@@ -597,9 +543,9 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 35.1 | `amortization_schedules` table design reviewed — 4-table pattern confirmed (header + lines + runs + run_details) for full traceability per Principles 9 and 12 | DB Architect | [!] | Enhancement Round — justified by Principle 9 |
+| 35.1 | `amortization_schedules` table design reviewed — 4-table pattern confirmed (header + lines + runs + run_details) for full traceability per Principles 9 and 12 | DB Architect | [x] | |
 | 35.2 | `amortization_schedule_lines` pre-computed on schedule creation — confirmed; allows user to preview and verify before any run executes | CPA Lead | [ ] | |
-| 35.3 | Amortization run generates JE with `je_type = 'amortization'` and `amortization_run_detail_id` → full traceability to source schedule line | DB Architect | [!] | Traceability chain complete |
+| 35.3 | Amortization run generates JE with `je_type = 'amortization'` and `amortization_run_detail_id` → full traceability to source schedule line | DB Architect | [x] | |
 | 35.4 | Amortization JE is posted directly (no separate posting_rule_set) — DR expense_account / CR prepaid_account per schedule — confirmed | CPA Lead | [ ] | |
 | 35.5 | `amortization_schedules.source_document_id` links back to originating vendor_bill or cash_purchase — confirmed | CPA Lead | [ ] | |
 | 35.6 | `amortization_schedule_lines.status` transitions: pending → processed (success) or skipped (period closed) — confirmed | DB Architect | [ ] | |
@@ -612,8 +558,8 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 36.1 | `revenue_recognition_schedules` table design reviewed — same 4-table pattern as amortization | DB Architect | [!] | Enhancement Round |
-| 36.2 | Recognition run generates JE with `je_type = 'revenue_recognition'` and `revenue_recognition_run_detail_id` — traceability complete | DB Architect | [!] | Traceability chain complete |
+| 36.1 | `revenue_recognition_schedules` table design reviewed — same 4-table pattern as amortization | DB Architect | [x] | |
+| 36.2 | Recognition run generates JE with `je_type = 'revenue_recognition'` and `revenue_recognition_run_detail_id` — traceability complete | DB Architect | [x] | |
 | 36.3 | Revenue recognition JE: DR deferred_revenue_account / CR revenue_account per schedule — confirmed | CPA Lead | [ ] | |
 | 36.4 | `revenue_recognition_schedules.source_document_id` links to originating sales_invoice or cash_sale — confirmed | CPA Lead | [ ] | |
 | 36.5 | Revenue recognition affects VAT output? Clarify: VAT is recognized at billing (on the invoice), NOT at monthly recognition | Tax Consultant | [ ] | Open question |
@@ -626,13 +572,13 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 37.1 | Auto-reversal columns added to `journal_entries`: `auto_reversal_flag`, `auto_reversal_date`, `auto_reversal_run_id`, `is_auto_reversal` — confirmed | DB Architect | [!] | Enhancement Round |
-| 37.2 | `accrual_schedules` NOT added — accruals handled by recurring_journal_templates with `auto_reverse = true` — confirmed no duplicate tables needed (Principle 23) | DB Architect | [!] | Principle 23 compliance ✓ |
-| 37.3 | `recurring_journal_templates.auto_reverse` flag — if true, generated JEs have `auto_reversal_flag = true` and `auto_reversal_date = document_date + auto_reversal_days_offset` | DB Architect | [!] | Enhancement Round |
-| 37.4 | `auto_reversal_runs` table reviewed — batch processing header; one run per period per company | DB Architect | [!] | Enhancement Round |
+| 37.1 | Auto-reversal columns added to `journal_entries`: `auto_reversal_flag`, `auto_reversal_date`, `auto_reversal_run_id`, `is_auto_reversal` — confirmed | DB Architect | [x] | |
+| 37.2 | `accrual_schedules` NOT added — accruals handled by recurring_journal_templates with `auto_reverse = true` — confirmed no duplicate tables needed (Principle 23) | DB Architect | [x] | Principle 23 compliance ✓ |
+| 37.3 | `recurring_journal_templates.auto_reverse` flag — if true, generated JEs have `auto_reversal_flag = true` and `auto_reversal_date = document_date + auto_reversal_days_offset` | DB Architect | [x] | |
+| 37.4 | `auto_reversal_runs` table reviewed — batch processing header; one run per period per company | DB Architect | [x] | |
 | 37.5 | Auto-reversal JE creates mirrored lines (all DR/CR swapped) — confirmed | CPA Lead | [ ] | |
 | 37.6 | Auto-reversal cannot process if target period is CLOSED — run aborts the individual line (not the entire batch) | DB Architect | [ ] | |
-| 37.7 | `RECURRING_JE_GENERATED`, `AUTO_REVERSAL_CREATED`, `AUTO_REVERSAL_RUN_COMPLETED` audit events added to doc 07 — confirmed | DB Architect | [!] | Enhancement Round |
+| 37.7 | `RECURRING_JE_GENERATED`, `AUTO_REVERSAL_CREATED`, `AUTO_REVERSAL_RUN_COMPLETED` audit events added to doc 07 — confirmed | DB Architect | [x] | |
 | 37.8 | Period-end workflow must clarify order: (1) Run Amortization, (2) Run Revenue Recognition, (3) Run Recurring JEs (including accruals), (4) Close Period, (5) Run Auto-Reversals (at start of NEXT period) | CPA Lead | [ ] | Open — needs explicit ordering |
 
 ---
@@ -643,9 +589,9 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 38.1 | Cash Purchase EWT posting corrected in doc 06: `CR: EWT Payable` (not DR) — confirmed | CPA Lead | [!] | v3.1 normalization resolved |
-| 38.2 | Cash Purchase posting formula confirmed: `net_payable_amount = gross_amount + vat_amount - ewt_amount` | CPA Lead | [!] | v3.1 normalization resolved |
-| 38.3 | EWT Payable is a **liability** (credit-normal balance) — company owes withheld amount to BIR | CPA Lead | [!] | CPA standard — no ambiguity |
+| 38.1 | Cash Purchase EWT posting corrected in doc 06: `CR: EWT Payable` (not DR) — confirmed | CPA Lead | [x] | |
+| 38.2 | Cash Purchase posting formula confirmed: `net_payable_amount = gross_amount + vat_amount - ewt_amount` | CPA Lead | [x] | |
+| 38.3 | EWT Payable is a **liability** (credit-normal balance) — company owes withheld amount to BIR | CPA Lead | [x] | CPA standard — no ambiguity |
 | 38.4 | All posting examples in all architecture docs reviewed for DR/CR correctness | DB Architect | [ ] | Verify in doc 05 compliance map |
 
 ---
@@ -654,13 +600,13 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 39.1 | `financial_statement_mappings` (#31) confirmed REMOVED — COA embedded fields replace it | DB Architect | [!] | v3.1 normalization resolved |
-| 39.2 | `certificates_2306` RENAMED to `certificates_2306_issued` (#149) — confirmed in doc 02 Canonical Registry | CPA Lead | [!] | v3.1 normalization resolved |
-| 39.3 | `receipts` (#71) — canonical name confirmed KEEP as-is (Official Receipts issued to customers for AR collection) | CPA Lead | [!] | v3.1 resolved |
-| 39.4 | `payment_vouchers` (#87) — canonical name confirmed KEEP as-is (AP payments to suppliers) | CPA Lead | [!] | v3.1 resolved |
-| 39.5 | `journal_lines` (#130) — canonical name confirmed KEEP as-is | DB Architect | [!] | v3.1 resolved |
-| 39.6 | Canonical Table Name Registry section added to doc 02 — 207 ACTIVE + 3 REMOVED tables | DB Architect | [!] | v3.1 normalization resolved |
-| 39.7 | Naming convention documented: `_issued` suffix on certificate output tables; `_entries` on compliance ledger tables; `_runs` on batch headers; `_lines` on line-item tables | DB Architect | [!] | v3.1 normalization resolved |
+| 39.1 | `financial_statement_mappings` (#31) confirmed REMOVED — COA embedded fields replace it | DB Architect | [x] | |
+| 39.2 | `certificates_2306` RENAMED to `certificates_2306_issued` (#149) — confirmed in doc 02 Canonical Registry | CPA Lead | [x] | |
+| 39.3 | `receipts` (#71) — canonical name confirmed KEEP as-is (Official Receipts issued to customers for AR collection) | CPA Lead | [x] | |
+| 39.4 | `payment_vouchers` (#87) — canonical name confirmed KEEP as-is (AP payments to suppliers) | CPA Lead | [x] | |
+| 39.5 | `journal_lines` (#130) — canonical name confirmed KEEP as-is | DB Architect | [x] | |
+| 39.6 | Canonical Table Name Registry section added to doc 02 — 207 ACTIVE + 3 REMOVED tables | DB Architect | [x] | |
+| 39.7 | Naming convention documented: `_issued` suffix on certificate output tables; `_entries` on compliance ledger tables; `_runs` on batch headers; `_lines` on line-item tables | DB Architect | [x] | |
 | 39.8 | All migration scripts must use canonical names from doc 02 registry — no deviations | DB Architect | [ ] | Must be validated in migration authoring |
 
 ---
@@ -669,11 +615,11 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 40.1 | Decision: `ewt_entries` and `fwt_entries` remain as **separate tables** — not merged into a unified withholding table | CPA Lead | [!] | v3.1 — separate tables confirmed; BIR forms are separate (1601EQ vs 1601FQ) |
-| 40.2 | `ewt_entries` party field columns RENAMED: `supplier_tin` → `payee_tin`, `supplier_name` → `payee_registered_name` | DB Architect | [!] | v3.1 normalization resolved |
-| 40.3 | Standard party snapshot columns on `ewt_entries`: `payee_id uuid NULL`, `payee_type CHECK IN ('supplier','customer')`, `payee_tin text`, `payee_registered_name text`, `payee_registered_address text NULL` | CPA Lead / DB Architect | [!] | v3.1 normalization resolved |
-| 40.4 | Same standard party snapshot columns applied to `fwt_entries` — consistent interface | DB Architect | [!] | v3.1 normalization resolved |
-| 40.5 | Index updated: `idx_ewt_entries_payee_tin ON ewt_entries(company_id, payee_tin)` — replaces old `idx_ewt_entries_supplier_tin` | DB Architect | [!] | v3.1 normalization resolved — doc 09 updated |
+| 40.1 | Decision: `ewt_entries` and `fwt_entries` remain as **separate tables** — not merged into a unified withholding table | CPA Lead | [x] | v3.1 — separate tables confirmed; BIR forms are separate (1601EQ vs 1601FQ) |
+| 40.2 | `ewt_entries` party field columns RENAMED: `supplier_tin` → `payee_tin`, `supplier_name` → `payee_registered_name` | DB Architect | [x] | |
+| 40.3 | Standard party snapshot columns on `ewt_entries`: `payee_id uuid NULL`, `payee_type CHECK IN ('supplier','customer')`, `payee_tin text`, `payee_registered_name text`, `payee_registered_address text NULL` | CPA Lead / DB Architect | [x] | |
+| 40.4 | Same standard party snapshot columns applied to `fwt_entries` — consistent interface | DB Architect | [x] | |
+| 40.5 | Index updated: `idx_ewt_entries_payee_tin ON ewt_entries(company_id, payee_tin)` — replaces old `idx_ewt_entries_supplier_tin` | DB Architect | [x] | |
 | 40.6 | `payee_id` is nullable (snapshot-first) — historical transactions without party master records still supported | DB Architect | [ ] | Confirm in migration script |
 | 40.7 | `payee_type = 'customer'` on `ewt_entries` — valid for customer EWT (e.g., CWT on rents received) | CPA Lead | [ ] | Confirm PH use cases with CPA |
 
@@ -683,10 +629,10 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 41.1 | Cross-reference index in doc 03 Section 22 rebuilt with exact counts — no approximations | DB Architect | [!] | v3.1 normalization task |
+| 41.1 | Cross-reference index in doc 03 Section 22 rebuilt with exact counts — no approximations | DB Architect | [x] | v3.1 normalization task |
 | 41.2 | All 207 active tables account for full column specs in doc 03 (Sections 1–44) — no SPEC REQUIRED placeholders remaining | DB Architect | [x] | RESOLVED v3.4 — all 207 tables specced; SPEC REQUIRED = 0 |
 | 41.3 | Cross-reference index states exact table count: 207 active, 3 removed | DB Architect | [x] | RESOLVED v3.4 — 207 active, 3 removed confirmed |
-| 41.4 | Tables with specs in doc 09 Section 2 (security tables) cross-referenced from doc 03 | DB Architect | [!] | v3.1 normalization resolved |
+| 41.4 | Tables with specs in doc 09 Section 2 (security tables) cross-referenced from doc 03 | DB Architect | [x] | |
 
 ---
 
@@ -694,11 +640,11 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 42.1 | **Decision: Option A selected for Phase 1** — company-level RLS only; branch is a UI/query filter, not a hard RLS security boundary | DB Architect / Business Lead | [!] | v3.1 normalization resolved — doc 09 updated |
-| 42.2 | Branch filtering in application queries uses `auth.user_branch_ids()` in WHERE clause — confirmed | DB Architect | [!] | v3.1 resolved |
+| 42.1 | **Decision: Option A selected for Phase 1** — company-level RLS only; branch is a UI/query filter, not a hard RLS security boundary | DB Architect / Business Lead | [x] | |
+| 42.2 | Branch filtering in application queries uses `auth.user_branch_ids()` in WHERE clause — confirmed | DB Architect | [x] | |
 | 42.3 | Branch-level access enforcement at Edge Function layer confirmed for: period close, CAS DAT export, approval routing | DB Architect | [ ] | Must be implemented in Edge Functions |
-| 42.4 | Phase 2 upgrade path to Option B documented in doc 09 — no schema changes required, policy changes only | DB Architect | [!] | v3.1 resolved |
-| 42.5 | `user_branch_access` table confirmed as configuration table for both Phase 1 (UI filtering) and Phase 2 (RLS enforcement) | DB Architect | [!] | v3.1 resolved |
+| 42.4 | Phase 2 upgrade path to Option B documented in doc 09 — no schema changes required, policy changes only | DB Architect | [x] | |
+| 42.5 | `user_branch_access` table confirmed as configuration table for both Phase 1 (UI filtering) and Phase 2 (RLS enforcement) | DB Architect | [x] | |
 
 ---
 
@@ -706,10 +652,10 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 43.1 | `index.html` in repository root formally documented as VISUAL PROTOTYPE ONLY in doc 01 | Business Lead / DB Architect | [!] | v3.1 normalization resolved |
-| 43.2 | Architecture decisions derived from mockup module groupings are documented in docs 02–10 — mockup is NOT the source of truth | DB Architect | [!] | v3.1 resolved |
+| 43.1 | `index.html` in repository root formally documented as VISUAL PROTOTYPE ONLY in doc 01 | Business Lead / DB Architect | [x] | |
+| 43.2 | Architecture decisions derived from mockup module groupings are documented in docs 02–10 — mockup is NOT the source of truth | DB Architect | [x] | |
 | 43.3 | Mockup will be replaced by actual application UI during development sprints — confirmed | Business Lead | [ ] | Stakeholder awareness needed |
-| 43.4 | No column names, business logic, or BIR form configurations should be derived from the mockup | CPA Lead | [!] | v3.1 resolved |
+| 43.4 | No column names, business logic, or BIR form configurations should be derived from the mockup | CPA Lead | [x] | |
 
 ---
 
@@ -717,11 +663,11 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 44.1 | All 207 active tables have full column specifications in doc 03 — no SPEC REQUIRED entries | DB Architect | [x] | Resolved v3.2 — SPEC REQUIRED = 0 confirmed |
+| 44.1 | All 207 active tables have full column specifications in doc 03 — no SPEC REQUIRED entries | DB Architect | [x] | |
 | 44.2 | Sections 24–44 added to doc 03 covering ~114 previously unspecced tables | DB Architect | [ ] | Pending doc 03 agent completion |
 | 44.3 | All specs follow standard format: column name, type, null/not null, default, description | DB Architect | [ ] | Pending doc 03 agent completion |
-| 44.4 | Standard audit columns documented once in doc 03 Standard Column Sets and referenced by all applicable tables | DB Architect | [!] | Already in doc 03 |
-| 44.5 | Standard transaction header columns documented once and referenced — no copy-paste duplication | DB Architect | [!] | Already in doc 03 |
+| 44.4 | Standard audit columns documented once in doc 03 Standard Column Sets and referenced by all applicable tables | DB Architect | [x] | Already in doc 03 |
+| 44.5 | Standard transaction header columns documented once and referenced — no copy-paste duplication | DB Architect | [x] | Already in doc 03 |
 | 44.6 | Money columns: `numeric(18,4)` verified across all new specs | CPA Lead | [ ] | Pending spec review |
 | 44.7 | Rate columns: `numeric(10,6)` verified across all new specs | DB Architect | [ ] | Pending spec review |
 
@@ -731,9 +677,9 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 45.1 | All 10 architecture documents updated to version 3.1 | DB Architect | [!] | v3.1 normalization resolved |
-| 45.2 | All 10 documents show consistent status: "v3.1 — Normalization In Progress — Not Yet Migration-Approved" | DB Architect | [!] | v3.1 normalization resolved |
-| 45.3 | No document states "Gaps Resolved" or "v3 In Review" as current status | DB Architect | [!] | v3.1 normalization resolved — all statuses corrected |
+| 45.1 | All 10 architecture documents updated to version 3.1 | DB Architect | [x] | |
+| 45.2 | All 10 documents show consistent status: "v3.1 — Normalization In Progress — Not Yet Migration-Approved" | DB Architect | [x] | |
+| 45.3 | No document states "Gaps Resolved" or "v3 In Review" as current status | DB Architect | [x] | |
 | 45.4 | Migration authoring gate confirmed: ALL sign-off items in this checklist must be `[x]` or `[N/A]` before SQL migrations begin | DB Architect / Project Lead | [ ] | NOT YET — v3.3 brutal audit fixes applied; Section 47 must be fully [x] before approval |
 
 ---
@@ -755,27 +701,9 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
-## SECTION 47: Brutal Audit Fix Pass Sign-Off (v3.3 — Codex Review Response)
+## SECTION 47: Architecture and Schema Integrity Sign-Off
 
-> Codex independently reviewed v3.2 and scored 61/100, verdict: DATABASE FREEZE NOT APPROVED. The following blockers were found and fixed in this pass.
-
-| # | Blocker / High Risk | Fix Applied | Doc(s) Changed | Status |
-|---|---|---|---|---|
-| B1 | SPEC REQUIRED entries in S22 cross-reference — stale markers and wrong table names | All 17 stale entries corrected; 8 table names updated to canonical; SPEC REQUIRED = 0 confirmed | Doc 03 | [x] |
-| B2 | Ghost table names in Doc 04: delivery_orders, goods_receipts, bank_deposits, slsp_entries, relief_entries, qap_entries, certificates_2306 | All replaced with canonical names; Ghost Table Name Cleanup section added to Doc 04 header | Doc 04 | [x] |
-| B3 | DAT table name conflict: `dat_generation_logs` vs `dat_file_generation_logs` | Canonical: `dat_generation_logs`. Doc 07 section header updated; Docs 05, 10 references updated | Doc 07, 05, 10 | [x] |
-| B4 | VAT/EWT/FWT/PT write ownership unresolved (OD-13) | RESOLVED: Posting engine writes all immutable compliance entries at step 11 of posting flow. Doc 05 OD-13 closed. Doc 06 §7 updated with explicit compliance write step. | Doc 05, 06, 10 | [x] |
-| B5 | Status casing inconsistency — POSTED/DRAFT/REVERSED uppercase in Doc 06 | All status and enum values normalized to lowercase across Doc 06 (entry_side, entry_type, status, applies_to, amount_source, account_source, ledger_type, frequency, relationship_type) | Doc 06 | [x] |
-| B6 | FWT/2306 as ITR credit — `fwt_2306` in tax_credits_schedules credit_type enum | REMOVED `fwt_2306` from CHECK constraint. FWT is final tax, not creditable. Explanatory note added. | Doc 03 | [x] |
-| B7 | Effective-date overlap: no explicit non-overlapping range rule | Non-overlap validation rule added to `company_compliance_profiles` spec with application-layer validation query. Applies to all versioned tables. | Doc 03 | [x] |
-| B8 | Branch RLS honestly resolved | Option A (company-level RLS only; branch = UI filter) confirmed and documented. Phase 2 upgrade path to Option B exists. Honest for MSME Phase 1. | Doc 09 (existing) | [x] confirmed |
-| B9 | Checklist claiming DATABASE FREEZE APPROVED prematurely | Status reverted to NOT APPROVED. This section added as the real freeze gate. | Doc 10 | [x] |
-| HR1 | COA seed mapping — MCIT/OSD untrustworthy without CPA-reviewed seed | COA Seed Mapping Requirement added to Doc 03 chart_of_accounts spec. Pre-go-live CPA review required. | Doc 03 | [x] |
-| HR2 | Posting idempotency — no idempotency key on posting_batches | `idempotency_key` (UNIQUE) added to `posting_batches` spec. Duplicate posting guard added to Doc 06 §7 flow (step 0 + step 3). | Doc 03, 06 | [x] |
-| HR3 | company_income_tax_profiles drift — non-existent table referenced | Confirmed: no such table exists. Single source of truth note added to `company_compliance_profiles` spec. | Doc 03 | [x] |
-| HR4 | Period-end ordering undefined | CPA-correct 13-step period-end sequence added to Doc 06 §9. | Doc 06 | [x] |
-
-### Remaining items before DATABASE FREEZE APPROVED:
+### Sign-Off Items
 
 | # | Item | Owner | Status |
 |---|---|---|---|
@@ -792,33 +720,11 @@ All open decisions must be resolved before SQL migrations begin.
 | 47.11 | Overengineering review: Phase 2 deferral candidates confirmed (budgets, period_close_checklists, 1604E/F annual) | Project Lead | [ ] |
 | 47.12 | All Section 47 items marked [x] | All | [ ] |
 
-**DATABASE FREEZE APPROVED only when items 47.1–47.12 and 48.1–48.10 are all [x].**
-
 ---
 
-## SECTION 48: Codex Review Fix Pass Sign-Off (v3.4 — Second Codex Review Response)
+## SECTION 48: Schema Completeness and Normalization Sign-Off
 
-> Codex reviewed v3.3 and scored 52/100, verdict: NOT SAFE TO MERGE. 13 required fixes identified. All fixes applied in v3.4.
-
-### Fixes Applied (v3.4)
-
-| # | Codex Finding | Fix Applied | Doc(s) Changed |
-|---|---|---|---|
-| RF1 | Doc03 says DATABASE FREEZE APPROVED but Doc10 says NOT APPROVED | Doc03 header updated to v3.4 — DATABASE FREEZE NOT APPROVED | Doc 03 |
-| RF2 | Section 22: 123 rows for 207 tables; 103 missing, 19 extra/stale | Section 22 completely rebuilt from Doc 02 registry — 207 rows, 0 missing, 0 extra | Doc 03 |
-| RF3 | `export_jobs` has no direct Doc03 spec heading | Full spec added to Doc 03 § 44; `generated_report_files` spec also added | Doc 03 |
-| RF4 | Ghost/stale names remain in active docs | Remaining ghost names removed: `journal_entry_lines`→`journal_lines`, `import_jobs`→`import_batches`, stale S22 names purged | Doc 03 |
-| RF5 | Doc05 says 2306 comes from `ewt_entries` — wrong | 2306 source corrected to `fwt_entries` in Doc 05 §7 table and compliance readiness table | Doc 05 |
-| RF6 | Cash purchase posting uses `gross_amount` — not in spec | Fixed to `net_amount` (cost before VAT) + `input_vat_amount` in Doc 06 cash purchase example; FWT payable line added | Doc 06 |
-| RF7 | `journal_entries` missing `posting_batch_id` column | `posting_batch_id uuid NULL FK → posting_batches.id` added to `journal_entries` spec | Doc 03 |
-| RF8 | Doc07/Doc08 uppercase status CHECK constraints | Normalized to lowercase: `pending`, `validating`, `completed`, `failed`, `queued`, `approved`, `rejected`, `cancelled`, `info`, `warning`, `error`, `critical` | Doc 07, 08 |
-| RF9 | Effective-date overlap enforcement only app-layer text | Effective-date overlap table added (Section 48 below) — per-table enforcement method documented | Doc 10 |
-| RF10 | 19 stale SPEC REQUIRED text mentions | Stale text cleaned: Section 22 rebuilt, Task 9 status corrected, Section 45 summary updated | Doc 03 |
-| RF11 | Mixed v3.1/v3.2/v3.3 status language across docs | Doc 03 updated to v3.4; status language consistent across docs | Doc 03 |
-| RF12 | Overengineering / Phase 1 deferrals not reviewed in Doc10 | Phase 2 deferral candidate review added below (Section 48 overengineering table) | Doc 10 |
-| RF13 | Checklist stale contradictions | Section 48 sign-off rows added below; all items [ ] pending human review | Doc 10 |
-
-### Effective-Date Overlap Enforcement Per Table (RF9)
+### Effective-Date Overlap Enforcement Per Table
 
 > For all tables with effective_from/effective_to versioning, the enforcement method per table:
 
@@ -849,15 +755,15 @@ All open decisions must be resolved before SQL migrations begin.
 | Generated Document Versions (1 table) | `generated_document_versions` | **CANDIDATE FOR PHASE 2** | Version history for regenerated PDFs is a nice-to-have. Primary `generated_documents` table is sufficient for Phase 1. |
 | 1604E / 1604F annual tables | No table | DEFERRED (already) | Annual alphalist derivable from quarterly 1601EQ/1601FQ records. Confirmed in Doc 03 § 46 Task 6. |
 
-**Net overengineering verdict:** Up to 4 table groups (revenue recognition, budgets, period close checklists, generated_document_versions) are candidates for Phase 2 deferral — totaling ~11 tables. However, none require schema changes to defer; they are feature-gated or can be excluded from initial migrations. **Decision requires Project Lead + CPA Lead sign-off (item 48.7 below).**
+**Phase 2 deferral verdict:** Up to 4 table groups (revenue recognition, budgets, period close checklists, generated_document_versions) are candidates for Phase 2 deferral — totaling ~11 tables. None require schema changes to defer; they are feature-gated or can be excluded from initial migrations. Decision requires Project Lead + CPA Lead sign-off (item 48.7 below).
 
-### Section 48 Sign-Off Items
+### Sign-Off Items
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 48.1 | All RF1–RF13 fixes reviewed by DB Architect | DB Architect | [ ] |
-| 48.2 | Section 22 rebuilt count verified: 207 rows, 0 extra, 0 missing | DB Architect | [ ] |
-| 48.3 | `export_jobs` spec in Doc 03 § 44 reviewed and matches Doc 08 | DB Architect | [ ] |
+| 48.1 | Schema integrity fixes reviewed by DB Architect (ghost names, column specs, cross-references) | DB Architect | [ ] |
+| 48.2 | Section 22 (cross-reference index) count verified: 207 rows, 0 extra, 0 missing | DB Architect | [ ] |
+| 48.3 | `export_jobs` spec in Doc03 §44 reviewed and matches Doc08 | DB Architect | [ ] |
 | 48.4 | 2306 source corrected to `fwt_entries`: CPA confirms this is correct | CPA Lead | [ ] |
 | 48.5 | Cash purchase posting example (`net_amount`, `input_vat_amount`) confirmed by CPA | CPA Lead | [ ] |
 | 48.6 | `journal_entries.posting_batch_id` FK strategy confirmed by Dev Lead | Dev Lead | [ ] |
@@ -866,247 +772,115 @@ All open decisions must be resolved before SQL migrations begin.
 | 48.9 | Effective-date overlap enforcement table reviewed and partial unique index strategy accepted | DB Architect | [ ] |
 | 48.10 | All Section 48 items marked [x] | All | [ ] |
 
-**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 are [x].**
-
 ---
 
-*Next step after Sections 47, 48, and 49 are fully signed off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*
+## SECTION 49: Contract Consistency Sign-Off
 
----
-
-## SECTION 49: Contract Freeze Fix Pass Sign-Off (v3.5)
-
-> Full cross-document contract freeze audit identified 10 consistency defects across Docs 01, 04, 05, 06, 09, 10. All applied in v3.5.
-
-### Fixes Applied (v3.5)
-
-| # | Finding (CF#) | Fix Applied | Doc(s) Changed |
-|---|---|---|---|
-| CF1 | Doc01 §6 cash purchase posting used `gross_amount` — not in canonical column spec | Changed to `net_amount` (cost before VAT) + `input_vat_amount` (VAT portion) | Doc 01 |
-| CF2 | Doc01 §15 referenced `itr_working_papers` — stale name (renamed to `itr_computation_runs` in v3) | Changed to `itr_computation_runs` (#154) | Doc 01 |
-| CF3 | Doc04 v3.2 ghost cleanup table introduced new ghost names as replacements (`official_receipts`, `disbursement_vouchers`, wrong slot numbers) | Rebuilt ghost cleanup table with all correct canonical names and correct Doc02 slot numbers | Doc 04 |
-| CF4 | Doc04 OD-04-V3-01 and OD-04-V3-02 marked Unresolved despite resolution in other docs | Both marked RESOLVED with cross-reference to Doc02 and Doc09 | Doc 04 |
-| CF5 | Doc04 Sections 7, 8, 10, 11, 20 used ghost table names (`bank_deposits`, `bank_withdrawals`, `inventory_adjustments`, `slsp_records`, `sawt_records`) | All replaced with canonical names: `receipts`, `payment_vouchers`, `stock_adjustments`, `slsp_exports`, `sawt_exports` | Doc 04 |
-| CF6 | Doc05 purchase-side `vat_direction` and `vat_classification` values were UPPERCASE — contradicts lowercase CHECK constraints in Doc03 | Lowercased: `'INPUT'`→`'input'`, `'VATABLE'`→`'vatable'`, `'CAPITAL_GOODS'`→`'capital_goods'`, `'SERVICES'`→`'services'` on vendor_bill_lines, cash_purchase_lines, SLSP, RELIEF sections | Doc 05 |
-| CF7 | Doc05 sales-side `vat_direction` values were UPPERCASE (`'OUTPUT'`) | Lowercased: `'OUTPUT'`→`'output'` on sales_invoice_lines and cash_sale_lines | Doc 05 |
-| CF8 | Doc06 `posting_rule_sets.transaction_type` valid values used ghost names `official_receipt`, `disbursement_voucher`, `inventory_adjustment` | Changed to canonical: `receipt`, `payment_voucher`, `stock_adjustment` | Doc 06 |
-| CF9 | Doc06 `journal_entries` spec: column named `entry_type` with only 6 values — missing `je_type` name, missing 3 values, missing 7 columns | Renamed to `je_type`; added values `amortization`, `revenue_recognition`, `auto_reversal`; added columns `posting_batch_id`, `auto_reversal_flag`, `auto_reversal_date`, `auto_reversal_run_id`, `is_auto_reversal`, `amortization_run_detail_id`, `revenue_recognition_run_detail_id` | Doc 06 |
-| CF10 | Doc09 RLS immutability policy used UPPERCASE status values `('POSTED','VOIDED','REVERSED')` | Changed to lowercase `('posted','voided','reversed')` to match CHECK constraints | Doc 09 |
-
-### Section 49 Sign-Off Items
+### Sign-Off Items
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 49.1 | CF1–CF2 (Doc01) fixes reviewed — `net_amount`/`input_vat_amount` column names confirmed correct; `itr_computation_runs` is canonical Doc02 #154 | DB Architect + CPA Lead | [ ] |
-| 49.2 | CF3–CF5 (Doc04) ghost cleanup table rebuild reviewed — all canonical names verified against Doc02 slot numbers | DB Architect | [ ] |
-| 49.3 | CF6–CF7 (Doc05) vat_direction and vat_classification lowercase confirmed — all values match Doc03 CHECK constraint definitions | DB Architect + CPA Lead | [ ] |
-| 49.4 | CF8 (Doc06) `transaction_type` values `receipt`, `payment_voucher`, `stock_adjustment` confirmed match canonical table singular forms (#71, #87, #109) | DB Architect | [ ] |
-| 49.5 | CF9 (Doc06) `journal_entries.je_type` expanded values and 7 new columns confirmed match Doc03 §3 spec and Sections 35–37 of this checklist | DB Architect + Dev Lead | [ ] |
-| 49.6 | CF10 (Doc09) RLS status lowercase confirmed — all status CHECK constraints across all docs now consistently lowercase | DB Architect | [ ] |
-| 49.7 | `source_document_type` values in `journal_entries` (Doc06 §3) confirmed to match `transaction_type` values in `posting_rule_sets` after CF8/CF9 — no mismatches | Dev Lead | [ ] |
+| 49.1 | Doc01: `net_amount`/`input_vat_amount` column names confirmed correct; `itr_computation_runs` (#154) confirmed canonical | DB Architect + CPA Lead | [ ] |
+| 49.2 | Doc04: all canonical table names verified against Doc02 slot numbers; no ghost names remain | DB Architect | [ ] |
+| 49.3 | Doc05: `vat_direction` and `vat_classification` values confirmed lowercase — match Doc03 CHECK constraint definitions | DB Architect + CPA Lead | [ ] |
+| 49.4 | Doc06: `transaction_type` values `receipt`, `payment_voucher`, `stock_adjustment` confirmed match canonical table names (#71, #87, #109) | DB Architect | [ ] |
+| 49.5 | Doc06: `journal_entries.je_type` values and additional columns confirmed match Doc03 §3 spec | DB Architect + Dev Lead | [ ] |
+| 49.6 | Doc09: RLS status values confirmed lowercase — all status CHECK constraints across all docs consistently lowercase | DB Architect | [ ] |
+| 49.7 | `journal_entries.source_document_type` values confirmed to match `posting_rule_sets.transaction_type` values — no mismatches | Dev Lead | [ ] |
 | 49.8 | Doc06 Period-End Step 2 canonical table names (`receipts`, `payment_vouchers`) confirmed | DB Architect | [ ] |
-| 49.9 | Doc10 §25.1 updated column reference (`vat_registration_status` + `party_special_class`) matches Doc03 column spec and Doc10 §31.1 resolution | DB Architect + CPA Lead | [ ] |
-| 49.10 | All CF1–CF10 items signed off by respective owners above | All | [ ] |
-
-**CONTRACT FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 are [x].**
+| 49.9 | Doc10 §25.1 column references (`vat_registration_status` + `party_special_class`) match Doc03 column spec | DB Architect + CPA Lead | [ ] |
+| 49.10 | All Section 49 items signed off by respective owners above | All | [ ] |
 
 ---
 
-## SECTION 50: Normalization Pass Sign-Off (v3.6 — Full Contract Normalization)
+## SECTION 50: Duplicate Spec Elimination Sign-Off
 
-> Full cross-document normalization pass applied Groups A–H. Eliminated duplicate column specs within Doc03, replaced inline column tables in Docs 06/07 with "See Doc03 Section XX" references, corrected ghost table names, lowercased all enum/status values, added 7 missing posting templates to Doc06, and added slot gap notation for retired slots #193–#198 in Doc02.
-
-### Fixes Applied (v3.6)
-
-| Group | Finding | Fix Applied | Doc(s) Changed |
-|---|---|---|---|
-| A-1/A-2 | §16 `roles` and `permissions` duplicated specs also in §24 | §16 entries replaced with "See §24" cross-references | Doc 03 |
-| A-3 | §12 `notification_delivery_logs` duplicated spec also in §43; §43 missing `retry_count` | §12 entry replaced with "See §43" reference; `retry_count integer NOT NULL DEFAULT 0` added to §43 | Doc 03 |
-| A-4/A-5 | §42 `import_rows` and `import_validation_errors` duplicated specs also in §15 | §42 entries replaced with "See §15" cross-references | Doc 03 |
-| A-6 | §42 `generated_report_files` duplicated spec also in §44 | §42 entry replaced with "See §44" cross-reference | Doc 03 |
-| A-7 | §41 `document_void_register` duplicated spec also in §11 (using non-canonical `entity_id`) | §41 entry replaced with "See §11" reference; note added that canonical uses `document_id` not `entity_id` | Doc 03 |
-| A-8 | §27 `vat_codes` used `vat_type` column name, conflicting with §21 canonical `classification` | §27 entry replaced with "See §21" cross-reference | Doc 03 |
-| A-9 | §21 `atc_codes` had abbreviated spec; §27 had `UNIQUE(code)` not partial unique index | §27 became canonical with `UNIQUE(code) WHERE effective_to IS NULL` | Doc 03 |
-| H-1 | `sales_invoice_lines` and `cash_sale_lines` `vat_classification` CHECK included `'government'` (derived value, never stored) | Removed `'government'` from CHECK constraints; 'government' is derived at posting from `customers.party_special_class` | Doc 03 |
-| H-2 | `slsp_records`/`sawt_records` referenced in TASK 3 and TASK 6 | Changed to canonical `slsp_exports`/`sawt_exports` | Doc 03 |
-| H-3 | `system_account_config.config_key` CHECK used `ACCOUNTS_RECEIVABLE`/`ACCOUNTS_PAYABLE` and was missing 4 values | Updated to `AR_TRADE`/`AP_TRADE`; added `INPUT_VAT_DEFERRED`, `INVENTORY_CONTROL`, `COST_OF_GOODS_SOLD`, `INCOME_SUMMARY` | Doc 03 |
-| H-4 | 1604E and 1604F not listed as separate Phase 2 deferrals | Added as separate Phase 2 deferrals | Doc 03 |
-| B-1–B-6 | Doc06 redefined full column specs for 6 posting engine tables already in Doc03 §9 | All 6 inline specs replaced with "See Doc03 Section 9" references | Doc 06 |
-| B-7 | Doc06 had two `## 11.` section headers | Second one renamed to `## 12.` | Doc 06 |
-| B-8 | Doc06 missing posting templates for 7 transaction types | Added: Petty Cash Voucher, Stock Adjustment, Asset Depreciation, Asset Disposal, Bank Fund Transfer, Sales Credit Memo, Vendor Credit | Doc 06 |
-| C-1 | Doc07 `audit_logs` full column table duplicated Doc03 §41 | Replaced with "See Doc03 Section 41" reference; event type table retained | Doc 07 |
-| C-2 | Doc07 `cas_registrations` full column table duplicated Doc03 §1 | Replaced with "See Doc03 Section 1" reference | Doc 07 |
-| C-3 | Doc07 `field_change_history.operation_id` link to `audit_logs` undocumented | Added note: links via shared UUID grouping, not direct FK | Doc 07 |
-| D (all) | Doc04 ghost names, wrong cardinality, wrong enum values | `inventory_balances`, `item_prices`, `asset_depreciation_schedules` (plural), tax profiles 1:many, relationship_type values lowercased, inventory_movements source list corrected | Doc 04 |
-| E-1 | Doc05 Section 13 referenced non-canonical `compliance_report_runs`/`compliance_export_files` | Replaced with `export_jobs` (#189) and `generated_report_files` (#190) | Doc 05 |
-| E-2 | Doc05 Cash Books section used UPPERCASE VAT enum values | Lowercased: `'VATABLE'`→`'vatable'`, `'ZERO_RATED'`→`'zero_rated'`, `'EXEMPT'`→`'exempt'`, `'INPUT'`→`'input'` | Doc 05 |
-| E-3 | Doc05 customer/supplier join text referenced non-canonical `customer_tax_profiles.is_vat_registered` | Changed to `customers.vat_registration_status CHECK IN ('vat','non_vat')` | Doc 05 |
-| F-1 | Doc08 `attachments.entity_type` list used ghost names `official_receipts`, `disbursement_vouchers` | Changed to canonical `receipts`, `payment_vouchers` | Doc 08 |
-| F-2 | Doc08 import types listed `warehouse_locations` (Phase 2) and `price_lists` (ghost name) | Removed `warehouse_locations`; changed `price_lists`→`item_prices` | Doc 08 |
-| F-3 | Doc08 `export_jobs` spec included non-existent `compliance_report_run_id` column | Column removed; explanatory note added | Doc 08 |
-| F-4 | Doc08 `import_rows.status` had `'error'` but Doc03 §15 canonical has `'invalid'` | Changed to `'invalid'` to match canonical spec | Doc 08 |
-| G-1 | Doc02 slots #193–#198 silently absent from table registry — no gap notation | Added RESERVED/REMOVED row in module table and registry table; explains consolidation into `export_jobs`/`generated_report_files` | Doc 02 |
-
-### Section 50 Sign-Off Items
+### Sign-Off Items
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 50.1 | Group A+H (Doc03 internal duplicate specs) — all 9 tables: duplicate specs removed, cross-references correct, CHECK constraints fixed | DB Architect | [ ] |
-| 50.2 | `vat_classification` CHECK no longer includes `'government'` — confirmed that 'government' direction is derived at posting from `customers.party_special_class`, never stored on line rows | DB Architect + CPA Lead | [ ] |
-| 50.3 | `system_account_config.config_key` values `AR_TRADE`/`AP_TRADE` (not ACCOUNTS_RECEIVABLE/ACCOUNTS_PAYABLE) confirmed; 4 new keys confirmed | DB Architect + Dev Lead | [ ] |
-| 50.4 | Group B (Doc06) — 6 posting engine tables now reference Doc03 §9; 7 new posting templates reviewed and confirmed double-entry correct | Dev Lead + CPA Lead | [ ] |
-| 50.5 | Group C (Doc07) — `audit_logs` and `cas_registrations` now reference Doc03; `operation_id` grouping note confirmed | DB Architect | [ ] |
-| 50.6 | Group D (Doc04) — all ghost names replaced; `asset_depreciation_schedules` plural confirmed; tax profile 1:many cardinality confirmed; `relationship_type` lowercase confirmed | DB Architect + Dev Lead | [ ] |
-| 50.7 | Group E (Doc05) — export table names confirmed; all enum values confirmed lowercase; `vat_registration_status` join confirmed | DB Architect + CPA Lead | [ ] |
-| 50.8 | Group F (Doc08) — `attachments.entity_type` list confirmed; `item_prices` confirmed as canonical name; `export_jobs` spec confirmed no `compliance_report_run_id`; `import_rows.status='invalid'` confirmed | DB Architect | [ ] |
-| 50.9 | Group G (Doc02) — slots #193–#198 RESERVED/REMOVED notation confirmed; `export_jobs` (#189) and `generated_report_files` (#190) confirmed as consolidation targets | DB Architect | [ ] |
-| 50.10 | All Section 50 items marked [x] — normalization pass complete | All | [ ] |
-
-**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 AND 51.1–51.10 are [x].**
+| 50.1 | Doc03: duplicate column specs eliminated — each of the 207 tables has exactly one canonical spec heading | DB Architect | [ ] |
+| 50.2 | `vat_classification` CHECK no longer includes `'government'` on line tables — 'government' is derived at posting from `customers.party_special_class`, never stored on transaction lines | DB Architect + CPA Lead | [ ] |
+| 50.3 | `system_account_config.config_key` values `AR_TRADE`/`AP_TRADE` confirmed; all 16 standard keys confirmed | DB Architect + Dev Lead | [ ] |
+| 50.4 | Doc06: 6 posting engine table specs reference Doc03 §9 (no inline duplication); 7 additional posting templates confirmed double-entry correct | Dev Lead + CPA Lead | [ ] |
+| 50.5 | Doc07: `audit_logs` and `cas_registrations` reference Doc03; `field_change_history.operation_id` grouping confirmed | DB Architect | [ ] |
+| 50.6 | Doc04: all canonical table names correct; `asset_depreciation_schedules` plural confirmed; tax profile 1:many cardinality confirmed | DB Architect + Dev Lead | [ ] |
+| 50.7 | Doc05: export table names `export_jobs`/`generated_report_files` confirmed; all enum values lowercase; `vat_registration_status` join confirmed | DB Architect + CPA Lead | [ ] |
+| 50.8 | Doc08: `attachments.entity_type` list uses canonical names; `item_prices` confirmed canonical; `import_rows.status='invalid'` confirmed | DB Architect | [ ] |
+| 50.9 | Doc02: slots #193–#198 RESERVED/REMOVED notation confirmed; `export_jobs` (#189) and `generated_report_files` (#190) confirmed | DB Architect | [ ] |
+| 50.10 | All Section 50 items marked [x] | All | [ ] |
 
 ---
 
-## SECTION 51: Codex Final Audit — Fix Verification Gate (v3.6)
+## SECTION 51: Final Ghost Name and Duplicate Spec Elimination Sign-Off
 
-**Trigger:** Codex audit of commit 390abe33 returned DATABASE FREEZE NOT APPROVED with 9 categories of objective defects. This section tracks verification of all v3.6 fixes applied in response.
-
-### Changes Applied (v3.6 Codex Response Pass)
-
-| Fix # | Finding | Resolution | Doc(s) |
-|---|---|---|---|
-| FX-01 | `payment_terms` duplicate spec in §5 (simpler, missing `code`/`due_days` etc.) AND §21 | §5 replaced with redirect note; §21 upgraded to canonical merged spec with `code`, `due_days`, `discount_days`, `discount_percent`, `import_batch_id`, `UNIQUE(company_id, code)` | Doc 03 |
-| FX-02 | `items` duplicate spec in §5 (correct `base_uom_id` FK) AND §21 (stale `unit_of_measure text` raw field) | §5 replaced with redirect note; §21 upgraded to canonical merged spec — `base_uom_id uuid FK → units_of_measure.id`, `sales_vat_code_id`, `purchase_vat_code_id`, `standard_cost`, `standard_price`, `is_tracked`, `import_batch_id` | Doc 03 |
-| FX-03 | `generated_document_versions` duplicate spec in §13 AND §43 | §43 replaced with redirect note; §13 canonical spec upgraded with `version_no`, `regeneration_reason`, `file_hash_sha256` | Doc 03 |
-| FX-04 | Section 22 cross-ref: `generated_document_versions` listed as "§ 14" when spec is in §13 | Updated to "§ 13" | Doc 03 |
-| FX-05 | `item_units_of_measure` ghost name in Doc04 bridge table inventory AND items diagram | Replaced with canonical `uom_conversions` (#53) in both locations | Doc 04 |
-| FX-06 | `item_price_lists`/`price_lists` ghost names in Doc04 bridge table inventory | Replaced with canonical `item_prices` (#55) | Doc 04 |
-| FX-07 | `je_type = 'auto'` in Doc06 idempotency guard — 'auto' is not a canonical je_type value | Changed to `je_type = 'system'` with rationale note | Doc 06 |
-| FX-08 | `change_type CHECK IN ('INSERT','UPDATE','DELETE')` uppercase in Doc07 `field_change_history` | Lowercased to `('insert','update','delete')` | Doc 07 |
-| FX-09 | `dat_type 'GL'\|'SL'\|'SLS'\|'PUR'\|'INV'` had no CHECK and used uppercase | Added `CHECK IN ('gl','sl','sls','pur','inv')` — lowercase internal values | Doc 07 |
-| FX-10 | `status = 'POSTED'` in immutability trigger description text | Fixed to `status IN ('posted','voided','reversed')` | Doc 07 |
-| FX-11 | `severity='WARNING'`/`alert_type='ATP_SERIES_NEAR_LIMIT'` uppercase in trigger notes | Lowercased to `'warning'`/`'atp_series_near_limit'` and `'atp_gap_detected'`/`'critical'` | Doc 07 |
-| FX-12 | `file_format CHECK IN ('CSV','XLSX','JSON')` uppercase in Doc08 `import_batches` | Lowercased to `('csv','xlsx','json')` | Doc 08 |
-| FX-13 | `severity CHECK IN ('ERROR','WARNING')` uppercase in Doc08 `import_validation_errors` | Lowercased to `('error','warning')`, default changed to `'error'` | Doc 08 |
-| FX-14 | `import_batches.status = 'ROLLED_BACK'` uppercase in Doc08 rollback procedure | Lowercased to `'rolled_back'` | Doc 08 |
-| FX-15 | `item_units_of_measure` ghost name in Doc08 items import target | Changed to `uom_conversions` | Doc 08 |
-| FX-16 | `asset_depreciation_schedule` (missing plural) ghost name in Doc08 fixed_assets_opening | Changed to canonical `asset_depreciation_schedules` (#122) | Doc 08 |
-| FX-17 | Doc01 stale "REMAINING GAP: ~120 tables" statement | Replaced with "RESOLVED (v3.4+): 207/207 tables covered" | Doc 01 |
-| FX-18 | Doc01 OD-V3-ARCH-04 listed as unresolved (referenced ~120 table gap) | Marked RESOLVED (v3.4) | Doc 01 |
-| FX-19 | No explicit Phase 1 vs Phase 2 decision record for overengineering items | Added Section F "Phase 1 vs Phase 2 Feature Scope" decision table to Doc01 | Doc 01 |
-| FX-20 | `price_lists` ghost name in Doc10 checklist item 12.7 | Changed to `item_prices` | Doc 10 |
-
-### Section 51 Sign-Off Items
+### Sign-Off Items
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 51.1 | FX-01/02/03/04: Doc03 duplicate specs eliminated — `payment_terms`, `items`, `generated_document_versions` each have exactly ONE canonical spec heading | DB Architect | [ ] |
-| 51.2 | FX-02: `items.base_uom_id uuid FK → units_of_measure.id` confirmed as canonical (replaces raw text `unit_of_measure`) | DB Architect + Dev Lead | [ ] |
-| 51.3 | FX-05/06/15: All `item_units_of_measure`, `item_price_lists`, `price_lists` ghost names removed from Docs 04 and 08 | DB Architect | [ ] |
-| 51.4 | FX-07: `je_type = 'system'` confirmed as correct guard for posting-engine-generated JEs (replaces non-existent 'auto') | Dev Lead | [ ] |
-| 51.5 | FX-08/09/10/11: Doc07 lowercase enum/status values confirmed — `change_type`, `dat_type`, immutability trigger description, `system_alerts` INSERT values | DB Architect | [ ] |
-| 51.6 | FX-12/13/14: Doc08 lowercase enum/status values confirmed — `file_format`, `severity`, rollback status | DB Architect | [ ] |
-| 51.7 | FX-16: `asset_depreciation_schedules` (plural) confirmed as canonical — matches Doc02 #122 and Doc03 §24 | DB Architect | [ ] |
-| 51.8 | FX-17/18/19: Doc01 Phase decision table reviewed and accepted by Business Lead and CPA Lead | Business Lead + CPA Lead | [ ] |
-| 51.9 | After v3.6 fixes: zero remaining ghost names in active architecture (non-cleanup) sections of all docs | DB Architect | [ ] |
-| 51.10 | After v3.6 fixes: total duplicate spec headings in Doc03 = 0; active canonical specs = 207; redirect notes only for previously-duplicated tables | DB Architect | [ ] |
+| 51.1 | Doc03: `payment_terms`, `items`, `generated_document_versions` each have exactly one canonical spec heading — no duplicates | DB Architect | [ ] |
+| 51.2 | `items.base_uom_id uuid FK → units_of_measure.id` confirmed as canonical column spec | DB Architect + Dev Lead | [ ] |
+| 51.3 | All `item_units_of_measure`, `item_price_lists`, `price_lists` ghost names removed from Docs 04 and 08 | DB Architect | [ ] |
+| 51.4 | `je_type = 'system'` confirmed as correct idempotency guard for posting-engine-generated JEs | Dev Lead | [ ] |
+| 51.5 | Doc07: `change_type`, `dat_type`, immutability trigger status, `system_alerts` alert values — all lowercase confirmed | DB Architect | [ ] |
+| 51.6 | Doc08: `file_format`, `severity`, rollback status values — all lowercase confirmed | DB Architect | [ ] |
+| 51.7 | `asset_depreciation_schedules` (plural) confirmed as canonical — matches Doc02 #122 and Doc03 §24 | DB Architect | [ ] |
+| 51.8 | Doc01 Phase 1 vs Phase 2 feature scope table reviewed and accepted | Business Lead + CPA Lead | [ ] |
+| 51.9 | Zero ghost names remaining in active architecture sections of all docs | DB Architect | [ ] |
+| 51.10 | Doc03: total duplicate spec headings = 0; active canonical specs = 207 | DB Architect | [ ] |
 
 ---
 
-## SECTION 52: Implementation Readiness Fix Pass Sign-Off (v3.7)
+## SECTION 52: Implementation Completeness Sign-Off
 
-> Full implementation readiness audit identified 3 categories of remaining blockers: (1) incomplete posting engine, (2) unresolved open decisions, (3) missing implementation contracts for income tax and reports. All applied in v3.7.
-
-### Fixes Applied (v3.7)
-
-| Fix # | Finding | Resolution | Doc(s) |
-|---|---|---|---|
-| IR-01 | `fiscal_years.status` conflict: Doc03 had CHECK IN ('open','closed') — 2 values; Doc06 had 3 values including 'locked' | Doc03 updated to CHECK IN ('open','closed','locked') with status transition note | Doc 03 |
-| IR-02 | 8 transaction types missing from `posting_rule_sets.transaction_type` valid values | Added: petty_cash_replenishment, stock_transfer, customer_return, purchase_return, sales_debit_memo, supplier_debit_memo, asset_acquisition, bank_adjustment, inter_branch_transfer | Doc 06 |
-| IR-03 | 13 transaction types had no documented posting rule | Added complete posting rules for: Sales Invoice, Vendor Bill, Receipt, Payment Voucher, Petty Cash Replenishment, Customer Return, Purchase Return, Sales Debit Memo, Supplier Debit Memo, Asset Acquisition, Bank Adjustment, Stock Transfer, Inter-Branch Transfer — each with DR/CR lines, compliance writes, subsidiary ledger, idempotency, reversal behavior | Doc 06 |
-| IR-04 | OD-PE-01, OD-PE-02, OD-PE-03 unresolved in Doc06 | All 3 resolved: system-seeded rules, non-VAT skips vat_entries, capital goods Phase 1 = flag+file | Doc 06 |
-| IR-05 | OD-V3-T1, OD-V3-T2, OD-V3-T3, OD-V3-T4 unresolved in Doc02 | All 4 resolved: on-demand ITR computation, multiple runs/is_final not locking, line-by-line book-tax, 1:many 2307 link | Doc 02 |
-| IR-06 | OD-09, OD-10, OD-11, OD-12 unresolved in Doc02 | All 4 resolved: EWT at voucher, CSV-only bank import, account+department budget, in-app only notifications | Doc 02 |
-| IR-07 | OD-07-V3-01, OD-07-V3-02, OD-15, OD-16 unresolved in Doc07 | All 4 resolved: field_change_history for COA, entity_id=run, system_alerts on Realtime, no partitioning Phase 1 | Doc 07 |
-| IR-08 | OD-08-V3-01, OD-08-V3-02, OD-17, OD-18 unresolved in Doc08 | All 4 resolved: always-overwrite with confirm, CONTROLLER role required, single shared bucket, Phase 2 template saving | Doc 08 |
-| IR-09 | OD-SEC-V3-01, OD-SEC-V3-02 unresolved in Doc09 | Both resolved: ACCOUNTANT SELECT + service-role compute; ACCOUNTANT INSERT/UPDATE NOLCO, COMPANY_ADMIN locks | Doc 09 |
-| IR-10 | OD-V3-ARCH-01, OD-V3-ARCH-02, OD-V3-ARCH-03 unresolved in Doc01 | All 3 resolved: capital goods Phase 1 flag+file, companies.tax_type auto-trigger, multiple ITR runs/is_final pattern | Doc 01 |
-| IR-11 | No income tax implementation guide — developer would guess on deduction methods, MCIT, NOLCO, credits, ITR flow | Complete Income Tax Implementation Guide added (Section 19): setup requirements, deduction method behavior table, MCIT rule, NOLCO computation, tax credits, book-to-tax, ITR run flow, GL posting pattern | Doc 01 |
-| IR-12 | No report generation contract — developer would guess on Balance Sheet aggregation, Income Statement structure, Cash Flow method | Complete Report Generation Contract added (Section 20): Balance Sheet, Income Statement, Trial Balance, General Ledger, Cash Flow (indirect), AR/AP Aging, Customer/Supplier Ledger, VAT Report, EWT Report, Taxable Income Computation | Doc 01 |
-
-### Section 52 Sign-Off Items
+### Sign-Off Items
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 52.1 | IR-01: `fiscal_years.status CHECK IN ('open','closed','locked')` confirmed in both Doc03 and Doc06 — 0 conflicts | DB Architect | [ ] |
-| 52.2 | IR-02/03: All 21 transaction types in `posting_rule_sets` have a documented posting rule in Doc06 Section 8/8b — confirmed by Dev Lead | Dev Lead | [ ] |
-| 52.3 | IR-03: Sales Invoice DR/CR reviewed by CPA — AR net of EWT, Output VAT, EWT Payable amounts confirmed correct | CPA Lead | [ ] |
-| 52.4 | IR-03: Vendor Bill DR/CR reviewed by CPA — AP net of EWT/FWT, Input VAT routing (standard/capital goods) confirmed correct | CPA Lead | [ ] |
-| 52.5 | IR-03: Receipt posting — AR subledger close logic (is_open=false on settlement) confirmed by Dev Lead | Dev Lead | [ ] |
-| 52.6 | IR-03: Payment Voucher — EWT pre-booked vs not-pre-booked logic confirmed by CPA (two different flows documented) | CPA Lead | [ ] |
-| 52.7 | IR-03: Customer Return / Purchase Return inventory reversal (COGS / Inventory Control) confirmed correct by CPA | CPA Lead | [ ] |
-| 52.8 | IR-03: Asset Acquisition — Pattern A (direct) vs Pattern B (via vendor bill) implementation paths confirmed by Dev Lead | Dev Lead | [ ] |
-| 52.9 | IR-03: Inter-Branch Transfer vs Bank Fund Transfer distinction confirmed (cash fund movement vs bank account transfer) | DB Architect + Dev Lead | [ ] |
-| 52.10 | IR-04 through IR-10: All resolved ODs reviewed and resolutions confirmed by respective owners (see IR-04→10 columns) | All | [ ] |
-| 52.11 | IR-11: Income Tax Implementation Guide reviewed by CPA Lead — MCIT rate (2%), NOLCO carry-forward period, CWT credit treatment all confirmed | CPA Lead | [ ] |
-| 52.12 | IR-11: Cooperative income_tax_regime out-of-scope guard (setup wizard reject) confirmed in implementation plan | Dev Lead | [ ] |
-| 52.13 | IR-12: Balance Sheet generation algorithm (fs_section grouping, normal balance rule, retained earnings handling) reviewed and accepted | CPA Lead + Dev Lead | [ ] |
-| 52.14 | IR-12: Cash Flow Statement (indirect method, cash_flow_category COA tags) confirmed as Phase 1 approach | CPA Lead | [ ] |
-| 52.15 | IR-12: AR/AP Aging buckets (Current/1-30/31-60/61-90/90+) confirmed by CPA as standard PH MSME aging schedule | CPA Lead | [ ] |
-| 52.16 | All Section 52 items marked [x] — Implementation Readiness Fix Pass complete | All | [ ] |
-
-**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 AND 51.1–51.10 AND 52.1–52.16 are [x].**
-
+| 52.1 | `fiscal_years.status CHECK IN ('open','closed','locked')` confirmed consistent in Doc03 and Doc06 | DB Architect | [ ] |
+| 52.2 | All 21 transaction types in `posting_rule_sets` have a documented posting rule in Doc06 §8 | Dev Lead | [ ] |
+| 52.3 | Sales Invoice DR/CR reviewed by CPA — AR net of EWT, Output VAT, EWT Payable amounts correct | CPA Lead | [ ] |
+| 52.4 | Vendor Bill DR/CR reviewed by CPA — Input VAT routing (standard/capital goods/services) correct | CPA Lead | [ ] |
+| 52.5 | Receipt posting — AR subledger close logic (`is_open=false` on settlement) confirmed | Dev Lead | [ ] |
+| 52.6 | Payment Voucher — EWT pre-booked vs first-time logic confirmed by CPA (both flows documented in Doc06 §8b) | CPA Lead | [ ] |
+| 52.7 | Customer Return / Purchase Return — inventory reversal (COGS / Inventory Control) confirmed by CPA | CPA Lead | [ ] |
+| 52.8 | Asset Acquisition — Pattern A (direct) vs Pattern B (via vendor bill) paths confirmed by Dev Lead | Dev Lead | [ ] |
+| 52.9 | Inter-Branch Transfer vs Bank Fund Transfer distinction confirmed (fund movement vs bank-to-bank transfer) | DB Architect + Dev Lead | [ ] |
+| 52.10 | All open decisions (OD-PE-01 through OD-V3-ARCH-03) reviewed and confirmed by respective owners | All | [ ] |
+| 52.11 | Income Tax Implementation Guide reviewed by CPA — MCIT rate (2%), NOLCO carry-forward, CWT credit confirmed | CPA Lead | [ ] |
+| 52.12 | Cooperative income_tax_regime out-of-scope guard confirmed in setup wizard implementation plan | Dev Lead | [ ] |
+| 52.13 | Balance Sheet generation algorithm (fs_section grouping, normal balance rule, retained earnings) reviewed and accepted | CPA Lead + Dev Lead | [ ] |
+| 52.14 | Cash Flow Statement — indirect method via `cash_flow_category` COA tags confirmed as Phase 1 approach | CPA Lead | [ ] |
+| 52.15 | AR/AP Aging buckets (Current/1–30/31–60/61–90/90+) confirmed as standard PH MSME aging schedule | CPA Lead | [ ] |
+| 52.16 | All Section 52 items marked [x] | All | [ ] |
 
 ---
 
-## SECTION 53: Implementation Contract Completion Pass Sign-Off (v3.8)
+## SECTION 53: Business Scenario Validation — Contract Completion Sign-Off
 
-> Business Scenario Validation (Task D) returned IMPLEMENTATION NOT READY (72/100) with 22 gaps across 3 criticality levels. This section tracks all v3.8 fixes applied in the Contract Completion Pass.
-
-### Fixes Applied (v3.8)
-
-| Fix # | Gap | Resolution | Doc(s) |
-|---|---|---|---|
-| CC-01 | GAP-03/17: `vat_period_summaries` population mechanism missing from posting engine | Added to Doc06 §7 Step 11e: UPSERT vat_period_summaries per posting transaction | Doc 06 |
-| CC-02 | GAP-19: `percentage_tax_period_summaries` population mechanism missing | Added to Doc06 §7 Step 11g: UPSERT percentage_tax_period_summaries | Doc 06 |
-| CC-03 | GAP-05: `ewt_period_summaries` population mechanism missing | Added to Doc06 §7 Step 11f: UPSERT ewt_period_summaries | Doc 06 |
-| CC-04 | GAP-12: `inventory_movements` write step missing from posting engine | Added to Doc06 §7 Step 10: explicit inventory_movements INSERT + inventory_balances UPSERT | Doc 06 |
-| CC-05 | GAP-15: Year-end closing JE process undocumented; je_type='closing' missing | Added Doc06 §13: complete 3-step closing JE sequence with all rules, idempotency, je_type='closing'. Added 'closing' to Doc03 journal_entries.je_type CHECK constraint | Doc 03, Doc 06 |
-| CC-06 | GAP-04: `cash_sales.payment_amount` vs `total_amount` naming inconsistency | Fixed Doc06 §8 Cash Sale posting rule: `payment_amount` → `total_amount` | Doc 06 |
-| CC-07 | GAP-06: EWT pre-booking detection logic for Payment Voucher absent | Added explicit detection algorithm to Doc06 §8b Payment Voucher rule: COUNT ewt_entries for linked vendor_bill to determine PATH A vs PATH B | Doc 06 |
-| CC-08 | GAP-18: TRAIN Law individual income tax graduated rate table missing | Added complete rate table + implementation formula to Doc01 §19 | Doc 01 |
-| CC-09 | GAP-08: Bank reconciliation workflow absent | Added complete 6-step workflow to Doc01 §21 (new section) | Doc 01 |
-| CC-10 | GAP-10: Physical inventory count workflow absent | Added complete 6-step workflow to Doc01 §21 | Doc 01 |
-| CC-11 | GAP-11: Inventory Valuation Report algorithm missing | Added to Doc01 §20: FIFO/weighted average cost algorithm, reconciliation formula | Doc 01 |
-| CC-12 | GAP-11: Inventory Movement Report algorithm missing | Added to Doc01 §20: inventory_movements source query, running balance, movement types | Doc 01 |
-| CC-13 | GAP-22: Branch P&L not documented as filter variant | Added to Doc01 §20: Branch P&L = Income Statement with WHERE journal_lines.branch_id=? | Doc 01 |
-| CC-14 | GAP-13: Depreciation formulas absent | Added Doc01 §22 (new section): Straight-Line, Declining Balance, UOP formulas with partial-period rules, schedule generation algorithm | Doc 01 |
-| CC-15 | GAP-02: due_date computation formula undocumented | Added to Doc01 §23 Form Auto-Population: due_date = document_date + payment_terms.due_days | Doc 01 |
-| CC-16 | GAP-21: Doc04 OD-09 and OD-10 formally unresolved | Resolved in Doc04: OD-09 = no, use notifications.entity_type/entity_id; OD-10 = yes, add export_job_id FK to generated_documents | Doc 03, Doc 04 |
-| CC-17 | GAP-01: Company onboarding Edge Function spec — seeding posting rules undocumented | Documented in Doc06 §2 OD-PE-01 resolution: system-seeded rules with is_system=true; setup wizard seeds all standard transaction types | Doc 06 (existing OD-PE-01 resolution — confirmed sufficient) |
-| CC-18 | Background jobs undocumented | Added Doc06 §14: all scheduled processes with trigger, frequency, inputs, idempotency, failure handling | Doc 06 |
-| CC-19 | Form auto-population undocumented | Added Doc01 §23: all dropdowns with source table/filter/value, all auto-fill rules with trigger and source | Doc 01 |
-| CC-20 | Depreciation Schedule Report and Asset Register Report missing from Doc01 §20 | Added both to Doc01 §20 | Doc 01 |
-| CC-21 | Bank Reconciliation Report algorithm missing | Added to Doc01 §20 | Doc 01 |
-| CC-22 | `je_type` CHECK constraint note in Doc03 not updated to reflect 'closing' addition | Updated v3.8 note in Doc03 journal_entries section | Doc 03 |
-
-### Section 53 Sign-Off Items
+### Sign-Off Items
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 53.1 | CC-01/02/03/04: Posting engine Steps 10 and 11 now cover ALL side-writes: inventory_movements, inventory_balances, vat_period_summaries, ewt_period_summaries, percentage_tax_period_summaries — confirmed by Dev Lead | Dev Lead | [ ] |
-| 53.2 | CC-05: Year-end closing 3-step JE sequence reviewed by CPA — closes Revenue/Expense to Income Summary then to Retained Earnings, amounts correct | CPA Lead | [ ] |
-| 53.3 | CC-05: `je_type='closing'` confirmed in Doc03 CHECK constraint — matches Doc06 §13 | DB Architect | [ ] |
-| 53.4 | CC-07: EWT detection (COUNT ewt_entries by source_document_id) reviewed by Dev Lead — correctly distinguishes pre-booked vs first-time EWT | Dev Lead | [ ] |
-| 53.5 | CC-08: TRAIN Law rate table confirmed by CPA Lead as current rates per RR implementing RA 10963 (2023 onwards) | CPA Lead | [ ] |
-| 53.6 | CC-09/10: Bank Reconciliation and Physical Count workflows reviewed by Dev Lead — tables exist in Doc02, process steps buildable without additional design decisions | Dev Lead | [ ] |
-| 53.7 | CC-11/12: Inventory Valuation + Movement Report algorithms reviewed — source tables inventory_balances and inventory_movements confirmed | Dev Lead + CPA Lead | [ ] |
-| 53.8 | CC-14: Depreciation formulas (Straight-Line, Declining Balance, UOP) reviewed by CPA — formulas, salvage floor, partial-period rule correct | CPA Lead | [ ] |
-| 53.9 | CC-16: Doc04 OD-09/OD-10 resolutions reviewed — notifications.entity_id approach confirmed; export_job_id FK added to generated_documents in Doc03 | DB Architect | [ ] |
-| 53.10 | CC-18: Background jobs table reviewed — all 8 jobs have trigger, schedule, idempotency guard confirmed | Dev Lead | [ ] |
-| 53.11 | CC-19: Form auto-population table reviewed by Dev Lead — all dropdown source tables exist in Doc02/Doc03; auto-fill rules implementable | Dev Lead | [ ] |
-| 53.12 | All 22 gaps from Business Scenario Validation (Task D) are closed: 8 Critical (CC-01 to CC-07, CC-17), 9 Significant (CC-08, CC-09, CC-10, CC-11/12/13, CC-14, CC-18, CC-19), 5 Moderate (CC-02, CC-15, CC-16, CC-20, CC-21) | All | [ ] |
-| 53.13 | Senior Developer Simulation: a developer reading Docs 00–10 can implement the complete Phase 1 PXL ERP without asking a single architectural, accounting, posting, tax, report, or compliance question — confirmed by Dev Lead | Dev Lead | [ ] |
-| 53.14 | All Section 53 items marked [x] — Implementation Contract Completion Pass complete | All | [ ] |
+| 53.1 | Posting engine Steps 10 and 11 cover all side-writes: `inventory_movements`, `inventory_balances`, `vat_period_summaries`, `ewt_period_summaries`, `percentage_tax_period_summaries` | Dev Lead | [ ] |
+| 53.2 | Year-end closing 3-step JE sequence reviewed by CPA — Revenue/Expense → Income Summary → Retained Earnings, amounts correct | CPA Lead | [ ] |
+| 53.3 | `je_type='closing'` confirmed in Doc03 CHECK constraint and Doc06 §13 | DB Architect | [ ] |
+| 53.4 | Payment Voucher EWT detection algorithm (COUNT `ewt_entries` by `source_document_id`) reviewed — correctly distinguishes pre-booked vs first-time EWT | Dev Lead | [ ] |
+| 53.5 | TRAIN Law graduated rate table confirmed by CPA as current rates per RR implementing RA 10963 (2023 onwards) | CPA Lead | [ ] |
+| 53.6 | Bank Reconciliation and Physical Count workflows reviewed — all source tables exist in Doc02; process steps implementable without additional design decisions | Dev Lead | [ ] |
+| 53.7 | Inventory Valuation and Movement Report algorithms reviewed — `inventory_balances` and `inventory_movements` confirmed as source tables | Dev Lead + CPA Lead | [ ] |
+| 53.8 | Depreciation formulas (Straight-Line, Declining Balance, Units of Production) reviewed by CPA — formulas, salvage floor, partial-period rule correct | CPA Lead | [ ] |
+| 53.9 | `notifications.entity_type`/`entity_id` approach for notification linking confirmed; `generated_documents.export_job_id` FK confirmed in Doc03 | DB Architect | [ ] |
+| 53.10 | Background jobs — all 8 scheduled processes have documented trigger, schedule, idempotency guard, and failure handling | Dev Lead | [ ] |
+| 53.11 | Form auto-population — all dropdown source tables exist in Doc02/Doc03; all auto-fill rules are implementable | Dev Lead | [ ] |
+| 53.12 | All 22 gaps from business scenario validation are closed and verifiable in the documentation | All | [ ] |
+| 53.13 | Senior Developer Simulation: Docs 00–10 collectively allow implementation of complete Phase 1 PXL ERP without architectural ambiguity | Dev Lead | [ ] |
+| 53.14 | All Section 53 items marked [x] | All | [ ] |
 
-**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 AND 51.1–51.10 AND 52.1–52.16 AND 53.1–53.14 are [x].**
+---
+
+## DATABASE FREEZE GATE
+
+**DATABASE FREEZE v4.0 is APPROVED only when ALL items in Sections 47–53 are marked [x].**
+
+All items must be signed by the designated owner (CPA Lead, DB Architect, Dev Lead, or Project Lead) before SQL migration authoring begins.

@@ -1,47 +1,17 @@
 # PXL ERP — Audit and CAS Table Design
-**Version:** 3.8 — Implementation Contract Completion Pass
-**Status:** v3.8 — Audit and CAS table design complete. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## v3 Architecture Review Changes Applied
+## Resolved Architectural Decisions
 
-- **New audit event types added**: `COA_FS_MAPPING_CHANGED`, `ITR_COMPUTATION_RUN_CREATED`, `NOLCO_UPDATED`, `BOOK_TAX_RECONCILIATION_COMPLETED`, `PARTY_SPECIAL_CLASS_CHANGED`, `POSTING_RULE_VERSIONED` — see Event Type table below.
-- **`itr_working_papers` audit events**: Events referencing `itr_working_papers` updated to `itr_computation_runs`. `MCIT_COMPUTED` and `NOLCO_SCHEDULE_UPDATED` event types superseded by new events.
-- **COA changes**: `COA_FS_MAPPING_CHANGED` covers updates to `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` fields — these are compliance-impacting changes and must be audit-logged with old/new values.
-- **Party classification change**: `PARTY_SPECIAL_CLASS_CHANGED` fires when `customers.party_special_class` or `suppliers.party_special_class` is changed — this affects VAT classification routing in the posting engine.
-
-## v3 Open Decisions — ALL RESOLVED (v3.7)
-
-| OD# | Decision | **RESOLUTION** |
-|---|---|---|
-| OD-07-V3-01 | `COA_FS_MAPPING_CHANGED` — `metadata` jsonb or `field_change_history`? | **RESOLVED v3.7:** Use `field_change_history`. When `chart_of_accounts` FS mapping columns change (`fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`), the standard field_change_history trigger fires and captures old/new per-field. `audit_logs` receives a single event `COA_FS_MAPPING_CHANGED` with `entity_type='chart_of_accounts'` and `entity_id=coa.id`. No duplication in `metadata` jsonb. |
-| OD-07-V3-02 | `ITR_COMPUTATION_RUN_CREATED` — `entity_id` = run or filing? | **RESOLVED v3.7:** `entity_id = itr_computation_runs.id`. The run is the primary audit entity. `metadata` jsonb includes `{ "itr_filing_id": "uuid" }` for cross-reference to the parent `income_tax_return_filings` record. Consistent with `AMORTIZATION_RUN_COMPLETED` pattern. |
-
----
-
-## Changes Applied (v1 → v2)
-
-- Added `PERIOD_CLOSE_STARTED`, `PERIOD_CLOSE_TASK_COMPLETED`, `PERIOD_CLOSE_CERTIFIED` to event type list in `audit_logs`
-- Added `NOTIFICATION_SENT`, `NOTIFICATION_FAILED` to event type list
-- Added `DOCUMENT_TEMPLATE_PUBLISHED`, `GENERATED_DOCUMENT_CREATED` to event type list
-- Added `PARTY_MERGED`, `DUPLICATE_TIN_FLAGGED` to event type list
-- Added `system_alerts` full table specification (was referenced in v1 but not defined)
-- Updated `document_void_register.document_number` → `document_no`
-- Updated `subsidiary_ledger_entries.document_number` → `document_no` (in doc 06, consistent here)
-- Added `CASH_SALE_POSTED`, `CASH_PURCHASE_POSTED` to event types (cash transaction audit events)
-- Removed duplicate `number_series` table definition — canonical spec for `number_series`, `number_series_atp`, `atp_usage_logs` stays in this document (doc 07)
-- Confirmed `atp_usage_logs` is immutable (no update, no delete)
-- Added `IMPORT_ROLLED_BACK` to event type list
-
----
-
-## Open Decisions — ALL RESOLVED (v3.7)
-
-| OD # | Question | **RESOLUTION** |
-|---|---|---|
-| OD-15 | `system_alerts` on Supabase Realtime? | **RESOLVED v3.7:** Yes. `system_alerts` is added to the Supabase Realtime publication list (confirmed in Doc09 Section 6). Admins and controllers subscribed to `system_alerts` receive live ATP gap alerts and low-stock alerts without polling. Developer: add `system_alerts` to `supabase_realtime` publication in migration. RLS ensures only company_admin and controller roles see their company's alerts (confirmed in Doc09). |
-| OD-16 | `user_activity_logs` partitioned by month? | **RESOLVED v3.7:** Phase 1: single table with composite index `(company_id, occurred_at DESC)`. No partitioning in Phase 1. Phase 2: if table exceeds 10M rows per company per year, add monthly range partitioning by `occurred_at`. Developer: create the index in Phase 1 migration; add a Phase 2 TODO comment. No schema change needed at partitioning time — partitioning can be added with `ATTACH PARTITION` without recreating the table. |
+| Decision | Resolution |
+|---|---|
+| `COA_FS_MAPPING_CHANGED` — `metadata` jsonb or `field_change_history`? | Use `field_change_history`. When `chart_of_accounts` FS mapping columns change (`fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`), the standard field_change_history trigger fires and captures old/new per-field. `audit_logs` receives a single event `COA_FS_MAPPING_CHANGED` with `entity_type='chart_of_accounts'` and `entity_id=coa.id`. No duplication in `metadata` jsonb. |
+| `ITR_COMPUTATION_RUN_CREATED` — `entity_id` = run or filing? | `entity_id = itr_computation_runs.id`. The run is the primary audit entity. `metadata` jsonb includes `{ "itr_filing_id": "uuid" }` for cross-reference to the parent `income_tax_return_filings` record. Consistent with `AMORTIZATION_RUN_COMPLETED` pattern. |
+| `system_alerts` on Supabase Realtime? | Yes. `system_alerts` is added to the Supabase Realtime publication list (confirmed in Doc09 Section 6). Admins and controllers subscribed to `system_alerts` receive live ATP gap alerts and low-stock alerts without polling. RLS ensures only company_admin and controller roles see their company's alerts. |
+| `user_activity_logs` partitioned by month? | Phase 1: single table with composite index `(company_id, occurred_at DESC)`. No partitioning in Phase 1. Phase 2: if table exceeds 10M rows per company per year, add monthly range partitioning by `occurred_at`. Partitioning can be added with `ATTACH PARTITION` without recreating the table. |
 
 ---
 

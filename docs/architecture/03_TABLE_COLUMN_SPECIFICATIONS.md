@@ -1,38 +1,20 @@
 # PXL ERP — Table Column Specifications
-**Version:** 3.4 — Codex Review Fix Pass
-**Status:** v3.4 — DATABASE FREEZE NOT APPROVED. v3.3 brutal audit fixes applied. v3.4 Codex review fixes in progress. Freeze pending independent review and human sign-off (Doc 10 Section 47).
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 > Money fields use `numeric(18,4)`. Rates use `numeric(10,6)`. All timestamps are `timestamptz`. All PKs are `uuid DEFAULT gen_random_uuid()`.
 > Standard audit columns are listed once and assumed on all tables marked with Audit or Soft Delete in the inventory.
 
 ---
 
-## v3 Architecture Review Changes Applied (Enhancement Round)
+## Resolved Architectural Decisions
 
-- **Accounting Schedules (Section 23)**: 9 new tables added — amortization_schedules, amortization_schedule_lines, amortization_runs, amortization_run_details, revenue_recognition_schedules, revenue_recognition_schedule_lines, revenue_recognition_runs, revenue_recognition_run_details, auto_reversal_runs
-- **journal_entries columns added**: `auto_reversal_flag`, `auto_reversal_date`, `auto_reversal_run_id`, `is_auto_reversal`, `amortization_run_detail_id`, `revenue_recognition_run_detail_id`; `je_type` CHECK expanded to include 'amortization','revenue_recognition','auto_reversal'
-- **recurring_journal_templates spec added** (was previously SPEC REQUIRED): Full column spec including `auto_reverse` flag and `auto_reversal_days_offset`
-- **recurring_journal_template_lines spec added**: Lines spec now included
-
-## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
-
-- **COA overhaul**: Added `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`, `control_account_type`, `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` to `chart_of_accounts`. FS mapping architecture decision: Phase 1 uses COA-embedded fields only — no separate mapping tables.
-- **account_types expanded**: Added `cost_of_sales`, `other_income`, `other_expense`, `contra_liability`, `contra_equity` to code enum
-- **vat_direction / vat_classification split** on ALL line tables: two separate columns per line table
-- **Party classification split**: `customers.vat_status` → split into `vat_registration_status` + `party_special_class`; same for suppliers. 'government','peza','boi','foreign_entity' moved OUT of vat_status into party_special_class. `vat_entries.vat_classification = 'government'` is DERIVED at posting from party_special_class — NOT stored on transaction lines.
-- **companies.tax_type**: CHECK corrected from ('vat','non_vat','exempt') to ('vat','non_vat'). 'exempt' is NOT a taxpayer type.
-- **customer_tax_profiles + supplier_tax_profiles**: Both versioned with effective_from/effective_to
-- **Income tax tables**: `itr_computation_runs` (renamed from itr_working_papers) added to Section 19; `nolco_tracking` and `income_tax_computation_lines` in Section 20; `itr_computation_runs.computation_run_id` references added
-- **Cross-reference index**: Section 21 added — maps all 207 active tables to their canonical spec location (doc 03 vs doc 06/07/08). All 207 tables have specs. SPEC REQUIRED = 0.
-
-## v3 Remaining Open Decisions
-
-| OD# | Decision | Options | Recommended |
-|---|---|---|---|
-| OD-V3-01 | `fs_line_mapping` text column — keep as display label alongside structured columns or drop? | Keep / Drop | Keep as optional display label for now |
-| OD-V3-02 | `is_osd_gross_revenue` flag on COA — compute OSD at filing time from account totals or line level? | Filing level / Line level | Filing level (simpler) |
-| OD-V3-03 | `control_account_type` enforcement — DB trigger or app-layer? | DB trigger / App layer | App layer Phase 1 |
-| OD-V3-04 | **RESOLVED (v3.4):** All 207 active tables now have full column specs in Doc 03 Sections 1–44. SPEC REQUIRED = 0. Cross-reference index in Section 22 reflects exact counts: 207 active, 3 removed. | — | Resolved |
+| Decision | Resolution |
+|---|---|
+| `fs_line_mapping` text column | Keep as optional display label alongside structured columns. |
+| `is_osd_gross_revenue` flag on COA — compute OSD at filing time from account totals or line level? | Filing level (simpler). |
+| `control_account_type` enforcement — DB trigger or app-layer? | App layer Phase 1. |
+| All 207 active tables fully specified? | Yes. All 207 active tables have full column specs in Doc03 Sections 1–44. SPEC REQUIRED = 0. Cross-reference index in Section 22 reflects exact counts: 207 active, 3 removed. |
 
 ## Enum / CHECK Constraint Casing Rule
 
@@ -43,44 +25,6 @@
 - `chart_of_accounts.control_account_type` — e.g., `'AR_CONTROL'`, `'AP_CONTROL'`, `'INVENTORY_CONTROL'`
 
 These follow application-constant naming convention. No other columns may use UPPERCASE in CHECK constraint values.
-
----
-
-## v3 Cross-Document Consistency Validation
-
-- `vat_entries.vat_classification` CHECK IN ('vatable','zero_rated','exempt','government') ✓ — 'government' derived at posting from party_special_class, not stored on transaction lines
-- `sales_invoice_lines.vat_classification` CHECK IN ('vatable','zero_rated','exempt') ✓ — 'government' removed from line table
-- `vendor_bill_lines.vat_classification` includes 'capital_goods','services' ✓
-- `companies.tax_type` CHECK corrected to ('vat','non_vat') — 'exempt' removed ✓
-- `customer_tax_profiles` versioning: UNIQUE constraint updated ✓; same applied to `supplier_tax_profiles` ✓
-- `itr_computation_runs.itr_filing_id` → `income_tax_return_filings.id` ✓
-- `income_tax_computation_lines.computation_run_id` → `itr_computation_runs.id` ✓ (updated from itr_filing_id)
-
----
-
-## Changes Applied (v2 → v2.1) — Principle Alignment
-
-- Added `company_compliance_profiles` column spec (new table — Principles 1, 6, 11)
-- Added `company_feature_settings` column spec (new table — Principles 1, 7)
-- Added `percentage_tax_entries`, `percentage_tax_period_summaries`, `percentage_tax_return_filings` column specs
-- Added `fwt_remittances_1601fq` column spec
-- Added `income_tax_return_filings` column spec
-- Updated `customers.vat_status` CHECK to include `'government','peza','boi','foreign_entity'` (Principle 5)
-- Updated `suppliers.vat_status` CHECK to include `'government','peza','boi','foreign_entity'` (Principle 5)
-- Added `atc_codes.effective_from` and `atc_codes.effective_to` (Principle 11)
-
-## Changes Applied (v1 → v2)
-
-- Standardized `document_no` (not `document_number`) on all transaction headers
-- Standardized `document_date` (not `invoice_date`, `bill_date`, `entry_date`) on all transaction headers
-- Standardized `tin` on master tables (`companies`, `customers`, `suppliers`) — not `bir_tin`
-- `vat_entries`: renamed `taxable_amount` → consistent with `net_amount` on lines; `vat_type` split into `vat_direction` (output/input) + `vat_classification` (vatable/zero_rated/exempt)
-- `ewt_entries`: standardized `ewt_base_amount` (not `tax_base_amount`)
-- `profiles`: uses `first_name` + `last_name` (not `full_name`) consistent with doc 09 resolved
-- Resolved `profiles` inconsistency: doc 09 had `full_name`, doc 03 had `first_name`+`last_name` — use `first_name` + `last_name` + computed `full_name`
-- Added column specs for: `cash_sales`, `cash_purchases`, `inventory_cost_layer_consumption`, `bank_statement_lines`, `petty_cash_voucher_lines`, `notifications`, `notification_templates`, `document_templates`, `generated_documents`, `budgets`, `budget_lines`, `period_close_checklists`, `period_close_tasks`
-- Removed duplicate `number_series` definition (canonical spec now in doc 07)
-- Added missing `import_batch_id` column note to all master data tables
 
 ---
 

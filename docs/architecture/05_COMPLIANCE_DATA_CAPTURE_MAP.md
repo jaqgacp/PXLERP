@@ -1,6 +1,6 @@
 # PXL ERP — Compliance Data Capture Map
-**Version:** 3.8 — Implementation Contract Completion Pass
-**Status:** v3.8 — All compliance capture contracts complete. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 

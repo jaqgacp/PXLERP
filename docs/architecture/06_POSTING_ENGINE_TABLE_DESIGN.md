@@ -1,56 +1,18 @@
 # PXL ERP — Posting Engine Table Design
-**Version:** 3.8 — Implementation Contract Completion Pass
-**Status:** v3.8 — All gaps closed. Posting engine complete: inventory_movements, period summaries, year-end closing, EWT detection, background jobs. Freeze pending Sections 52–53 sign-off.
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## v3 Architecture Review Changes Applied
+## Resolved Architectural Decisions
 
-- **`posting_rule_sets`**: Added `effective_from` and `effective_to` columns (Principle 11 — all rule/rate tables must be versioned)
-- **`system_account_config`**: Added missing keys: `PERCENTAGE_TAX_PAYABLE`, `FWT_PAYABLE`, `INCOME_TAX_PAYABLE`, `OUTPUT_VAT_NON_VAT` (for PT companies posting gross receipts without VAT)
-- **`posting_rule_lines.applies_to`**: Expanded to include `'CAPITAL_GOODS_LINES_ONLY'` and `'PT_LINES_ONLY'` for routing non-VAT company lines
-- **vat_classification routing**: Posting engine now reads `vat_classification` (not `vat_direction`) from line tables to route to `INPUT_VAT`, `INPUT_VAT_CAPITAL_GOODS`, or `INPUT_VAT_DEFERRED` per Principle 11 v3 fix
-- **Government customer routing (v3)**: When posting a sales document, the engine reads `customers.party_special_class`. If `party_special_class = 'government'`, the resulting `vat_entries` record is written with `vat_classification = 'government'`. This value is NOT stored on `sales_invoice_lines` or `cash_sale_lines` — it is derived and set at posting time. Party_special_class values: NULL (regular), 'government', 'peza', 'boi', 'foreign_entity'. Only 'government' triggers a special vat_entries classification; others affect zero-rating rules (PEZA/BOI zero-rated, foreign = export zero-rated).
-- Confirmed: EWT line routing uses ATC code series prefix (WC/WI = EWT → 1601EQ; WF = FWT → 1601FQ)
-
-## v3 Open Decisions — ALL RESOLVED (v3.7)
-
-| OD# | Decision | **RESOLUTION** |
-|---|---|---|
-| OD-PE-01 | `posting_rule_sets` — company-specific or system-seeded? | **RESOLVED v3.7:** System-seeded with `is_system=true`. At company onboarding, the setup wizard seeds one active `posting_rule_set` per standard `transaction_type` with `is_system=true`. Companies may clone a system rule (INSERT new row with `is_system=false`) to customize. System rules cannot be deleted or deactivated. Cloned rules take precedence over system rules when `effective_from` matches or is later. Implementation: at post time, load rule where `company_id=? AND transaction_type=? AND effective_from<=document_date AND (effective_to IS NULL OR effective_to>document_date)` ORDER BY `is_system ASC, effective_from DESC` LIMIT 1. |
-| OD-PE-02 | When `taxpayer_type='non_vat'`, vat_entries or pt_entries? | **RESOLVED v3.7:** Skip `vat_entries` entirely. Insert `percentage_tax_entries` only. The posting engine checks `company_compliance_profiles.taxpayer_type` at step 11. If `'non_vat'`: (a) do NOT write to `vat_entries`; (b) INSERT `percentage_tax_entries` with `pt_rate` from `percentage_tax_codes` effective on `document_date`. If `'vat'`: write `vat_entries` as normal; no `percentage_tax_entries`. No mixing. |
-| OD-PE-03 | Capital goods input VAT (>PHP 1M) — Phase 1 handling? | **RESOLVED v3.7:** Phase 1: classify the input VAT as `INPUT_VAT_CAPITAL_GOODS` at posting time (book full amount to deferred capital goods VAT account). Compute amortized monthly amounts at filing time (outside the posting engine — accountant manually computes on 2550M). Phase 2 will add a recurring JE generator for monthly capital goods VAT amortization. Developer action: at posting, check `cash_purchase_lines.input_vat_amount > 1_000_000` OR the aggregate capital goods amount; if true, route to `INPUT_VAT_CAPITAL_GOODS` system config key instead of `INPUT_VAT`. |
-
-## v3 Cross-Document Consistency Validation
-
-- `posting_rule_lines.account_config_key` values match `system_account_config` keys (expanded list) ✓
-- `vat_classification` values on line tables align with `posting_rule_lines.applies_to` routing logic ✓
-- `percentage_tax_entries` → `PERCENTAGE_TAX_PAYABLE` config key → `chart_of_accounts.control_account_type = 'PT_PAYABLE_CONTROL'` ✓ (see doc 03 v3)
-- `fwt_remittances_1601fq` → `FWT_PAYABLE` config key → `chart_of_accounts.control_account_type = 'FWT_PAYABLE_CONTROL'` ✓
-
----
-
-## Changes Applied (v1 → v2)
-
-- Added Cash Sales (`cash_sales`) and Cash Purchases (`cash_purchases`) as valid `transaction_type` values on `posting_rule_sets`
-- Added notification dispatch as Step 13 in posting engine process flow
-- Updated `journal_entries.document_number` → `document_no`; `entry_date` → `document_date`
-- Updated `subsidiary_ledger_entries.document_number` → `document_no`
-- Clarified that Cash Sales and Cash Purchases do NOT create `subsidiary_ledger_entries` (no AR/AP impact)
-- Added `source_document_type` values for `cash_sale` and `cash_purchase` to `journal_entries`
-- Added `period_close_checklist_id` as optional link from posting step to period close context
-- Updated posting process flow to reference `notifications` dispatch after audit log insert
-- Added "Posting Rules for Cash Sales and Cash Purchases" section (Section 8)
-- Confirmed `posting_rule_sets` table name (was `posting_rules` in v1 doc 02 — now consistent)
-
----
-
-## Open Decisions Remaining
-
-| OD # | Question | Status |
-|---|---|---|
-| OD-13 | Should the posting engine write `vat_entries` and `ewt_entries` directly, or should those be written by the source document save step before posting? | **RESOLVED v3.3:** Posting engine writes all immutable compliance entries (§7 Step 11). Document save writes draft preview fields only. See Doc 05 OD-13. |
-| OD-14 | Should `recurring_journal_template_lines` support dynamic amounts (e.g., percentage of another account balance)? | Phase 2 — Phase 1 supports fixed amounts only. |
+| Decision | Resolution |
+|---|---|
+| `posting_rule_sets` — company-specific or system-seeded? | System-seeded with `is_system=true`. At company onboarding, the setup wizard seeds one active `posting_rule_set` per standard `transaction_type`. Companies may clone a system rule (INSERT new row with `is_system=false`) to customize. System rules cannot be deleted or deactivated. Cloned rules take precedence when `effective_from` matches or is later. At post time, load rule where `company_id=? AND transaction_type=? AND effective_from<=document_date AND (effective_to IS NULL OR effective_to>document_date)` ORDER BY `is_system ASC, effective_from DESC` LIMIT 1. |
+| When `taxpayer_type='non_vat'`, write to `vat_entries` or `pt_entries`? | Skip `vat_entries` entirely. Insert `percentage_tax_entries` only. The posting engine checks `company_compliance_profiles.taxpayer_type` at step 11. If `'non_vat'`: do NOT write to `vat_entries`; INSERT `percentage_tax_entries` with `pt_rate` from `percentage_tax_codes` effective on `document_date`. If `'vat'`: write `vat_entries` as normal; no `percentage_tax_entries`. No mixing. |
+| Capital goods input VAT (>PHP 1M) — Phase 1 handling? | Phase 1: classify the input VAT as `INPUT_VAT_CAPITAL_GOODS` at posting time (book full amount to deferred capital goods VAT account). Monthly amortization is computed manually at filing time. Phase 2 will add a recurring JE generator. At posting, check `cash_purchase_lines.input_vat_amount > 1_000_000`; if true, route to `INPUT_VAT_CAPITAL_GOODS` system config key instead of `INPUT_VAT`. |
+| Posting engine writes compliance entries or document save step? | Posting engine writes all immutable compliance entries (§7 Step 11). Document save writes draft preview fields only. |
+| `recurring_journal_template_lines` dynamic amounts? | Phase 2 deferred. Phase 1 supports fixed amounts only. |
 
 ---
 

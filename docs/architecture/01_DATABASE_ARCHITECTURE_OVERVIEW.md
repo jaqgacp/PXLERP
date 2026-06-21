@@ -1,11 +1,11 @@
 # PXL ERP — Database Architecture Overview
-**Version:** 3.8 — Implementation Contract Completion Pass
+**Version:** 4.0 — Canonical Release
 **Prepared by:** PXL Database Architecture Team
-**Status:** v3.8 — Implementation Contract Completion Pass — All 22 gaps from Business Scenario Validation closed. Freeze pending Sections 52–53 sign-off.
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## UI Mockup — Prototype Disclaimer (v3.1 — BLOCKER 7 RESOLVED)
+## UI Mockup — Prototype Disclaimer
 
 > **The `index.html` file in the repository root is a VISUAL PROTOTYPE ONLY.**
 >
@@ -21,21 +21,9 @@
 
 ---
 
-## Changes Applied (v1 → v2)
+## Key Architecture Decisions
 
-- Added Cash Sales / Cash Purchases architectural decision (OD-08, now resolved)
-- Added Notification System design section
-- Added Document Template and Generated Output design section
-- Added Period Close Process design section
-- Added Budget tables design section
-- Added Party Duplicate / TIN Conflict handling section
-- Standardized column name conventions (see Section 11)
-- Resolved OD-01 through OD-07 with recommended defaults
-- Expanded Supabase-Specific Decisions section
-
-## v3 Architecture Review Changes Applied
-
-### A. COA FS Mapping — Architecture Decision (RESOLVED)
+### COA Financial Statement Mapping
 
 **Decision: Phase 1 uses COA-embedded fields only. No separate mapping tables.**
 
@@ -52,7 +40,7 @@ Fields added to `chart_of_accounts`:
 
 **Rationale:** MSME clients need standard PFRS for SMEs layouts. COA-embedded fields are sufficient for BS, P&L, SOCE generation without runtime joins to a separate mapping table. Phase 2 can add mapping tables if multi-GAAP or custom layouts are needed.
 
-### B. Company Taxpayer Type — RESOLVED
+### Company Taxpayer Type
 
 **Canonical source:** `company_compliance_profiles.taxpayer_type` CHECK IN ('vat','non_vat')
 
@@ -60,14 +48,14 @@ Fields added to `chart_of_accounts`:
 
 `companies.tax_type` is retained as a deprecated shadow column synced from compliance_profiles. Removal planned for Phase 2.
 
-### C. Party Classification vs Transaction VAT Classification — RESOLVED
+### Party Classification vs Transaction VAT Classification
 
 **Separation of concerns:**
 
 | Concept | Column | Table | Values |
 |---|---|---|---|
-| Customer VAT registration | `vat_registration_status` (v3: renamed from `vat_status`) | `customers` | 'vat', 'non_vat' |
-| Customer special entity type | `party_special_class` (v3: new column) | `customers` | 'government', 'peza', 'boi', 'foreign_entity', NULL |
+| Customer VAT registration | `vat_registration_status` | `customers` | 'vat', 'non_vat' |
+| Customer special entity type | `party_special_class` | `customers` | 'government', 'peza', 'boi', 'foreign_entity', NULL |
 | Supplier VAT registration | `vat_registration_status` | `suppliers` | 'vat', 'non_vat' |
 | Supplier special entity type | `party_special_class` | `suppliers` | same |
 | Transaction tax treatment on sales lines | `vat_classification` | `sales_invoice_lines`, `cash_sale_lines` | 'vatable', 'zero_rated', 'exempt' |
@@ -76,14 +64,14 @@ Fields added to `chart_of_accounts`:
 
 **Why 'government' appears only in `vat_entries`:** BIR Form 2550M/2550Q has a specific disclosure line for "Sales to Government." Government sales are still vatable (12%), but the BIR requires them disclosed separately. When the posting engine creates a `vat_entry` for a vatable sale to a customer with `party_special_class = 'government'`, it automatically sets `vat_entries.vat_classification = 'government'`. The transaction line itself uses 'vatable' — the system derives the reporting category.
 
-### D. Income Tax Table Overlaps — RESOLVED
+### Income Tax Table Registry
 
-**Canonical table set for income tax (consolidated from Module 19 + Module 30):**
+**Canonical table set for income tax:**
 
 | # | Table | Role | Status |
 |---|---|---|---|
 | 158a | `income_tax_return_filings` | ITR filing header per form per period | KEEP |
-| 154 | `itr_computation_runs` (renamed from `itr_working_papers`) | Computation run header — when computed, by whom, status (draft/final) | RENAME |
+| 154 | `itr_computation_runs` | Computation run header — when computed, by whom, status (draft/final) | KEEP |
 | 199 | `income_tax_computation_lines` | Per-account GL breakdown per computation run | KEEP |
 | 155 | `book_tax_reconciliations` | Summary book-to-tax reconciliation per fiscal year | KEEP |
 | 200 | `nolco_tracking` | NOLCO balance and 3-year application tracking (canonical) | KEEP |
@@ -93,11 +81,7 @@ Fields added to `chart_of_accounts`:
 
 `itr_computation_runs` links to `income_tax_return_filings` (many runs per filing, for recomputation), and has `income_tax_computation_lines` as its detail lines.
 
-### E. Other v3 Changes
-
-### F. Phase 1 vs Phase 2 Feature Scope — Explicit Decision Record (v3.6)
-
-> **Added to address Codex finding: architecture docs must explicitly state Phase 1 vs Phase 2 for all non-trivial feature areas.**
+### Phase 1 vs Phase 2 Feature Scope
 
 | Feature Area | Tables (Doc02 #) | Phase Decision | Rationale |
 |---|---|---|---|
@@ -113,19 +97,14 @@ Fields added to `chart_of_accounts`:
 | Warehouse Locations | ~~`warehouse_locations`~~ | **Phase 2** | Not needed for Phase 1 inventory; `warehouses` table suffices for bin-less stock tracking |
 | Price Lists (multi-tier) | ~~`price_lists`~~ → canonical: `item_prices` (#55) | **Phase 1 — `item_prices` only** | `item_prices` handles Phase 1 pricing. Ghost name `price_lists` removed from all docs. Multi-tier price list management is Phase 2. |
 
-- `posting_rule_sets.effective_from/effective_to` added (Principle 11)
-- `system_account_config` keys expanded: PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE
-- `customer_tax_profiles` and `supplier_tax_profiles` now versioned with effective_from/effective_to
-- All line tables: `vat_direction` + `vat_classification` now separate columns
+## Resolved Architectural Decisions
 
-## v3 Open Decisions — ALL RESOLVED (v3.7)
-
-| OD# | Decision | **RESOLUTION** |
-|---|---|---|
-| OD-V3-ARCH-01 | Capital goods input VAT amortization (>PHP 1M): Phase 1 or Phase 2? | **RESOLVED v3.7:** Phase 1: classify to `INPUT_VAT_CAPITAL_GOODS` at posting time; accountant computes monthly amortization manually on 2550M. Phase 2: add recurring JE generator. See Doc06 OD-PE-03 resolution. |
-| OD-V3-ARCH-02 | `companies.tax_type` shadow column: auto-trigger or manual? | **RESOLVED v3.7:** Auto-trigger. A PostgreSQL AFTER INSERT OR UPDATE trigger on `company_compliance_profiles` fires when a new profile row is inserted or `taxpayer_type` is updated. Trigger logic: `UPDATE companies SET tax_type = NEW.taxpayer_type WHERE id = NEW.company_id`. This keeps `companies.tax_type` in sync without application-layer coordination. Trigger name: `sync_companies_tax_type_from_compliance_profile`. `companies.tax_type` remains a DEPRECATED shadow column and will be removed in Phase 2 once all queries use `company_compliance_profiles` directly. |
-| OD-V3-ARCH-03 | `itr_computation_runs` — how many per filing, is final locked? | **RESOLVED v3.7:** Multiple runs allowed per `income_tax_return_filings.id`. `is_final=true` marks the run used for actual filing — does NOT hard-lock. Accountant may set `is_final=false` on the previous run and create a new final run for amendments. Partial unique index `WHERE is_final=true` on `(company_id, income_tax_return_filing_id)` ensures exactly one final run per filing at any time. See also OD-V3-T2 in Doc02. |
-| OD-V3-ARCH-04 | Doc 03 spec coverage gap (~120 tables unspecced) | **RESOLVED (v3.4):** Doc 03 Sections 24–44 add specs for all previously uncovered tables. Section 22 cross-reference index covers all 207 active tables. Total spec coverage = 207/207. |
+| Decision | Resolution |
+|---|---|
+| Capital goods input VAT amortization (>PHP 1M) | Phase 1: classify to `INPUT_VAT_CAPITAL_GOODS` at posting time; accountant computes monthly amortization manually on 2550M. Phase 2: add recurring JE generator. See Doc06 §2. |
+| `companies.tax_type` shadow column | Auto-trigger: a PostgreSQL AFTER INSERT OR UPDATE trigger on `company_compliance_profiles` syncs `companies.tax_type` from `taxpayer_type`. Trigger name: `sync_companies_tax_type_from_compliance_profile`. `companies.tax_type` is a deprecated shadow column — will be removed in Phase 2. |
+| `itr_computation_runs` — multiple runs per filing | Multiple runs allowed per `income_tax_return_filings.id`. `is_final=true` marks the run used for actual filing — does NOT hard-lock. Partial unique index `WHERE is_final=true` on `(company_id, income_tax_return_filing_id)` ensures exactly one final run per filing. |
+| Doc03 spec coverage | All 207 active tables have full column specifications in Doc03. Section 22 cross-reference index covers all 207 tables. |
 
 ## v3 Cross-Document Consistency Validation
 
