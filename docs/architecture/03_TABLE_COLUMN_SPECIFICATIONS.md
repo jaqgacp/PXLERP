@@ -665,7 +665,7 @@ Mirror of `customer_tax_profiles` for suppliers. Versioned per Principle 11. **[
 | net_amount | numeric(18,4) | NOT NULL | — | After discount, before VAT |
 | vat_code_id | uuid | NULL | — | FK → vat_codes.id |
 | vat_direction | text | NOT NULL | 'output' | CHECK IN ('output') — always output for sales; direction is immutable on this table **[v3 fix: removed misplaced classification values]** |
-| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','government') — nature of the VAT treatment **[v3 addition: separate column from direction]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt') — nature of the VAT treatment on the line. 'government' is NOT stored here — it is derived at posting from `customers.party_special_class` and set on `vat_entries.vat_classification`. **[v3 fix: 'government' removed from line table CHECK]** |
 | vat_rate | numeric(10,6) | NOT NULL | 0 | Snapshot of rate at time of posting |
 | vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | net_amount + vat_amount |
@@ -718,7 +718,7 @@ Cash sales — immediate collection, no AR created.
 | net_amount | numeric(18,4) | NOT NULL | — | |
 | vat_code_id | uuid | NULL | — | FK → vat_codes.id |
 | vat_direction | text | NOT NULL | 'output' | CHECK IN ('output') — always output for cash sales **[v3 fix]** |
-| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt','government') **[v3 addition]** |
+| vat_classification | text | NOT NULL | 'vatable' | CHECK IN ('vatable','zero_rated','exempt') — 'government' is NOT stored here; derived at posting from `customers.party_special_class`. **[v3 fix: 'government' removed from line table CHECK]** |
 | vat_rate | numeric(10,6) | NOT NULL | 0 | |
 | vat_amount | numeric(18,4) | NOT NULL | 0 | |
 | total_amount | numeric(18,4) | NOT NULL | — | |
@@ -1354,16 +1354,7 @@ Immutable. One row per ATC per line per source document.
 ---
 
 ### `notification_delivery_logs`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| notification_id | uuid | NOT NULL | — | FK → notifications.id |
-| channel | text | NOT NULL | — | CHECK IN ('in_app','email') |
-| status | text | NOT NULL | — | CHECK IN ('pending','sent','failed','skipped') |
-| attempted_at | timestamptz | NOT NULL | now() | |
-| delivered_at | timestamptz | NULL | — | |
-| error_message | text | NULL | — | |
-| retry_count | integer | NOT NULL | 0 | |
+> Canonical spec: See Doc03 Section 43 (`notification_delivery_logs`). The §12 duplicate has been removed.
 
 ---
 
@@ -1545,30 +1536,12 @@ Immutable. One row per ATC per line per source document.
 ---
 
 ### `roles`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NULL | — | NULL = system role |
-| code | text | NOT NULL | — | 'COMPANY_ADMIN','ACCOUNTANT','AR_CLERK', etc. |
-| name | text | NOT NULL | — | |
-| description | text | NULL | — | |
-| is_system_role | boolean | NOT NULL | false | Cannot be deleted |
-| is_active | boolean | NOT NULL | true | |
-| *+ standard audit columns* | | | | |
+> Canonical spec: See Doc03 Section 24 (`roles`). The §16 duplicate has been removed.
 
 ---
 
 ### `permissions`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| module | text | NOT NULL | — | 'sales','purchasing','accounting','compliance', etc. |
-| resource | text | NOT NULL | — | 'sales_invoices','journal_entries', etc. |
-| action | text | NOT NULL | — | CHECK IN ('view','create','edit','delete','post','void','approve','export','admin') |
-| code | text | NOT NULL | — | e.g., 'sales.sales_invoices.post' |
-| description | text | NULL | — | |
-
-**Constraints:** `UNIQUE(code)`
+> Canonical spec: See Doc03 Section 24 (`permissions`). The §16 duplicate has been removed.
 
 ---
 
@@ -1890,18 +1863,7 @@ Creditable withholding taxes (2307 only) and other credits applied against incom
 ---
 
 ### `atc_codes`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| code | text | NOT NULL | — | BIR ATC e.g., 'WI010' |
-| description | text | NOT NULL | — | BIR official description |
-| tax_type | text | NOT NULL | — | CHECK IN ('ewt','fwt') |
-| rate | numeric(10,6) | NOT NULL | — | e.g., 0.01, 0.02, 0.05 |
-| effective_from | date | NOT NULL | — | Principle 11: effective-date versioned |
-| effective_to | date | NULL | — | NULL = currently active |
-| *+ standard audit columns* | | | | |
-
-**Constraints:** `UNIQUE(code, effective_from)` | Partial unique index WHERE effective_to IS NULL
+> Canonical spec: See Doc03 Section 27 (`atc_codes`). The §21 abbreviated spec has been removed. Canonical spec includes `income_payment_category` and uses `UNIQUE(code) WHERE effective_to IS NULL` (partial unique index pattern — ATC codes are global BIR codes, not per-company).
 
 ---
 
@@ -2636,7 +2598,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
-| config_key | text | NOT NULL | — | CHECK IN ('CASH_ON_HAND','CASH_IN_BANK','ACCOUNTS_RECEIVABLE','ACCOUNTS_PAYABLE','INPUT_VAT','OUTPUT_VAT','INPUT_VAT_CAPITAL_GOODS','OUTPUT_VAT_NON_VAT','EWT_PAYABLE','FWT_PAYABLE','PERCENTAGE_TAX_PAYABLE','INCOME_TAX_PAYABLE','INVENTORY','COST_OF_SALES','PETTY_CASH','RETAINED_EARNINGS') |
+| config_key | text | NOT NULL | — | CHECK IN ('CASH_ON_HAND','CASH_IN_BANK','AR_TRADE','AP_TRADE','INPUT_VAT','OUTPUT_VAT','INPUT_VAT_CAPITAL_GOODS','INPUT_VAT_DEFERRED','OUTPUT_VAT_NON_VAT','EWT_PAYABLE','FWT_PAYABLE','PERCENTAGE_TAX_PAYABLE','INCOME_TAX_PAYABLE','INVENTORY_CONTROL','COST_OF_GOODS_SOLD','RETAINED_EARNINGS','INCOME_SUMMARY') — **[H-3 fix: standardized to match Doc06 posting_rule_lines.account_config_key values]** |
 | account_id | uuid | NOT NULL | — | FK → chart_of_accounts.id |
 | is_active | boolean | NOT NULL | true | |
 | *+ standard audit columns* | | | | |
@@ -2680,18 +2642,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 ---
 
 ### `vat_codes`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| code | text | NOT NULL | — | e.g., 'VAT12','ZERO','EXEMPT' |
-| description | text | NOT NULL | — | |
-| rate | numeric(10,6) | NOT NULL | 0 | 0.12 for standard VAT, 0.00 for zero-rated/exempt |
-| vat_type | text | NOT NULL | — | CHECK IN ('vatable','zero_rated','exempt') |
-| is_active | boolean | NOT NULL | true | |
-| *+ standard audit columns* | | | | |
-
-**Constraints:** `UNIQUE(company_id, code)`
+> Canonical spec: See Doc03 Section 21 (`vat_codes`). The §27 duplicate has been removed. Canonical spec uses `classification` (not `vat_type`) and includes `effective_from`/`effective_to` for rate versioning.
 
 ---
 
@@ -2750,7 +2701,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 | is_active | boolean | NOT NULL | true | |
 | *+ standard audit columns* | | | | |
 
-**Constraints:** `UNIQUE(code)` — ATC codes are global BIR codes, not per-company
+**Constraints:** Partial unique index `UNIQUE(code) WHERE effective_to IS NULL` — ensures one active record per code at any time. ATC codes are global BIR codes, not per-company.
 
 ---
 
@@ -4175,19 +4126,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 ---
 
 ### `document_void_register`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| document_type | text | NOT NULL | — | Table name |
-| document_no | text | NOT NULL | — | Original document number |
-| entity_id | uuid | NOT NULL | — | PK of voided document |
-| voided_at | timestamptz | NOT NULL | — | |
-| voided_by | uuid | NOT NULL | — | FK → profiles.id |
-| void_reason | text | NOT NULL | — | |
-| original_amount | numeric(18,4) | NULL | — | Total amount on the document |
-
-> Audit. Immutable. Required by BIR CAS.
+> Canonical spec: See Doc03 Section 11 (`document_void_register`). The §41 duplicate has been removed. Note: canonical spec uses `document_id` (not `entity_id`) and includes `document_date`, `reversal_je_id`, `approved_by`, `approved_at`.
 
 ---
 
@@ -4306,32 +4245,12 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 ---
 
 ### `import_rows`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| import_batch_id | uuid | NOT NULL | — | FK → import_batches.id |
-| row_no | integer | NOT NULL | — | Row position in source file |
-| raw_data | jsonb | NOT NULL | — | Original row as parsed |
-| mapped_data | jsonb | NULL | — | After field mapping applied |
-| status | text | NOT NULL | 'pending' | CHECK IN ('pending','valid','invalid','imported','skipped') |
-| imported_entity_id | uuid | NULL | — | PK of created entity on success |
-
-> High volume. Immutable once processed.
+> Canonical spec: See Doc03 Section 15 (`import_rows`). The §42 duplicate has been removed.
 
 ---
 
 ### `import_validation_errors`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| import_row_id | uuid | NOT NULL | — | FK → import_rows.id |
-| field_name | text | NULL | — | Specific field with error (NULL = row-level error) |
-| error_code | text | NOT NULL | — | e.g., 'REQUIRED_FIELD_MISSING','INVALID_TIN_FORMAT' |
-| error_message | text | NOT NULL | — | User-facing message |
-
-> Audit. Immutable.
+> Canonical spec: See Doc03 Section 15 (`import_validation_errors`). The §42 duplicate has been removed.
 
 ---
 
@@ -4349,17 +4268,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 ---
 
 ### `generated_report_files`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| export_job_id | uuid | NULL | — | FK → export_jobs.id |
-| report_type | text | NOT NULL | — | e.g., 'TRIAL_BALANCE','SLSP_EXPORT','QAP' |
-| file_path | text | NOT NULL | — | Supabase Storage path |
-| file_size_bytes | bigint | NOT NULL | — | |
-| generated_at | timestamptz | NOT NULL | now() | |
-| expires_at | timestamptz | NULL | — | Storage cleanup date |
-| *+ standard audit columns* | | | | |
+> Canonical spec: See Doc03 Section 44 (`generated_report_files`). The §42 duplicate has been removed.
 
 ---
 
@@ -4375,6 +4284,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 | status | text | NOT NULL | 'pending' | CHECK IN ('pending','sent','failed','delivered') |
 | sent_at | timestamptz | NULL | — | |
 | error_message | text | NULL | — | |
+| retry_count | integer | NOT NULL | 0 | Number of delivery attempts made |
 
 > Audit. Immutable.
 
@@ -4616,7 +4526,7 @@ Additionally, `company_compliance_profiles` was missing `deduction_method` colum
 **General Ledger (MODULE 12–13, ~5 tables)** — All KEEP.
 
 **VAT (MODULE 14, ~5 tables)** — All KEEP.
-- `slsp_records`, `sawt_records` — KEEP (BIR export data stores; required for 2550Q attachments).
+- `slsp_exports`, `sawt_exports` — KEEP (BIR export data stores; required for 2550Q attachments).
 
 **EWT / FWT (MODULE 15–16, ~10 tables)** — All KEEP.
 - `qap_exports`, `relief_exports` — KEEP (BIR-required submission data).
@@ -4717,12 +4627,13 @@ deduction_method text NOT NULL DEFAULT 'itemized'
 | 2551Q (Percentage Tax) | `percentage_tax_return_filings` | YES | Stores taxable amount, tax due, period, status |
 | 1601EQ (EWT Quarterly) | `ewt_remittances_1601eq` | YES — S40 spec | Stores total ewt remitted, period, BIR confirmation |
 | 1601FQ (FWT Quarterly) | `fwt_remittances_1601fq` | YES — S18 spec | Same pattern |
-| 1604E / 1604F (Annual) | No dedicated table | DEFER TO PHASE 2 | Annual summary; can be derived from 1601EQ/FQ records |
+| 1604E (Annual EWT) | No dedicated table | DEFER TO PHASE 2 | Annual alphalist of EWT payees; derivable from quarterly 1601EQ records |
+| 1604F (Annual FWT) | No dedicated table | DEFER TO PHASE 2 | Annual alphalist of FWT payees; derivable from quarterly 1601FQ records |
 | 2306 (Certificate — FWT) | `certificates_2306_issued` | YES — S40 spec | Per-payee, per-period certificate |
 | 2307 (Certificate — EWT) | `certificates_2307_issued` | YES — S15 spec | Per-payee, per-period certificate |
-| SAWT | `sawt_records` | YES — S16 | Per-transaction detail |
+| SAWT | `sawt_exports` | YES — S40 | Per-quarter export batch |
 | QAP | `qap_exports` | YES — S40 | Per-quarter export batch |
-| SLSP | `slsp_records` | YES — S16 | Per-transaction detail |
+| SLSP | `slsp_exports` | YES — S40 | Per-quarter export batch |
 | RELIEF | `relief_exports` | YES — S40 | Per-quarter export batch |
 | ITR (1701/1702/1701Q/1702Q) | `income_tax_return_filings` + `itr_computation_runs` | YES — S19/S20 | Full computation trail + snapshot |
 | DAT File (BIR CODA) | `dat_generation_logs` | YES — S41 | Log of each DAT export |
