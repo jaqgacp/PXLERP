@@ -1,45 +1,17 @@
 # PXL ERP — Import & Export Table Design
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## v3 Architecture Review Changes Applied
+## Resolved Architectural Decisions
 
-- **New import types added**: `coa_fs_mapping`, `income_tax_mappings`, `party_special_class` — see Import Types table below.
-- **`itr_working_papers` export**: Renamed to `itr_computation_runs` in export_jobs export_type list.
-- **`mcit_computations` export**: REMOVED (subsumed into `itr_computation_runs` record; no separate export).
-- **`nolco_schedules` export**: REMOVED; replaced by `nolco_tracking` export type.
-- **Party classification import**: `party_special_class` bulk import allows updating customers/suppliers.party_special_class in batch — needed for companies migrating from systems where government/PEZA customers were not separately flagged.
-
-## v3 Open Decisions
-
-| OD# | Decision | Status |
-|---|---|---|
-| OD-08-V3-01 | `coa_fs_mapping` import — allow partial update (only update rows where fs_section is null) or always overwrite? | Recommended: always overwrite with explicit confirm prompt — fs_section drives FS report generation. |
-| OD-08-V3-02 | `income_tax_mappings` import — update `is_mcit_gross_income` and `is_osd_gross_revenue` on COA accounts — require CPA review flag before allowing import? | Recommended: Yes — require role check (CONTROLLER_ROLE or higher). |
-
----
-
-## Changes Applied (v1 → v2)
-
-- Expanded `import_type` list to include all Setup and Master Data modules (payment_terms, approval_matrix, atc_codes, warehouses, units_of_measure, etc.) — not only transactional data
-- Added `attachment_versions` full table specification (new in v2)
-- Added `file_hash_sha256` to `attachments` table
-- Confirmed `export_jobs` table name (was `export_batches` in v1 doc 02 — now consistent across all docs)
-- Added `cash_sale` and `cash_purchase` to export types (new transaction types in v2)
-- Added compliance output export types: `compliance_report_run_id` link on export_jobs
-- Added `import_batch_id` column reference note: all master data tables carry this column
-- Added `EMPLOYEES` import type marked as OUT OF SCOPE for Phase 1
-
----
-
-## Open Decisions Remaining
-
-| OD # | Question | Status |
-|---|---|---|
-| OD-17 | Should attachment storage use a single bucket per company or a single shared bucket with folder-based separation? | Recommended: single shared bucket with `company_id/entity_type/entity_id/` path structure. Confirm before Supabase Storage setup. |
-| OD-18 | Should the import template (column mapping) be saved per import_type so users don't re-map columns on every import? | Recommended: Yes — store as `import_column_templates` table (Phase 2). Phase 1: column_mapping stored per batch. |
+| Decision | Resolution |
+|---|---|
+| `coa_fs_mapping` import — partial update or always overwrite? | Always overwrite with explicit confirmation prompt. The import UI must display a warning before import begins. Always overwrite (not merge) ensures the imported CPA-approved template is applied cleanly. On import execution: `UPDATE chart_of_accounts SET fs_section=?, fs_group=?, fs_sort_order=?, cash_flow_category=? WHERE company_id=? AND account_code=?` for each row. |
+| `income_tax_mappings` import — require controller role? | Yes. The import_type `income_tax_mappings` (updates `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` on COA) requires the caller to have role `CONTROLLER` or `COMPANY_ADMIN`. The Edge Function checks this before processing. |
+| Single bucket or per-company bucket for attachments? | Single shared Supabase Storage bucket named `erp-attachments` with path structure `{company_id}/{entity_type}/{entity_id}/{filename}`. Supabase Storage RLS policies restrict download to authenticated users whose `company_id` matches the path prefix. `attachments.storage_path = '{company_id}/{entity_type}/{entity_id}/{uuid}_{original_filename}'`. |
+| Save import column mapping templates? | Phase 2 deferred. Phase 1: `import_batches.column_mapping jsonb` stores the mapping used for each individual import. The `import_templates` table (#174) exists in the schema but the save/load feature is Phase 2. |
 
 ---
 
@@ -69,15 +41,15 @@ Header record for every import operation.
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `batch_name` | text | NOT NULL | User-provided label |
 | `import_type` | text | NOT NULL | See import types below |
-| `source_filename` | text | NULL | Original uploaded filename |
-| `storage_path` | text | NULL | Supabase Storage path of uploaded file |
-| `file_format` | text | CHECK IN ('CSV','XLSX','JSON') | |
+| `file_name` | text | NOT NULL | Original uploaded filename |
+| `storage_path` | text | NOT NULL | Supabase Storage path of uploaded file |
+| `file_format` | text | CHECK IN ('csv','xlsx','json') | |
 | `total_rows` | integer | NOT NULL DEFAULT 0 | Rows in file |
-| `processed_rows` | integer | NOT NULL DEFAULT 0 | Rows attempted |
-| `success_rows` | integer | NOT NULL DEFAULT 0 | Rows successfully imported |
+| `valid_rows` | integer | NOT NULL DEFAULT 0 | Rows passing validation |
 | `error_rows` | integer | NOT NULL DEFAULT 0 | Rows with errors |
+| `imported_rows` | integer | NOT NULL DEFAULT 0 | Rows successfully imported |
 | `skipped_rows` | integer | NOT NULL DEFAULT 0 | Rows skipped (duplicates, etc.) |
-| `status` | text | CHECK IN ('PENDING','VALIDATING','VALIDATED','IMPORTING','COMPLETED','FAILED','ROLLED_BACK') | |
+| `status` | text | CHECK IN ('pending','validating','validated','importing','completed','failed','rolled_back') | |
 | `validation_completed_at` | timestamptz | NULL | |
 | `import_started_at` | timestamptz | NULL | |
 | `import_completed_at` | timestamptz | NULL | |
@@ -100,19 +72,19 @@ Header record for every import operation.
 | `payment_terms` | Setup | `payment_terms`, `payment_term_lines` |
 | `atc_codes` | Setup | `atc_codes` |
 | `tax_codes` | Setup | `tax_codes` (VAT classification master) |
-| `warehouses` | Setup | `warehouses`, `warehouse_locations` |
+| `warehouses` | Setup | `warehouses` — `warehouse_locations` is Phase 2 only |
 | `units_of_measure` | Setup | `units_of_measure` |
 | `approval_matrix` | Setup | `approval_matrix`, `approval_matrix_steps` |
 | `customers` | Master Data | `customers`, `customer_tax_profiles`, `customer_addresses` |
 | `suppliers` | Master Data | `suppliers`, `supplier_tax_profiles`, `supplier_addresses` |
-| `items` | Master Data | `items`, `item_units_of_measure` |
-| `price_lists` | Master Data | `item_price_lists` |
+| `items` | Master Data | `items`, `uom_conversions` (UOM conversion ratios via `units_of_measure`) |
+| `item_prices` | Master Data | `item_prices` (#46) |
 | `bank_accounts` | Master Data | `company_bank_accounts` |
 | `opening_balances` | Opening | `opening_balance_entries` → `journal_entries` |
 | `ar_opening` | Opening | `subsidiary_ledger_entries` (AR), customer outstanding invoices |
 | `ap_opening` | Opening | `subsidiary_ledger_entries` (AP), supplier outstanding bills |
 | `inventory_opening` | Opening | `inventory_cost_layers`, `inventory_movements` |
-| `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedule` |
+| `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedules` |
 | `coa_fs_mapping` | Setup (v3) | `chart_of_accounts` — bulk update fs_section, fs_group, fs_sort_order, cash_flow_category fields |
 | `income_tax_mappings` | Setup (v3) | `chart_of_accounts` — bulk update is_mcit_gross_income, is_osd_gross_revenue, tax_deductibility fields |
 | `party_special_class` | Master Data (v3) | `customers`, `suppliers` — bulk set party_special_class (government/peza/boi/foreign_entity) |
@@ -128,11 +100,11 @@ One record per row in the import file.
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `batch_id` | uuid | FK import_batches, NOT NULL | |
+| `import_batch_id` | uuid | FK import_batches, NOT NULL | |
 | `row_number` | integer | NOT NULL | Row number in source file (1-based) |
 | `raw_data` | jsonb | NOT NULL | Original row data as key-value |
 | `mapped_data` | jsonb | NULL | After column mapping applied |
-| `status` | text | CHECK IN ('PENDING','VALID','ERROR','IMPORTED','SKIPPED','ROLLED_BACK') | |
+| `status` | text | CHECK IN ('pending','valid','invalid','imported','skipped','rolled_back') | |
 | `created_record_id` | uuid | NULL | UUID of the record created by this row |
 | `created_record_type` | text | NULL | Table name of created record |
 | `error_count` | integer | NOT NULL DEFAULT 0 | |
@@ -147,14 +119,14 @@ All validation errors per import row.
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `batch_id` | uuid | FK import_batches, NOT NULL | |
-| `row_id` | uuid | FK import_rows, NOT NULL | |
+| `import_batch_id` | uuid | FK import_batches, NOT NULL | |
+| `import_row_id` | uuid | FK import_rows, NOT NULL | |
 | `row_number` | integer | NOT NULL | Denormalized for quick display |
 | `field_name` | text | NOT NULL | Column with the error |
 | `raw_value` | text | NULL | Value that caused the error |
 | `error_code` | text | NOT NULL | Machine-readable error code |
 | `error_message` | text | NOT NULL | Human-readable description |
-| `severity` | text | CHECK IN ('ERROR','WARNING'), NOT NULL DEFAULT 'ERROR' | WARNING rows can still import |
+| `severity` | text | CHECK IN ('error','warning'), NOT NULL DEFAULT 'error' | 'warning' rows can still import |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() | |
 
 ### Common Error Codes
@@ -191,7 +163,7 @@ Stores opening balances before they are converted to journal entries.
 | `branch_id` | uuid | FK branches, NULL | |
 | `account_id` | uuid | FK chart_of_accounts, NOT NULL | |
 | `fiscal_year_id` | uuid | FK fiscal_years, NOT NULL | First fiscal year |
-| `balance_type` | text | CHECK IN ('DEBIT','CREDIT'), NOT NULL | Normal balance side |
+| `balance_type` | text | CHECK IN ('debit','credit'), NOT NULL | Normal balance side |
 | `amount` | numeric(18,4) | NOT NULL | |
 | `notes` | text | NULL | |
 | `import_batch_id` | uuid | FK import_batches, NULL | |
@@ -213,8 +185,8 @@ Tracks asynchronous report/export generation jobs. Supabase Realtime enabled.
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `export_type` | text | NOT NULL | See export types below |
 | `parameters` | jsonb | NOT NULL | Filter params: date range, accounts, branches, etc. |
-| `format` | text | CHECK IN ('PDF','XLSX','CSV','DAT','JSON') | |
-| `status` | text | CHECK IN ('QUEUED','PROCESSING','COMPLETED','FAILED') | |
+| `format` | text | CHECK IN ('pdf','xlsx','csv','dat','json') | |
+| `status` | text | CHECK IN ('queued','processing','completed','failed') | |
 | `requested_by` | uuid | FK auth.users, NOT NULL | |
 | `requested_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `started_at` | timestamptz | NULL | |
@@ -224,7 +196,8 @@ Tracks asynchronous report/export generation jobs. Supabase Realtime enabled.
 | `record_count` | integer | NULL | |
 | `error_message` | text | NULL | |
 | `expires_at` | timestamptz | NULL | When to auto-delete from storage |
-| `compliance_report_run_id` | uuid | FK compliance_report_runs, NULL | Set when export is a compliance form |
+
+> **F-3 fix:** `compliance_report_run_id` column removed — `compliance_report_runs` is not a canonical table (#189 `export_jobs` replaced it). Compliance report exports are identified by `export_jobs.export_type` (e.g., `'vat_2550m'`, `'ewt_1601eq'`) and linked to their output files via `generated_report_files.export_job_id`. No separate compliance_report_run_id FK exists.
 
 ### Export Types
 
@@ -295,7 +268,9 @@ Metadata for all uploaded files. Supabase Storage holds the actual files.
 | `deleted_by` | uuid | FK auth.users, NULL | |
 
 **Supported entity types:**
-`sales_invoices` | `vendor_bills` | `receipts` | `payment_vouchers` | `cash_sales` | `cash_purchases` | `journal_entries` | `petty_cash_vouchers` | `purchase_orders` | `goods_receipts` | `bank_reconciliations` | `fixed_assets` | `customers` | `suppliers`
+`sales_invoices` | `vendor_bills` | `receipts` | `payment_vouchers` | `cash_sales` | `cash_purchases` | `journal_entries` | `petty_cash_vouchers` | `purchase_orders` | `receiving_reports` | `bank_reconciliations` | `fixed_assets` | `customers` | `suppliers`
+
+> **F-1 fix:** `official_receipts` → `receipts` (#71); `disbursement_vouchers` → `payment_vouchers` (#87). Ghost names removed.
 
 ---
 
@@ -324,22 +299,22 @@ Version history for re-uploaded attachments.
 
 ```
 1. User uploads file → Supabase Storage
-2. Edge Function creates import_batches record (status='PENDING')
-3. Edge Function reads file, creates import_rows (status='PENDING')
+2. Edge Function creates import_batches record (status='pending')
+3. Edge Function reads file, creates import_rows (status='pending')
 4. VALIDATION PASS:
    a. For each row: validate required fields, formats, references
    b. Create import_validation_errors for failures
-   c. Update import_rows.status = 'VALID' | 'ERROR'
-   d. Update import_batches.status = 'VALIDATED'
+   c. Update import_rows.status = 'valid' | 'invalid'
+   d. Update import_batches.status = 'validated'
    e. Update counts: total_rows, error_rows, success_rows
 5. User reviews validation results
-6. User approves import (all-or-nothing for VALID rows; ERROR rows are skipped)
+6. User approves import (all-or-nothing for valid rows; error rows are skipped)
 7. IMPORT PASS:
-   a. For each VALID row: create target record(s)
+   a. For each valid row: create target record(s)
    b. Set created_record_id on import_rows
    c. Set import_batch_id on created records
-   d. Update import_rows.status = 'IMPORTED'
-   e. Update import_batches.status = 'COMPLETED'
+   d. Update import_rows.status = 'imported'
+   e. Update import_batches.status = 'completed'
 8. Audit log: BULK_IMPORT_COMPLETED
 9. Notify initiator: import completed (row counts, error summary)
 ```
@@ -348,6 +323,6 @@ Version history for re-uploaded attachments.
 
 - Only available for imports where no records have been posted
 - Sets `deleted_at` on all records with matching `import_batch_id`
-- Updates `import_batches.status = 'ROLLED_BACK'`
+- Updates `import_batches.status = 'rolled_back'` **[v3.6 fix: lowercase]**
 - Creates `audit_logs` entry (event_type='BULK_IMPORT_ROLLED_BACK')
 - Opening balance journal entries that have been POSTED cannot be rolled back via batch — require manual reversal JE

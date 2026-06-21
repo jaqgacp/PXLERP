@@ -1,66 +1,49 @@
 # PXL ERP — Relationship Map
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
----
+## Canonical Table Name Reference
 
-## Changes Applied (v1 → v2)
-
-- Updated posting engine references: `posting_rules` → `posting_rule_sets`
-- Updated compliance references: `vat_summary_period` → `vat_period_summaries`
-- Updated document number column: `document_number` → `document_no`
-- Updated date column: `invoice_date`/`bill_date` → `document_date`
-- Added Cash Sales and Cash Purchases relationship chains (OD-08 resolved)
-- Added Notification relationship chain (Section 13)
-- Added Document Template and Generated Output relationship chain (Section 14)
-- Added Budget relationship chain (Section 15)
-- Added Period Close relationship chain (Section 16)
-- Added Party Duplicate Management relationship chain (Section 17)
-- Added `inventory_cost_layer_consumption` to inventory section
-- Added `bank_statement_lines` to bank reconciliation section
-- Added `attachment_versions` to attachments section
-- Added `system_alerts` to audit section
-- Updated bridge table summary for all new tables
-- Fixed `bank_statements_lines` → `bank_statement_lines` (singular table name)
-
-## v3 Architecture Review Changes Applied (Enhancement Round)
-
-- **Section 26: Amortization Schedule Chain** added
-- **Section 27: Revenue Recognition Schedule Chain** added
-- **Section 28: Auto Reversal Chain** added
-- **journal_entries** chain updated — new FK columns (auto_reversal_run_id, amortization_run_detail_id, revenue_recognition_run_detail_id) reflected
-
-## v3 Architecture Review Changes Applied (Round 2 — Structural Fixes)
-
-- **Party classification chain updated**: Customer and supplier nodes now show `party_special_class` (government/peza/boi/foreign_entity) as separate from `vat_registration_status`. The posting engine reads `party_special_class` to set `vat_entries.vat_classification = 'government'` — this is NOT stored on transaction lines.
-- **Income tax chain rewritten**: `itr_working_papers` → renamed `itr_computation_runs`. `mcit_computations` and `nolco_schedules` REMOVED (superseded). Canonical chain: `income_tax_return_filings` → `itr_computation_runs` → `income_tax_computation_lines` + `book_tax_reconciliations` + `nolco_tracking` + `tax_credits_schedules`.
-- **COA mapping chain**: No separate mapping table chain. `chart_of_accounts` carries `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` directly. FS report generation reads COA directly.
-- **companies.tax_type**: CHECK corrected to ('vat','non_vat'). Diagram nodes updated — 'exempt' removed.
-
-## v3 Open Decisions
-
-| OD# | Decision | Status |
+| Ghost Name | Canonical Name (Doc 02 Registry) | Doc 02 Table # |
 |---|---|---|
-| OD-04-V3-01 | `user_branch_access` table — is this still in scope for Phase 1 or deferred? | Unresolved — verify with doc 02 |
-| OD-04-V3-02 | `fwt_entries` — separate table or part of `ewt_entries` with a direction flag? | Unresolved — check doc 06 |
+| `credit_memos` | `sales_credit_memos` | #73 |
+| `credit_memo_lines` | `sales_credit_memo_lines` | #74 |
+| `delivery_orders` | `delivery_receipts` | #65 |
+| `delivery_order_lines` | `delivery_receipt_lines` | #66 |
+| `goods_receipts` | `receiving_reports` | #81 |
+| `goods_receipt_lines` | `receiving_report_lines` | #82 |
+| `bank_deposits` | `receipts` (official receipts — AR collections) | #71 |
+| `bank_deposit_lines` | `receipt_lines` | #72 |
+| `bank_withdrawals` | `payment_vouchers` (AP payments) | #87 |
+| `bank_withdrawal_lines` | `payment_voucher_lines` | #88 |
+| `disbursement_vouchers` | `payment_vouchers` | #87 |
+| `disbursement_voucher_lines` | `payment_voucher_lines` | #88 |
+| `official_receipts` | `receipts` | #71 |
+| `official_receipt_lines` | `receipt_lines` | #72 |
+| `bank_transfers` | `bank_fund_transfers` | #101 |
+| `slsp_entries` | `slsp_exports` (export batch records, computed at export) | #143 |
+| `slsp_records` | `slsp_exports` | #143 |
+| `slsp_summary` | *(removed — no such table)* | — |
+| `relief_entries` | `relief_exports` | #144 |
+| `relief_summary` | *(removed — no such table)* | — |
+| `qap_entries` | `qap_exports` | #151 |
+| `qap_records` | `qap_exports` | #151 |
+| `sawt_entries` | `sawt_exports` | #152 |
+| `sawt_records` | `sawt_exports` | #152 |
+| `certificates_2306` | `certificates_2306_issued` | #149 |
+| `inventory_adjustments` | `stock_adjustments` | #109 |
+| `inventory_adjustment_lines` | `stock_adjustment_lines` | #110 |
 
 ---
 
-## Changes Applied (v2 → v2.1) — Principle Alignment
+## Resolved Architectural Decisions
 
-- Added Section 22: Compliance Profile Chain (Principle 6)
-- Added Section 23: Percentage Tax Chain (Principle 20)
-- Added Section 24: FWT / 1601FQ Chain (Principle 20)
-- Added Section 25: Income Tax Return Filing Chain
-
----
-
-## Open Decisions Remaining
-
-| OD # | Question | Status |
-|---|---|---|
-| OD-09 | Should `document_relationships` also link notification events to their source documents? | Unresolved — Phase 2 consideration |
-| OD-10 | Should `generated_documents` link to `export_jobs` when a PDF is produced as part of an export? | Unresolved — decide before implementing Edge Functions |
+| Decision | Resolution |
+|---|---|
+| `user_branch_access` table scope | ACTIVE (#7 in Doc 02 registry). Phase 1 uses it for UI-layer branch filtering per Doc 09 Option A. No separate security boundary RLS needed Phase 1. |
+| `fwt_entries` — separate table or merged with `ewt_entries`? | Separate table confirmed: `fwt_entries` (#146 in Doc 02). WF-series ATC codes only. Separate from `ewt_entries` (#145) WC/WI-series. BIR requires separate 1601FQ form vs 1601EQ. |
+| `document_relationships` scope for notification events | No. `document_relationships` links operational documents only (invoice → receipt, bill → payment, etc.). Notification-to-source linking is handled by `notifications.entity_type` + `notifications.entity_id` columns. Phase 2 may add `notification_relationships` if needed. |
+| `generated_documents` link to `export_jobs` | Yes — `generated_documents.export_job_id` (FK → `export_jobs.id`, nullable). Set when PDF is generated as part of an export job; NULL when generated on-demand from a single document view. |
 
 ---
 
@@ -153,7 +136,7 @@ payment_terms (1)
 ### Customer
 ```
 customers (1)
-  ├── customer_tax_profiles (1:1)
+  ├── customer_tax_profiles (1:many — versioned by effective_from/effective_to; one active at any time WHERE effective_to IS NULL)
   ├── customer_addresses (many)
   └── customer_contacts (many)
 ```
@@ -161,7 +144,7 @@ customers (1)
 ### Supplier
 ```
 suppliers (1)
-  ├── supplier_tax_profiles (1:1)
+  ├── supplier_tax_profiles (1:many — versioned by effective_from/effective_to; one active at any time WHERE effective_to IS NULL)
   ├── supplier_addresses (many)
   └── supplier_contacts (many)
 ```
@@ -170,19 +153,19 @@ suppliers (1)
 ```
 item_categories (1)
   └── items (many)
-        ├── item_units_of_measure (many) ──► units_of_measure
-        ├── item_warehouse_stock (many) ──► warehouses
-        └── item_price_lists (many) ──► price_lists
-              
+        ├── uom_conversions ──► units_of_measure    ← canonical: uom_conversions #53 **[v3.6 fix: `item_units_of_measure` was ghost name]**
+        ├── inventory_balances (many) ──► warehouses               ← canonical: inventory_balances (not item_warehouse_stock)
+        └── item_prices (many, per price tier)                     ← canonical: item_prices #46 (price_lists = Phase 2)
+
 warehouses (1)
-  └── warehouse_locations (many)
+  └── [warehouse_locations — Phase 2 only; not in Phase 1 table registry]
 ```
 
 ### Fixed Assets
 ```
 asset_categories (1)
   └── fixed_assets (many)
-        └── asset_depreciation_schedule (many)
+        └── asset_depreciation_schedules (many)                    ← canonical: asset_depreciation_schedules (plural)
 ```
 
 ---
@@ -222,16 +205,16 @@ customers (1, optional — cash sales may be walk-in)
 ### Sales Return
 ```
 sales_invoices (original, POSTED)
-  └── credit_memos (reversal document)
-        └── credit_memo_lines
+  └── sales_credit_memos (reversal document)          ← canonical: sales_credit_memos
+        └── sales_credit_memo_lines
               └── vat_entries (negative VAT)
 ```
 
 ### Delivery
 ```
 sales_orders (1)
-  └── delivery_orders (many)
-        └── delivery_order_lines (many)
+  └── delivery_receipts (many)                        ← canonical: delivery_receipts (was: delivery_orders)
+        └── delivery_receipt_lines (many)
               └── inventory_movements (OUT)
 ```
 
@@ -274,8 +257,8 @@ suppliers (1, optional — cash purchases may be one-time vendor)
 ### Goods Receipt
 ```
 purchase_orders (1)
-  └── goods_receipts (many)
-        └── goods_receipt_lines (many)
+  └── receiving_reports (many)                        ← canonical: receiving_reports (was: goods_receipts)
+        └── receiving_report_lines (many)
               └── inventory_movements (IN)
                     └── inventory_cost_layers (FIFO layer)
 ```
@@ -298,14 +281,17 @@ petty_cash_funds (1)
 
 ## 7. Bank & Cash Relationships
 
+> **v3.2 Ghost Name Fix (revised v3.5):** `bank_deposits`, `bank_deposit_lines`, `bank_withdrawals`, `official_receipts`, `disbursement_vouchers` are NOT canonical table names. Canonical names per Doc 02: collections use `receipts` (#71) + `receipt_lines` (#72); disbursements use `payment_vouchers` (#87) + `payment_voucher_lines` (#88). Bank reconciliation matches posted transactions against imported `bank_statement_lines`.
+
 ```
 company_bank_accounts (1)
-  ├── bank_deposits (many)
-  │     └── bank_deposit_lines (many)
-  │           └── receipts (applied)
-  ├── bank_withdrawals (many)
-  │     └── payment_vouchers (applied)
-  ├── bank_transfers (many)
+  ├── receipts (many — official receipts for AR collections deposited)   ← canonical: receipts #71
+  │     └── receipt_lines (many)                                          ← canonical: receipt_lines #72
+  │           └── [customer | journal_entry reference]
+  ├── payment_vouchers (many — AP payments drawn)                         ← canonical: payment_vouchers #87
+  │     └── payment_voucher_lines (many)                                  ← canonical: payment_voucher_lines #88
+  │           └── [supplier | journal_entry reference]
+  ├── bank_fund_transfers (many — inter-account)                          ← canonical: bank_fund_transfers #101
   │     ├── company_bank_accounts (source)
   │     └── company_bank_accounts (destination)
   └── bank_reconciliations (many)
@@ -322,13 +308,13 @@ company_bank_accounts (1)
 inventory_movements (1)
   ├── items
   ├── warehouses
-  ├── [source: goods_receipt | delivery_order | adjustment | transfer | cash_sale | cash_purchase]
+  ├── [source: receiving_reports | delivery_receipts | stock_adjustments | stock_transfers | cash_sales | cash_purchases]
   └── inventory_cost_layers (many, FIFO)
         └── inventory_cost_layer_consumption (many)
               └── inventory_movements (consumption reference — which sale consumed which layer)
 
-inventory_adjustments (1)
-  └── inventory_adjustment_lines (many)
+stock_adjustments (1)                                                     ← canonical: stock_adjustments #109
+  └── stock_adjustment_lines (many)                                        ← canonical: stock_adjustment_lines #110
         ├── items
         └── inventory_movements (generated)
 
@@ -348,7 +334,7 @@ fixed_assets (1)
   ├── asset_categories ──► chart_of_accounts (asset account)
   ├── asset_acquisitions (many)
   │     └── vendor_bills (source, via source_document_id)
-  ├── asset_depreciation_schedule (many)
+  ├── asset_depreciation_schedules (many)
   │     └── depreciation_runs (many)
   │           └── journal_entries (auto-generated)
   └── asset_disposals (1:1 when disposed)
@@ -365,8 +351,8 @@ fixed_assets (1)
 [Any Source Document]
   │  sales_invoices | vendor_bills | receipts | payment_vouchers
   │  cash_sales | cash_purchases | journal_entries (manual)
-  │  petty_cash_vouchers | bank_deposits | bank_withdrawals
-  │  inventory_adjustments | depreciation_runs
+  │  petty_cash_vouchers | bank_fund_transfers | asset_acquisitions
+  │  stock_adjustments | depreciation_runs
   │
   ▼
 posting_rule_sets (1)
@@ -402,7 +388,7 @@ document_relationships
   ├── source_document_id
   ├── target_document_type (e.g., 'sales_invoice')
   ├── target_document_id
-  └── relationship_type ('BILLED_FROM' | 'PAID_BY' | 'REVERSED_BY' | 'DELIVERED_FROM' | 'RECEIVED_FROM' | 'APPLIED_TO' | 'REPLENISHED_BY')
+  └── relationship_type CHECK IN ('billed_from','paid_by','reversed_by','delivered_from','received_from','applied_to','replenished_by') — all lowercase per Doc03 enum standard
 ```
 
 ---
@@ -426,8 +412,8 @@ vendor_bill_lines / payment_voucher_lines / petty_cash_voucher_lines / cash_purc
         ├── certificates_2307_issued (quarterly aggregate per supplier)
         │     └── generated_documents (2307 PDF)
         └── ewt_remittances_1601eq (1601EQ filing per period)
-              ├── qap_entries (quarterly alphalist)
-              └── sawt_entries (summary alphalist)
+              ├── qap_exports (quarterly alphalist export batch)   ← canonical: qap_exports #151 (was: qap_entries)
+              └── sawt_exports (SAWT export batch records)         ← canonical: sawt_exports #152 (was: sawt_entries/sawt_records)
 ```
 
 ### 2307 Received Chain
@@ -441,14 +427,16 @@ receipts / payment_received
 
 ### SLSP / RELIEF Chain
 
+> **v3.2 Ghost Name Fix + OD-11 Decision (revised v3.5):** `slsp_entries`, `slsp_summary`, `slsp_records`, `relief_entries`, `relief_summary` are not canonical table names and do not exist. Per OD-11 (resolved): SLSP and RELIEF data is **computed at export time** from existing `vat_entries`, `sales_invoice_lines`, `vendor_bill_lines` snapshots — no persistent per-line table. Canonical names per Doc 02: `slsp_exports` (#143) and `relief_exports` (#144) store per-batch export records.
+
 ```
 sales_invoice_lines + customer_tin (snapshot) + vat_entries
-  └── slsp_entries (per invoice, per period)
-        └── slsp_summary (period totals)
+  └── [SLSP Edge Function — computed at export time]
+        └── slsp_exports (export batch records)     ← canonical: slsp_exports #143 (was: slsp_entries/slsp_records)
 
 vendor_bill_lines + supplier_tin (snapshot) + vat_entries
-  └── relief_entries (per bill, per period)
-        └── relief_summary (period totals)
+  └── [RELIEF Edge Function — computed at export time]
+        └── relief_exports (export batch records)   ← canonical: relief_exports #144 (was: relief_entries)
 ```
 
 ### Cash Sales Book (BIR)
@@ -588,9 +576,9 @@ import_batches (1)
   │     └── import_validation_errors (many)
   └── [created records carry import_batch_id]
         Setup: chart_of_accounts, payment_terms, atc_codes, tax_codes, approval_matrix, warehouses
-        Master: customers, suppliers, items, price_lists, bank_accounts
+        Master: customers, suppliers, items, item_prices, bank_accounts
         Opening: opening_balance_entries, inventory_cost_layers (opening stock), subsidiary_ledger_entries (AR/AP opening)
-        Fixed Assets: fixed_assets, asset_depreciation_schedule
+        Fixed Assets: fixed_assets, asset_depreciation_schedules
 ```
 
 ---
@@ -603,13 +591,13 @@ import_batches (1)
 | `user_branch_access` | auth.users | branches | Which branches a user can access |
 | `user_roles` | auth.users | roles | Role assignments per user |
 | `role_permissions` | roles | permissions | Which permissions each role has |
-| `item_units_of_measure` | items | units_of_measure | UOM conversions per item |
-| `item_price_lists` | items | price_lists | Pricing per item per list |
+| `uom_conversions` | items / units_of_measure | units_of_measure | Per-item UOM conversion ratios — canonical: `uom_conversions` #53 **[v3.6 fix: `item_units_of_measure` was ghost name]** |
+| `item_prices` | items | (pricing tier) | Per-item price per tier — canonical: `item_prices` #55; Phase 1 only **[v3.6 fix: `item_price_lists`/`price_lists` were ghost names]** |
 | `approval_matrix_steps` | approval_matrix | auth.users/roles | Approver assignments per step |
 | `bank_reconciliation_lines` | bank_reconciliations | transactions | Matched/unmatched lines |
 | `document_relationships` | documents | documents | Cross-document traceability |
-| `qap_entries` | ewt_remittances_1601eq | suppliers | Per-payee alphalist entries |
-| `sawt_entries` | tax_filing | customers | Summary alphalist of WHT |
+| `qap_exports` | ewt_remittances_1601eq | suppliers | Per-payee alphalist entries — canonical: qap_exports #151 |
+| `sawt_exports` | ewt_entries | customers | SAWT export batch records — canonical: sawt_exports #152 (was: sawt_records/sawt_entries) |
 
 ---
 
@@ -672,7 +660,7 @@ vendor_bills / cash_purchases / payments (FWT-subject, WF-series ATC)
         │
         ├── fwt_entries (per transaction line)
         │
-        ├── certificates_2306 (per payee, per quarter)
+        ├── certificates_2306_issued (per payee, per quarter)  ← canonical: certificates_2306_issued (was: certificates_2306)
         │
         └── fwt_remittances_1601fq (1601FQ — one per quarter)
                 │

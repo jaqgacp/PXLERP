@@ -1,11 +1,11 @@
 # PXL ERP — Database Architecture Overview
-**Version:** 3.1 — Normalization Pass
+**Version:** 4.0 — Canonical Release
 **Prepared by:** PXL Database Architecture Team
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## UI Mockup — Prototype Disclaimer (v3.1 — BLOCKER 7 RESOLVED)
+## UI Mockup — Prototype Disclaimer
 
 > **The `index.html` file in the repository root is a VISUAL PROTOTYPE ONLY.**
 >
@@ -21,21 +21,9 @@
 
 ---
 
-## Changes Applied (v1 → v2)
+## Key Architecture Decisions
 
-- Added Cash Sales / Cash Purchases architectural decision (OD-08, now resolved)
-- Added Notification System design section
-- Added Document Template and Generated Output design section
-- Added Period Close Process design section
-- Added Budget tables design section
-- Added Party Duplicate / TIN Conflict handling section
-- Standardized column name conventions (see Section 11)
-- Resolved OD-01 through OD-07 with recommended defaults
-- Expanded Supabase-Specific Decisions section
-
-## v3 Architecture Review Changes Applied
-
-### A. COA FS Mapping — Architecture Decision (RESOLVED)
+### COA Financial Statement Mapping
 
 **Decision: Phase 1 uses COA-embedded fields only. No separate mapping tables.**
 
@@ -52,7 +40,7 @@ Fields added to `chart_of_accounts`:
 
 **Rationale:** MSME clients need standard PFRS for SMEs layouts. COA-embedded fields are sufficient for BS, P&L, SOCE generation without runtime joins to a separate mapping table. Phase 2 can add mapping tables if multi-GAAP or custom layouts are needed.
 
-### B. Company Taxpayer Type — RESOLVED
+### Company Taxpayer Type
 
 **Canonical source:** `company_compliance_profiles.taxpayer_type` CHECK IN ('vat','non_vat')
 
@@ -60,14 +48,14 @@ Fields added to `chart_of_accounts`:
 
 `companies.tax_type` is retained as a deprecated shadow column synced from compliance_profiles. Removal planned for Phase 2.
 
-### C. Party Classification vs Transaction VAT Classification — RESOLVED
+### Party Classification vs Transaction VAT Classification
 
 **Separation of concerns:**
 
 | Concept | Column | Table | Values |
 |---|---|---|---|
-| Customer VAT registration | `vat_registration_status` (v3: renamed from `vat_status`) | `customers` | 'vat', 'non_vat' |
-| Customer special entity type | `party_special_class` (v3: new column) | `customers` | 'government', 'peza', 'boi', 'foreign_entity', NULL |
+| Customer VAT registration | `vat_registration_status` | `customers` | 'vat', 'non_vat' |
+| Customer special entity type | `party_special_class` | `customers` | 'government', 'peza', 'boi', 'foreign_entity', NULL |
 | Supplier VAT registration | `vat_registration_status` | `suppliers` | 'vat', 'non_vat' |
 | Supplier special entity type | `party_special_class` | `suppliers` | same |
 | Transaction tax treatment on sales lines | `vat_classification` | `sales_invoice_lines`, `cash_sale_lines` | 'vatable', 'zero_rated', 'exempt' |
@@ -76,14 +64,14 @@ Fields added to `chart_of_accounts`:
 
 **Why 'government' appears only in `vat_entries`:** BIR Form 2550M/2550Q has a specific disclosure line for "Sales to Government." Government sales are still vatable (12%), but the BIR requires them disclosed separately. When the posting engine creates a `vat_entry` for a vatable sale to a customer with `party_special_class = 'government'`, it automatically sets `vat_entries.vat_classification = 'government'`. The transaction line itself uses 'vatable' — the system derives the reporting category.
 
-### D. Income Tax Table Overlaps — RESOLVED
+### Income Tax Table Registry
 
-**Canonical table set for income tax (consolidated from Module 19 + Module 30):**
+**Canonical table set for income tax:**
 
 | # | Table | Role | Status |
 |---|---|---|---|
 | 158a | `income_tax_return_filings` | ITR filing header per form per period | KEEP |
-| 154 | `itr_computation_runs` (renamed from `itr_working_papers`) | Computation run header — when computed, by whom, status (draft/final) | RENAME |
+| 154 | `itr_computation_runs` | Computation run header — when computed, by whom, status (draft/final) | KEEP |
 | 199 | `income_tax_computation_lines` | Per-account GL breakdown per computation run | KEEP |
 | 155 | `book_tax_reconciliations` | Summary book-to-tax reconciliation per fiscal year | KEEP |
 | 200 | `nolco_tracking` | NOLCO balance and 3-year application tracking (canonical) | KEEP |
@@ -93,21 +81,30 @@ Fields added to `chart_of_accounts`:
 
 `itr_computation_runs` links to `income_tax_return_filings` (many runs per filing, for recomputation), and has `income_tax_computation_lines` as its detail lines.
 
-### E. Other v3 Changes
+### Phase 1 vs Phase 2 Feature Scope
 
-- `posting_rule_sets.effective_from/effective_to` added (Principle 11)
-- `system_account_config` keys expanded: PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE
-- `customer_tax_profiles` and `supplier_tax_profiles` now versioned with effective_from/effective_to
-- All line tables: `vat_direction` + `vat_classification` now separate columns
-
-## v3 Remaining Open Decisions
-
-| OD# | Decision | Options | Recommended |
+| Feature Area | Tables (Doc02 #) | Phase Decision | Rationale |
 |---|---|---|---|
-| OD-V3-ARCH-01 | Capital goods input VAT amortization (>PHP 1M): Phase 1 or Phase 2? | Phase 1 / Phase 2 | Phase 1: flag at entry + compute at filing. Monthly amortization JE in Phase 2. |
-| OD-V3-ARCH-02 | `companies.tax_type` shadow column: sync automatically via trigger or manual update only? | Auto-trigger / Manual | Auto-trigger after compliance_profiles INSERT (recommended for data integrity) |
-| OD-V3-ARCH-03 | `itr_computation_runs` — how many runs per `income_tax_return_filings`? Is the final run locked? | One final / Multiple allowed | Multiple allowed (recomputation); `is_final = true` marks the run used for filing |
-| OD-V3-ARCH-04 | `doc 03` is the stated canonical spec source, but specs for ~120 tables are scattered in docs 06/07/08. Consolidate into doc 03 or add a cross-reference index? | Consolidate / Cross-ref | Cross-reference index in doc 03 for Phase 1; consolidation in Phase 2 documentation sprint |
+| Amortization Schedules | `amortization_schedules`, `_lines`, `_runs`, `_run_details` (#201–204) | **Phase 1** | Required for prepaid expense amortization (prepaid rent, insurance, software) — standard accounting requirement |
+| Revenue Recognition Schedules | `revenue_recognition_schedules`, `_lines`, `_runs`, `_run_details` (#205–208) | **Phase 1** | Required for BIR-compliant deferred revenue treatment on multi-period service contracts and annual retainers |
+| Auto Reversal | `auto_reversal_runs` (#209) + `journal_entries` flag columns | **Phase 1** | Needed for accrual entries posted with next-period auto-reversal (standard accrual accounting) |
+| Budgets | `budgets`, `budget_lines` (#183–184) | **Phase 1** | Budget vs. actual variance analysis — core ERP feature for management reporting |
+| Period Close Checklist | `period_close_checklists`, `period_close_tasks` (#185–186) | **Phase 1** | Ensures systematic period-end process before fiscal period lock |
+| Generated Document Versions | `generated_document_versions` (#182) | **Phase 1** | Required for audit trail of document regeneration (BIR CAS compliance) |
+| 1604E Annual EWT Summary | No separate filing table — derivable from `ewt_entries` | **Phase 2** | Annual aggregate derivable from quarterly 1601EQ data; export-only in Phase 2 |
+| 1604F Annual FWT Summary | No separate filing table — derivable from `fwt_entries` | **Phase 2** | Same rationale as 1604E |
+| Financial Statement Mapping Table | ~~`financial_statement_mappings`~~ **REMOVED** | **REMOVED** | Replaced by COA-embedded `fs_section`, `fs_group`, `fs_sort_order`. **UI label must NOT say "Financial Statement Mappings." Use "COA Classification Setup" or "FS Mapping (COA)".** |
+| Warehouse Locations | ~~`warehouse_locations`~~ | **Phase 2** | Not needed for Phase 1 inventory; `warehouses` table suffices for bin-less stock tracking |
+| Price Lists (multi-tier) | ~~`price_lists`~~ → canonical: `item_prices` (#55) | **Phase 1 — `item_prices` only** | `item_prices` handles Phase 1 pricing. Ghost name `price_lists` removed from all docs. Multi-tier price list management is Phase 2. |
+
+## Resolved Architectural Decisions
+
+| Decision | Resolution |
+|---|---|
+| Capital goods input VAT amortization (>PHP 1M) | Phase 1: classify to `INPUT_VAT_CAPITAL_GOODS` at posting time; accountant computes monthly amortization manually on 2550M. Phase 2: add recurring JE generator. See Doc06 §2. |
+| `companies.tax_type` shadow column | Auto-trigger: a PostgreSQL AFTER INSERT OR UPDATE trigger on `company_compliance_profiles` syncs `companies.tax_type` from `taxpayer_type`. Trigger name: `sync_companies_tax_type_from_compliance_profile`. `companies.tax_type` is a deprecated shadow column — will be removed in Phase 2. |
+| `itr_computation_runs` — multiple runs per filing | Multiple runs allowed per `income_tax_return_filings.id`. `is_final=true` marks the run used for actual filing — does NOT hard-lock. Partial unique index `WHERE is_final=true` on `(company_id, income_tax_return_filing_id)` ensures exactly one final run per filing. |
+| Doc03 spec coverage | All 207 active tables have full column specifications in Doc03. Section 22 cross-reference index covers all 207 tables. |
 
 ## v3 Cross-Document Consistency Validation
 
@@ -118,7 +115,7 @@ Fields added to `chart_of_accounts`:
 - Doc 06: posting engine updated to route based on `party_special_class` at post time ✓
 - Doc 07: new audit events added for income tax computation runs and party classification changes ✓
 - Doc 08: import types updated for COA FS mapping fields and income tax mapping fields ✓
-- **REMAINING GAP**: Doc 03 does not have full column specs for ~120 tables inventoried in doc 02. See OD-V3-ARCH-04. A cross-reference index is added to doc 03 as interim resolution.
+- **RESOLVED (v3.4+):** Doc 03 now has full column specs for all 207 active tables — directly in Doc 03 Sections 1–44 or cross-referenced via the Section 22 index. OD-V3-ARCH-04 is RESOLVED. Spec coverage = 207/207.
 
 ---
 
@@ -353,11 +350,12 @@ CR: Output VAT Payable (vat_amount)
 
 **Cash Purchase posting (goods):**
 ```
-DR: Inventory / Expense Account (gross_amount)
-DR: Input VAT (vat_amount)
-CR: Cash / Bank (gross_amount + vat_amount - ewt_amount)
+DR: Inventory / Expense Account (net_amount)
+DR: Input VAT (input_vat_amount)
+CR: Cash / Bank (net_amount + input_vat_amount - ewt_amount)
 CR: EWT Payable (ewt_amount)   [if EWT-subject]  ← liability, credited
 ```
+Column reference: `net_amount` = cost before VAT; `input_vat_amount` = VAT portion; `total_amount` = net_amount + input_vat_amount.
 
 ---
 
@@ -441,7 +439,7 @@ Sales Invoice / Vendor Bill / Payment (FWT-subject items)
         │
         ├── fwt_entries (per transaction, WF-series ATC)
         │
-        ├── certificates_2306 (per payee, per quarter)
+        ├── certificates_2306_issued (per payee, per quarter)
         │
         └── fwt_remittances_1601fq (1601FQ quarterly remittance filing)
 ```
@@ -614,8 +612,8 @@ party_merge_logs (records when two customer or supplier records are merged)
 | Cash Purchases Book | `cash_purchases` + `vat_entries` + `ewt_entries` |
 | 2551Q | `percentage_tax_entries` → `percentage_tax_period_summaries` → form output |
 | 1601FQ | `fwt_entries` → `fwt_remittances_1601fq` → period aggregation |
-| ITR (Corporate) | `itr_working_papers` → Book-to-tax → 1702Q / 1702RT |
-| ITR (Individual) | `itr_working_papers` → Book-to-tax → 1701Q / 1701 |
+| ITR (Corporate) | `itr_computation_runs` → Book-to-tax → 1702Q / 1702RT |
+| ITR (Individual) | `itr_computation_runs` → Book-to-tax → 1701Q / 1701 |
 
 ---
 
@@ -701,3 +699,748 @@ Every bulk-created record carries `import_batch_id` for traceability and rollbac
 - Period close cannot lock until `period_close_tasks` are all COMPLETED or WAIVED
 - Notification dispatch is async (fire-and-forget) — failure does not roll back the triggering transaction
 - Generated documents are soft-deleted after 90 days from Supabase Storage; the metadata row in `generated_documents` is retained permanently
+
+---
+
+## 19. Income Tax Implementation Guide — Phase 1 (v3.7)
+
+> **Purpose:** A senior developer must be able to implement the entire income tax module without asking a CPA or architect a single question. This section provides that complete specification.
+
+### Setup Requirements
+
+The following setup data must be present before income tax computation can run:
+
+| Setup Item | Table | Required Values |
+|---|---|---|
+| Compliance profile | `company_compliance_profiles` | `income_tax_regime` ('corporate','individual','partnership','cooperative'), `deduction_method` ('itemized','osd','eight_percent'), `legal_type` |
+| COA classification | `chart_of_accounts` | `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` on all accounts |
+| NOLCO tracking | `nolco_tracking` | Existing NOLCO carry-forward balances from prior years (opening balance import) |
+| Tax credits | `tax_credits_schedules` | Prior year excess income tax credits, creditable withholding tax 2307 certificates received |
+
+### Deduction Method Behavior
+
+| Method | `deduction_method` value | Computation Rule | Who Can Use |
+|---|---|---|---|
+| Itemized Deduction | `'itemized'` | Taxable Income = Gross Revenue − Cost of Sales − Allowable Operating Expenses (per `tax_deductibility` COA tag). Non-deductible expenses must be added back. | All income_tax_regime values |
+| Optional Standard Deduction (OSD) | `'osd'` | Taxable Income = Gross Revenue − 40% of Gross Revenue (gross revenue per `is_osd_gross_revenue` COA tags). No itemized expenses deducted. Simpler but higher tax for expense-heavy businesses. | Corporate and individual only |
+| 8% Gross Receipts Tax | `'eight_percent'` | Income Tax = 8% × Gross Receipts (≤ PHP 3M threshold). No deductions applied. Replaces regular income tax AND percentage tax. | Individuals only (`income_tax_regime='individual'`) |
+
+### MCIT (Minimum Corporate Income Tax)
+
+- MCIT applies only to `income_tax_regime='corporate'` companies in their 4th year of operation and beyond.
+- MCIT rate: 2% of Gross Income (per `is_mcit_gross_income` COA tags).
+- BIR Rule: Pay the HIGHER of Regular Corporate Tax (30% of taxable income) or MCIT (2% of gross income).
+- Computation: `itr_computation_runs` engine computes both; the ITR line `income_tax_due` = MAX(regular_income_tax, mcit_amount).
+- MCIT Carry-Forward: If MCIT > Regular Tax in a given year, the excess MCIT is tracked in `income_tax_computation_lines` with `line_type='mcit_carry_forward'` and can be credited against Regular Tax in the next 3 years when Regular Tax > MCIT.
+
+### NOLCO (Net Operating Loss Carry-Over)
+
+- NOLCO applies to `income_tax_regime='corporate'` and `'individual'` (not cooperative or partnership using OSD).
+- A Net Operating Loss (taxable income < 0) from a given year can be carried forward and deducted in subsequent years (up to 3 years carry-forward period; currently 5 years for COVID-affected periods — CPA to confirm current BIR regulation).
+- Storage: `nolco_tracking` table — one row per loss year per company, tracking `original_loss_amount`, `utilized_amount`, `remaining_balance`, `expiry_year`.
+- Computation: At ITR run time, the engine reads `nolco_tracking WHERE remaining_balance > 0 AND expiry_year >= current_year` and deducts available NOLCO from current year taxable income (up to the taxable income amount — NOLCO cannot create a new loss).
+- Posting impact: No GL posting for NOLCO utilization. NOLCO is a tax computation line only — it reduces `income_tax_due` but does not create a journal entry. The `nolco_tracking.utilized_amount` is updated after the run is marked `is_final=true`.
+
+### Tax Credits
+
+- Creditable Withholding Tax (CWT) credits: From `certificates_2307_received` (BIR Form 2307 from customers who withheld EWT from payments to us). These reduce income tax due.
+- `tax_credits_schedules` links to `certificates_2307_received` (FK `certificate_2307_id`). Total CWT credit = SUM of all 2307 credits for the year.
+- Prior year excess credits: From `tax_credits_schedules` with `credit_type='prior_year_excess'`. These carry forward if not fully utilized.
+- Computation: `income_tax_due_after_credits = income_tax_due - total_cwt_credits - prior_year_excess_credits`. If result < 0, the excess is carried to next year.
+
+### Book-to-Tax Reconciliation
+
+- `book_tax_reconciliations` + `book_tax_reconciliation_lines`: One reconciliation per fiscal year per company.
+- Each line represents one reconciling item between book income and taxable income. Examples:
+  - Non-deductible entertainment expense (ADD BACK to book income)
+  - Tax-exempt income (DEDUCT from book income)  
+  - NOLCO utilization (DEDUCT)
+  - Timing differences (depreciation rate difference book vs tax)
+- This is the Schedule 2 of BIR Form 1702-MX (mandatory for corporations using itemized deductions).
+- Developer: `book_tax_reconciliation_lines.adjustment_type CHECK IN ('add_back','deduction')` — developer must confirm this CHECK is in Doc03 Section 20; if missing, add it.
+
+### ITR Computation Run Flow
+
+```
+1. User initiates ITR run for fiscal_year_id
+2. Engine creates itr_computation_runs record (status='processing')
+3. DELETE income_tax_computation_lines WHERE computation_run_id = (new run id) [idempotency]
+4. READ company_compliance_profiles (effective on fiscal_year end date)
+5. READ gl_balances aggregated per account per year (all periods for fiscal_year_id)
+6. COMPUTE gross_revenue = SUM(gl_balances) WHERE coa.is_osd_gross_revenue=true (if OSD) OR coa.is_mcit_gross_income=true (if MCIT)
+7. COMPUTE taxable_income per deduction_method:
+   - 'itemized': gross_revenue - cost_of_sales - allowable_expenses (tax_deductibility IN ('fully_deductible','partially_deductible'))
+   - 'osd': gross_revenue - (gross_revenue × 0.40)
+   - 'eight_percent': gross_receipts × 0.08 (this IS the income_tax_due — no further steps 8-9)
+8. APPLY NOLCO: taxable_income = MAX(0, taxable_income - available_nolco)
+9. COMPUTE income_tax_due: 
+   - corporate: MAX(taxable_income × 0.25, gross_income × 0.02)  [Regular CIT vs MCIT]
+   - individual/partnership: per graduated table (Phil BIR TRAIN Law rates)
+10. APPLY tax_credits: income_tax_due_after_credits = income_tax_due - cwt_credits - prior_excess
+11. INSERT income_tax_computation_lines (one per computation component)
+12. UPDATE itr_computation_runs (status='completed', taxable_income=, income_tax_due=, income_tax_due_after_credits=)
+13. SNAPSHOT: itr_computation_runs.regime_snapshot = current income_tax_regime, deduction_method_snapshot = current deduction_method
+```
+
+### Income Tax GL Posting
+
+Income tax is posted as a journal entry (manually by the accountant or via a JE-type='manual' entry):
+```
+DR: Income Tax Expense (P&L account)       = income_tax_due
+CR: Income Tax Payable (FROM_SYSTEM_CONFIG 'INCOME_TAX_PAYABLE')  = income_tax_due
+```
+This is NOT auto-posted by the computation engine. The accountant reviews the `itr_computation_runs` result and manually creates this JE in the period before filing.
+
+### TRAIN Law Graduated Income Tax Rates (Individual — Effective 2023 onwards)
+
+Per BIR Revenue Regulations implementing the TRAIN Law (RA 10963), the following rates apply to `income_tax_regime='individual'` using `deduction_method='itemized'` or `'osd'`:
+
+| Taxable Income (PHP) | Tax Due |
+|---|---|
+| Not over 250,000 | 0% (Exempt) |
+| Over 250,000 to 400,000 | 15% of excess over 250,000 |
+| Over 400,000 to 800,000 | 22,500 + 20% of excess over 400,000 |
+| Over 800,000 to 2,000,000 | 102,500 + 25% of excess over 800,000 |
+| Over 2,000,000 to 8,000,000 | 402,500 + 30% of excess over 2,000,000 |
+| Over 8,000,000 | 2,202,500 + 35% of excess over 8,000,000 |
+
+**Implementation in `itr_computation_runs` engine (Step 9 — individual/partnership):**
+```
+IF taxable_income <= 250_000 THEN income_tax_due = 0
+ELSIF taxable_income <= 400_000 THEN income_tax_due = (taxable_income - 250_000) * 0.15
+ELSIF taxable_income <= 800_000 THEN income_tax_due = 22_500 + (taxable_income - 400_000) * 0.20
+ELSIF taxable_income <= 2_000_000 THEN income_tax_due = 102_500 + (taxable_income - 800_000) * 0.25
+ELSIF taxable_income <= 8_000_000 THEN income_tax_due = 402_500 + (taxable_income - 2_000_000) * 0.30
+ELSE income_tax_due = 2_202_500 + (taxable_income - 8_000_000) * 0.35
+```
+
+**8% GRT rate:** For `deduction_method='eight_percent'` (individuals with gross receipts ≤ PHP 3M): `income_tax_due = gross_receipts * 0.08`. This replaces both regular income tax AND percentage tax. System must check that `company_compliance_profiles.taxpayer_type='non_vat'` when `deduction_method='eight_percent'` is used — 8% option is incompatible with VAT registration.
+
+**Partnership:** Treated same as corporate (`income_tax_regime='partnership'`): flat 25% corporate income tax rate. MCIT does NOT apply to partnerships.
+
+### Cooperative Income Tax Regime
+
+- `income_tax_regime='cooperative'` is included in the CHECK constraint but is **out of scope for Phase 1**.
+- If a cooperative company is onboarded, the setup wizard must reject or warn: "Cooperative income tax computation is not supported in Phase 1. Contact support."
+- The posting engine will abort for cooperatives if income tax computation is triggered.
+
+---
+
+## 20. Report Generation Contract — Financial Statements (v3.7)
+
+> **Purpose:** Every financial report must have a documented generation algorithm. A developer must be able to build any report without asking: "How does this calculate?" This section provides that contract.
+
+### Balance Sheet
+
+**Source tables:** `gl_balances`, `chart_of_accounts`, `account_types`, `fiscal_periods`
+
+**Algorithm:**
+```
+1. SELECT gl_balances WHERE company_id=? AND fiscal_period_id IN (all periods up to target period)
+   GROUP BY account_id, SUM(period_debit - period_credit) AS net_movement
+2. JOIN chart_of_accounts ON account_id
+3. JOIN account_types ON account_type_id
+4. Running balance = opening_balance (from prior periods) + SUM(net_movement for current year periods)
+5. GROUP BY coa.fs_section, coa.fs_group, ORDER BY coa.fs_sort_order
+6. Balance Sheet sections:
+   ASSETS = fs_section IN ('current_assets','non_current_assets')
+   LIABILITIES = fs_section IN ('current_liabilities','non_current_liabilities')
+   EQUITY = fs_section = 'equity'
+7. VERIFY: Total Assets = Total Liabilities + Total Equity (accounting equation check)
+```
+
+**Normal balance rule:** Asset and Expense accounts have normal_balance='debit' — a positive net (debit > credit) is a positive balance. Liability, Equity, and Revenue accounts have normal_balance='credit' — a positive net (credit > debit) is a positive balance.
+
+**Retained Earnings:** Closed prior-year P&L is accumulated in the Retained Earnings account (FROM_SYSTEM_CONFIG 'RETAINED_EARNINGS') via the year-end closing JE. Current-year net income is NOT in Retained Earnings until year-end close — it appears as the sum of Revenue − Expenses from the current fiscal year's P&L.
+
+---
+
+### Income Statement (Profit & Loss)
+
+**Source tables:** `gl_balances`, `chart_of_accounts`, `account_types`, `fiscal_periods`
+
+**Algorithm:**
+```
+1. SELECT gl_balances WHERE company_id=? AND fiscal_period_id IN (periods within target date range)
+   GROUP BY account_id, SUM(period_debit - period_credit) AS net_movement
+2. FILTER: account_type IN ('revenue','cost_of_sales','expense','other_income','other_expense','contra_revenue','contra_expense')
+3. GROUP BY coa.fs_section, coa.fs_group, ORDER BY coa.fs_sort_order
+4. P&L Structure:
+   Revenue = fs_section='revenue' (credit normal — show positive if cr > dr)
+   Less: Sales Returns = fs_section for contra_revenue (deduct)
+   NET REVENUE = Revenue - Contra Revenue
+   Less: Cost of Sales = fs_section='cost_of_sales' (debit normal)
+   GROSS PROFIT = Net Revenue - Cost of Sales
+   Less: Operating Expenses = fs_section='operating_expenses' (debit normal)
+   OPERATING INCOME = Gross Profit - Operating Expenses
+   Add: Other Income = fs_section='other_income' (credit normal)
+   Less: Other Expenses = fs_section='other_expenses' (debit normal)
+   NET INCOME BEFORE TAX = Operating Income + Other Income - Other Expenses
+   Less: Income Tax Expense (account tagged in COA)
+   NET INCOME AFTER TAX
+```
+
+---
+
+### Trial Balance
+
+**Source tables:** `gl_balances`, `chart_of_accounts`
+
+**Algorithm:**
+```
+1. SELECT account_id, SUM(period_debit) AS total_debit, SUM(period_credit) AS total_credit
+   FROM gl_balances WHERE company_id=? AND fiscal_period_id IN (target periods)
+   GROUP BY account_id
+2. JOIN chart_of_accounts: account_code, account_name, account_type
+3. ORDER BY account_code ASC
+4. VERIFY: SUM(total_debit) = SUM(total_credit) — if not equal, posting engine has a bug (impossible if posting engine enforces balanced JEs)
+```
+
+**Columns:** Account Code | Account Name | Account Type | Debit Total | Credit Total
+
+---
+
+### General Ledger (Account Ledger)
+
+**Source tables:** `journal_entries`, `journal_lines`, `chart_of_accounts`, `fiscal_periods`
+
+**Algorithm:**
+```
+1. SELECT journal_lines WHERE company_id=? AND account_id=? AND journal_entry.document_date BETWEEN ? AND ?
+2. JOIN journal_entries ON journal_entry_id
+3. ORDER BY journal_entries.document_date ASC, journal_entries.created_at ASC
+4. Running balance computed in application layer (cumulative DR - CR from opening balance)
+5. Opening balance = SUM(gl_balances for all prior periods for this account)
+```
+
+**Columns:** Date | Document No | Reference | Description | Debit | Credit | Running Balance
+
+---
+
+### Cash Flow Statement
+
+**Phase 1 method:** Indirect method (from Net Income, adjust for non-cash items and working capital changes).
+
+**Algorithm:**
+```
+OPERATING ACTIVITIES:
+  Start: Net Income (from P&L)
+  Add back: Depreciation (journal_lines where account.account_type='contra_asset' — accumulated depreciation)
+  Add back: Amortization (journal_lines from je_type='amortization')
+  Adjust: Changes in Working Capital:
+    - Increase in AR = negative (cash not yet received)
+    - Decrease in AR = positive
+    - Increase in Inventory = negative
+    - Increase in AP = positive (cash not yet paid)
+    Source: difference in gl_balances for AR_CONTROL, AP_CONTROL, INVENTORY_CONTROL between periods
+
+INVESTING ACTIVITIES:
+  Cash paid for assets = journal_lines where account.cash_flow_category='investing' AND entry_side='credit'
+  Proceeds from disposal = journal_lines where account.cash_flow_category='investing' AND entry_side='debit'
+
+FINANCING ACTIVITIES:
+  Cash from loans = journal_lines where account.cash_flow_category='financing' AND entry_side='credit'
+  Loan repayments = journal_lines where account.cash_flow_category='financing' AND entry_side='debit'
+
+NET CHANGE IN CASH = Operating + Investing + Financing
+OPENING CASH = SUM(gl_balances WHERE coa.is_cash_equivalent=true) at prior period end
+CLOSING CASH = Opening Cash + Net Change
+```
+
+**Note:** The `cash_flow_category` on `chart_of_accounts` and `is_cash_equivalent` flag are the only inputs. Accuracy depends on CPA-reviewed COA seed template correctly tagging all cash-flow-impacting accounts.
+
+---
+
+### AR Aging Report
+
+**Source tables:** `subsidiary_ledger_entries`, `customers`, `sales_invoices`
+
+**Algorithm:**
+```
+1. SELECT subsidiary_ledger_entries WHERE company_id=? AND ledger_type='ar' AND is_open=true
+2. JOIN sales_invoices ON document_id to get due_date
+3. Aging bucket = report_date - due_date:
+   Current = due_date >= report_date (not yet due)
+   1-30 days = due_date between report_date-30 and report_date-1
+   31-60 days = due_date between report_date-60 and report_date-31
+   61-90 days = due_date between report_date-90 and report_date-61
+   Over 90 days = due_date < report_date-90
+4. GROUP BY customer_id, aging_bucket
+```
+
+---
+
+### AP Aging Report
+
+Same algorithm as AR Aging but: `ledger_type='ap'`, join to `vendor_bills` for due_date.
+
+---
+
+### Customer Ledger
+
+**Source tables:** `subsidiary_ledger_entries`, `customers`, `document_relationships`
+
+```
+1. SELECT subsidiary_ledger_entries WHERE company_id=? AND ledger_type='ar' AND customer_id=?
+2. ORDER BY created_at ASC
+3. Running balance: DR (invoice) increases balance; CR (receipt/credit memo) decreases balance
+4. Show each document: Date | Document Type | Document No | Debit | Credit | Balance
+```
+
+---
+
+### Supplier Ledger
+
+Same as Customer Ledger but `ledger_type='ap'`, supplier_id filter.
+
+---
+
+### VAT Report (2550M / 2550Q)
+
+**Source tables:** `vat_entries`, `vat_period_summaries`
+
+```
+OUTPUT VAT:
+  SELECT SUM(base_amount), SUM(vat_amount)
+  FROM vat_entries WHERE company_id=? AND tax_period_id=? AND vat_direction='output'
+  GROUP BY vat_classification
+  → 'vatable' sales → Box 10 (2550M)
+  → 'zero_rated' → Box 11
+  → 'government' → Box 12 (government sales with 5% CWT)
+  → 'exempt' → Box 13
+
+INPUT VAT:
+  SELECT SUM(base_amount), SUM(vat_amount)
+  FROM vat_entries WHERE vat_direction='input'
+  GROUP BY vat_classification
+  → 'vatable' → deductible input VAT
+  → 'capital_goods' → deductible (subject to 60-month rule if >1M)
+  → 'services' → deductible input VAT
+  
+VAT PAYABLE = Total Output VAT - Total Deductible Input VAT
+```
+
+---
+
+### EWT Report (1601EQ / BIR Alphalist)
+
+**Source tables:** `ewt_entries`, `ewt_period_summaries`, `atc_codes`
+
+```
+1. SELECT ewt_entries WHERE company_id=? AND tax_period_id=? 
+   GROUP BY ewt_atc_id, payee_tin
+   SUM(ewt_base_amount), SUM(ewt_amount)
+2. JOIN atc_codes ON ewt_atc_id
+3. Group by ATC for 1601EQ schedule
+4. Payee detail = alphalist (payee_name, payee_tin, ewt_amount per payee)
+```
+
+---
+
+### Taxable Income Computation Report
+
+**Source:** `itr_computation_runs`, `income_tax_computation_lines`, `book_tax_reconciliations`, `book_tax_reconciliation_lines`
+
+This report is a printout of the ITR computation run. Layout:
+```
+Gross Revenue per Books:                    [from income_tax_computation_lines where line_type='gross_revenue']
+Less: Non-taxable Income:                   [line_type='non_taxable_income']
+Gross Revenue per BIR:
+Less: Cost of Sales / OSD / 40%:           [line_type='cost_of_sales' or 'osd_deduction']
+Less: Operating Expenses (Itemized):        [line_type='allowable_expense', grouped by expense category]
+Net Income per Books:
+Add: Non-deductible items (Book-to-Tax):   [book_tax_reconciliation_lines where adjustment_type='add_back']
+Less: Tax-exempt items:                    [book_tax_reconciliation_lines where adjustment_type='deduction']
+Net Income per BIR:
+Less: NOLCO (if any):                      [line_type='nolco_deduction']
+TAXABLE INCOME:
+Income Tax Rate:                            25% (corporate) / graduated (individual)
+REGULAR INCOME TAX:
+MCIT (if applicable):                       2% × Gross Income
+INCOME TAX DUE:                            MAX(Regular, MCIT) or 8% gross receipts
+Less: CWT Credits (2307):                  [tax_credits_schedules]
+Less: Prior Year Excess Credits:           [tax_credits_schedules]
+INCOME TAX STILL DUE AND PAYABLE:
+```
+
+---
+
+### Inventory Valuation Report
+
+**Source tables:** `inventory_balances`, `items`, `warehouses`, `inventory_movements`
+
+**Phase 1 method:** FIFO (First-In, First-Out) with weighted average cost approximation for ongoing movements.
+
+**Algorithm:**
+```
+1. SELECT inventory_balances WHERE company_id=? AND (item_id=? optional) AND (warehouse_id=? optional)
+2. JOIN items ON item_id: item_code, item_name, unit_of_measure
+3. JOIN warehouses ON warehouse_id: warehouse_name, branch_id
+4. Report columns: Item Code | Item Name | Warehouse | UOM | Qty on Hand | Average Unit Cost | Total Value
+5. Total Value = quantity_on_hand × average_unit_cost (from inventory_balances.average_unit_cost)
+6. Grand Total = SUM(quantity_on_hand × average_unit_cost) across all items
+7. Reconciliation: SUM(Total Value) must equal GL balance for INVENTORY_CONTROL account(s)
+```
+
+**Phase 1 cost method:** Weighted average cost. `inventory_balances.average_unit_cost` is recomputed on every IN movement:
+```
+new_average_cost = (current_qty × current_avg_cost + received_qty × received_unit_cost)
+                   / (current_qty + received_qty)
+```
+OUT movements (sales, adjustments) use the current `average_unit_cost` — they do NOT change the average cost.
+
+---
+
+### Inventory Movement Report (Inventory Ledger)
+
+**Source tables:** `inventory_movements`, `items`, `warehouses`, `journal_entries`
+
+**Algorithm:**
+```
+1. SELECT inventory_movements WHERE company_id=? AND item_id=? AND warehouse_id=?
+   AND movement_date BETWEEN ? AND ?
+   ORDER BY movement_date ASC, created_at ASC
+2. JOIN items, warehouses
+3. JOIN journal_entries ON source_document_id (via source_document_type + source_document_id)
+4. Running qty balance computed in application layer
+5. Report columns: Date | Document Type | Document No | Movement Type | Qty In | Qty Out | Running Balance | Unit Cost | Total Value
+```
+
+**Movement types:** `purchase_in` | `sale_out` | `return_in` | `return_out` | `transfer_in` | `transfer_out` | `adjustment_in` | `adjustment_out` | `opening_balance`
+
+---
+
+### Depreciation Schedule Report
+
+**Source tables:** `fixed_assets`, `asset_depreciation_schedule_lines`, `asset_categories`
+
+**Algorithm:**
+```
+1. SELECT fixed_assets WHERE company_id=? AND status IN ('active','fully_depreciated')
+2. JOIN asset_categories ON asset_category_id
+3. FOR EACH asset:
+   a. acquisition_cost = fixed_assets.acquisition_cost
+   b. salvage_value = fixed_assets.salvage_value
+   c. useful_life_months = fixed_assets.useful_life_months
+   d. depreciation_method = fixed_assets.depreciation_method
+   e. SELECT asset_depreciation_schedule_lines WHERE fixed_asset_id=? ORDER BY period_number
+   f. Show: Period | Period Date | Opening NBV | Depreciation | Accumulated Depreciation | Closing NBV
+4. Grand totals: Total Acquisition Cost | Total Accumulated Depreciation | Total Net Book Value
+```
+
+**Reconciliation:** SUM(fixed_assets.net_book_value) must equal GL balance for asset account less accumulated depreciation account.
+
+---
+
+### Asset Register Report
+
+**Source tables:** `fixed_assets`, `asset_categories`, `asset_depreciation_schedules`
+
+**Columns:** Asset Code | Asset Name | Category | Location / Branch | Acquisition Date | Acquisition Cost | Depreciation Method | Useful Life (months) | Salvage Value | Accumulated Depreciation | Net Book Value | Status
+
+**Source query:**
+```sql
+SELECT fa.asset_code, fa.asset_name, ac.category_name, br.branch_name,
+       fa.acquisition_date, fa.acquisition_cost, fa.depreciation_method,
+       fa.useful_life_months, fa.salvage_value,
+       fa.accumulated_depreciation, fa.net_book_value, fa.status
+FROM fixed_assets fa
+JOIN asset_categories ac ON fa.asset_category_id = ac.id
+LEFT JOIN branches br ON fa.branch_id = br.id
+WHERE fa.company_id = ? AND fa.deleted_at IS NULL
+ORDER BY ac.category_name, fa.asset_code
+```
+
+---
+
+### Branch P&L Report
+
+Same algorithm as Income Statement but with an additional WHERE filter:
+```
+WHERE journal_lines.branch_id = ? (target branch)
+```
+All `journal_lines` carry `branch_id` dimension. The Branch P&L shows revenue, expenses, and net income attributable to a specific branch, derived from JE lines tagged to that branch.
+
+**Note:** Branch P&L does NOT redistribute shared overhead. Only directly-tagged JE lines appear. Shared expenses must be manually allocated via journal entry adjustments tagged to each branch.
+
+---
+
+### Bank Reconciliation Report
+
+**Source tables:** `bank_statement_lines`, `company_bank_accounts`, `journal_lines`, `journal_entries`
+
+**Algorithm:**
+```
+BALANCE PER BANK STATEMENT:
+  1. Start with bank_statement_lines.closing_balance for the period
+     (from bank_statement_lines WHERE bank_account_id=? AND statement_period=?)
+
+RECONCILING ITEMS — ADD:
+  2. Deposits in Transit = journal_lines for CASH_IN_BANK DR that are NOT matched to a bank_statement_line
+     (is_reconciled=false on bank_statement_lines or on book-side tracking)
+
+RECONCILING ITEMS — DEDUCT:
+  3. Outstanding Checks = journal_lines for CASH_IN_BANK CR that are NOT cleared on bank statement
+
+ADJUSTED BANK BALANCE = Bank Balance + Deposits in Transit − Outstanding Checks
+
+BALANCE PER BOOKS:
+  4. gl_balances for CASH_IN_BANK account for the period
+
+RECONCILING ITEMS — BOOK SIDE:
+  5. Bank Charges not yet booked = bank_statement_lines for service charges with no matching JE
+  6. Interest earned not yet booked = bank_statement_lines for interest credits with no matching JE
+
+ADJUSTED BOOK BALANCE = Book Balance − Unbooked Bank Charges + Unbooked Interest
+
+RECONCILIATION:
+  Adjusted Bank Balance = Adjusted Book Balance (if not equal → reconciling items missing)
+```
+
+**Matching logic:**
+- `bank_statement_lines.is_reconciled = true` when a bank statement line is matched to a book entry
+- Matching is performed by the accountant via the Bank Reconciliation UI (match by amount + date + reference)
+- After matching: `bank_statement_lines.matched_journal_line_id` = journal_line.id
+- Unmatched bank lines → trigger bank_adjustment creation by accountant
+- Unmatched book lines → outstanding items listed in reconciliation report
+
+---
+
+## 21. Business Process Workflows (v3.8)
+
+> **Purpose:** Complete step-by-step process flows for workflows not covered by the posting engine. A developer must be able to build the UI and backend for each process without asking a single question.
+
+### Bank Reconciliation Workflow
+
+```
+SETUP:
+  - Company has one or more company_bank_accounts linked to a chart_of_accounts GL account
+  - Each month: import bank statement as bank_statement_lines via CSV import
+    (bank_statement_lines: date, reference, description, debit_amount, credit_amount, running_balance)
+
+STEP 1 — Import Bank Statement
+  User uploads CSV → import_batches (import_type='bank_statement')
+  Each CSV row → bank_statement_lines with is_reconciled=false, matched_journal_line_id=NULL
+
+STEP 2 — Auto-Match
+  System performs automatic matching:
+    For each bank_statement_line:
+      FIND journal_lines WHERE:
+        account_id = company_bank_accounts.gl_account_id
+        AND amount = bank_statement_line.amount
+        AND ABS(journal_entries.document_date - bank_statement_line.transaction_date) <= 5 days
+        AND is_reconciled_flag = false
+      If exactly one match found → auto-match: bank_statement_lines.matched_journal_line_id = journal_line.id
+        UPDATE bank_statement_lines SET is_reconciled=true, matched_journal_line_id=?, matched_at=now()
+      If multiple or zero matches → leave for manual matching
+
+STEP 3 — Manual Match
+  Accountant reviews unmatched items in the UI:
+    Left panel: unmatched bank_statement_lines
+    Right panel: unmatched journal_lines for the bank account
+  Accountant selects one bank line + one (or more) JE lines → clicks "Match"
+  System: UPDATE bank_statement_lines SET is_reconciled=true, matched_journal_line_id=?
+
+STEP 4 — Investigate Unmatched Bank Items
+  For each unmatched bank_statement_line (is_reconciled=false after Step 3):
+    Accountant creates bank_adjustments record:
+      - debit_account_id / credit_account_id (e.g., Bank Charges / Cash, Interest Income / Cash)
+      - description, amount
+    bank_adjustments are posted → creates JE → marks bank_statement_line as reconciled
+
+STEP 5 — Generate Reconciliation Report
+  System queries:
+    Unreconciled book-side JE lines (potential outstanding checks / deposits in transit)
+    Unreconciled bank-side items
+    Produces: Adjusted Bank Balance = Adjusted Book Balance
+
+STEP 6 — Certify Reconciliation
+  Accountant clicks "Certify Bank Reconciliation"
+  System INSERTs subledger_close_certifications (company_id, branch_id, subledger_type='bank', period, certified_by, certified_at)
+  This satisfies Period Close Checklist Task 1 ("Bank reconciliation certified")
+```
+
+---
+
+### Physical Count Workflow
+
+```
+SETUP:
+  Physical Count applies when company_feature_settings.inventory_enabled=true
+
+STEP 1 — Create Count Sheet
+  User creates physical_count_entries record:
+    count_date, warehouse_id, count_type ('full'|'cycle'), status='draft', created_by
+  System auto-populates physical_count_lines (one per item in warehouse):
+    item_id, warehouse_id, book_quantity (from inventory_balances.quantity_on_hand), counted_quantity=NULL
+
+STEP 2 — Conduct Count
+  Count team enters counted_quantity on each physical_count_lines row
+  Status: physical_count_entries.status = 'counting'
+  Counters may be assigned via physical_count_lines.counted_by (user_id)
+
+STEP 3 — Review Variances
+  System computes variance:
+    variance_quantity = counted_quantity - book_quantity
+    variance_value = variance_quantity × inventory_balances.average_unit_cost
+  UI shows items with non-zero variance for accountant review
+  physical_count_lines.variance_quantity and variance_value are stored
+
+STEP 4 — Approve Adjustments
+  User with INVENTORY_MANAGER or CONTROLLER role reviews variances
+  For approved variances: physical_count_entries.status = 'approved', approved_by, approved_at
+
+STEP 5 — Post Inventory Adjustments
+  System creates stock_adjustment records for each line with non-zero variance:
+    For positive variance (surplus): adjustment_type='adjustment_in'
+    For negative variance (shortage): adjustment_type='adjustment_out'
+    adjustment_account_id = company's Inventory Variance Expense account
+  Each stock_adjustment is posted via the posting engine (transaction_type='stock_adjustment')
+  This writes inventory_movements AND updates inventory_balances AND creates JE
+
+STEP 6 — Complete
+  After all adjustments posted: physical_count_entries.status = 'completed'
+  INSERT audit_logs (event_type='PHYSICAL_COUNT_COMPLETED')
+  Satisfies Period Close Checklist Task 4 ("Inventory count reconciled")
+```
+
+**Tables used:** `physical_count_entries`, `physical_count_lines`, `stock_adjustments`, `inventory_movements`, `inventory_balances` — all in Doc02.
+
+---
+
+## 22. Depreciation Calculation Algorithms (v3.8)
+
+> **Purpose:** Complete formula specification. The depreciation run must calculate the exact depreciation amount for each period per asset without developer interpretation.
+
+### Straight-Line Method
+
+```
+Annual Depreciation = (Acquisition Cost − Salvage Value) / Useful Life (years)
+Monthly Depreciation = Annual Depreciation / 12
+
+OR equivalently:
+Monthly Depreciation = (Acquisition Cost − Salvage Value) / Useful Life in Months
+
+Implementation in asset_depreciation_schedule_lines.period_amount:
+  period_amount = (fixed_assets.acquisition_cost - fixed_assets.salvage_value)
+                  / fixed_assets.useful_life_months
+
+Special rule — first and last partial periods:
+  If acquisition_date is not the 1st of the month:
+    First period depreciation = period_amount × (days remaining in month / days in month)
+    Last period depreciation = period_amount × (days used in final month / days in month)
+  (Phase 1 simplification: begin depreciating from 1st of the month following acquisition date
+   to avoid partial-month proration complexity. Set asset_depreciation_schedules.start_date
+   = first day of month following acquisition_date.)
+```
+
+### Declining Balance Method
+
+```
+Annual Depreciation Rate = depreciation_rate_percent / 100
+  (stored on fixed_assets.depreciation_rate_percent)
+
+Period 1 depreciation = Acquisition Cost × (Annual Rate / 12)
+Period N depreciation = Net Book Value at start of period × (Annual Rate / 12)
+
+Where:
+  Net Book Value at start of period N = Acquisition Cost − SUM(all prior period depreciation amounts)
+
+Constraint: Depreciation in any period cannot reduce NBV below Salvage Value.
+  IF (current NBV − period_depreciation) < salvage_value THEN
+    period_depreciation = current NBV − salvage_value
+
+Final period: When NBV = Salvage Value, depreciation stops (asset fully depreciated to salvage).
+```
+
+### Units of Production (UOP) Method
+
+```
+Depreciation per Unit = (Acquisition Cost − Salvage Value) / Total Estimated Units
+
+Period Depreciation = Actual Units Produced in Period × Depreciation per Unit
+
+Where:
+  Total Estimated Units = fixed_assets.useful_life_units (stored on fixed_assets for UOP assets)
+  Actual Units = fixed_assets.actual_units_this_period (entered by user per period before run)
+
+Constraint: Same salvage floor — depreciation cannot reduce NBV below salvage_value.
+
+Phase 1 implementation: UOP assets require manual entry of actual_units_per_period before
+each depreciation run. The system does NOT pull units from a production system.
+```
+
+### Schedule Generation (at Asset Acquisition)
+
+When an asset is created/activated, the system auto-generates the full depreciation schedule:
+```
+INSERT asset_depreciation_schedules (fixed_asset_id, method, start_date, end_date, total_depreciation)
+INSERT asset_depreciation_schedule_lines (one per month from start_date to end_date):
+  period_number = 1 to useful_life_months
+  scheduled_date = start_date + (period_number - 1) months
+  period_amount = computed per method above
+  status = 'pending'
+```
+
+The schedule is informational until the depreciation run posts it. The run marks each line `status='processed'` after posting.
+
+---
+
+## 23. Form Auto-Population Reference (v3.8)
+
+> **Purpose:** Every dropdown and auto-fill field in every transaction form must have a documented source table and column. A developer must be able to wire up any form field without guessing.
+
+### Standard Dropdown Sources
+
+| Field | Source Table | Filter | Display Label | Value Stored |
+|---|---|---|---|---|
+| Customer | `customers` | `company_id=? AND deleted_at IS NULL AND is_active=true` | `registered_name` (or `trade_name`) | `customers.id` |
+| Supplier | `suppliers` | same | `registered_name` | `suppliers.id` |
+| Item | `items` | `company_id=? AND item_type IN ('product','consumable') AND is_active=true` | `item_code + ' — ' + item_name` | `items.id` |
+| Service | `items` | `company_id=? AND item_type='service' AND is_active=true` | `item_code + ' — ' + item_name` | `items.id` |
+| Tax Code (VAT) | `tax_codes` | `company_id=? AND tax_type='vat' AND is_active=true` | `code + ' ' + description` | `tax_codes.id` |
+| EWT ATC Code | `atc_codes` | `company_id=? AND atc_type='ewt' AND is_active=true` | `atc_code + ' — ' + description + ' (' + rate + '%)'` | `atc_codes.id` |
+| FWT ATC Code | `atc_codes` | `company_id=? AND atc_type='fwt' AND is_active=true` | same | `atc_codes.id` |
+| Branch | `branches` | `company_id=? AND deleted_at IS NULL AND is_active=true` | `branch_name` | `branches.id` |
+| Department | `departments` | `company_id=? AND branch_id=? AND is_active=true` | `department_name` | `departments.id` |
+| Cost Center | `cost_centers` | `company_id=? AND department_id=? AND is_active=true` | `cost_center_name` | `cost_centers.id` |
+| Currency | `currencies` | `is_active=true` | `currency_code + ' — ' + currency_name` | `currencies.id` (Phase 1: PHP only, pre-filtered) |
+| Payment Terms | `payment_terms` | `company_id=? AND is_active=true` | `terms_name` | `payment_terms.id` |
+| Revenue Account | `chart_of_accounts` | `company_id=? AND account_type='revenue' AND is_active=true` | `account_code + ' — ' + account_name` | `chart_of_accounts.id` |
+| Expense Account | `chart_of_accounts` | `company_id=? AND account_type='expense' AND is_active=true` | same | `chart_of_accounts.id` |
+| Inventory Account | `chart_of_accounts` | `company_id=? AND control_account_type='INVENTORY_CONTROL' AND is_active=true` | same | `chart_of_accounts.id` |
+| COGS Account | `chart_of_accounts` | `company_id=? AND account_name ILIKE '%cost of goods%' AND is_active=true` | same | `chart_of_accounts.id` |
+| Bank Account | `company_bank_accounts` | `company_id=? AND is_active=true` | `bank_name + ' — ' + account_number` | `company_bank_accounts.id` |
+| Warehouse | `warehouses` | `company_id=? AND is_active=true` | `warehouse_name` | `warehouses.id` |
+
+### Auto-Fill Rules
+
+| Form | Trigger | Auto-Filled Field | Source |
+|---|---|---|---|
+| Sales Invoice | Customer selected | `customer_tin` snapshot | `customers.tin` |
+| Sales Invoice | Customer selected | `payment_terms_id` | `customers.default_payment_terms_id` |
+| Sales Invoice | Customer selected | `due_date` | `document_date + payment_terms.due_days` |
+| Sales Invoice | Item selected (per line) | `revenue_account_id` | `items.revenue_account_id` |
+| Sales Invoice | Item selected (per line) | `unit_price` | `item_prices WHERE item_id=? AND effective_from<=document_date ORDER BY effective_from DESC LIMIT 1` |
+| Sales Invoice | Item selected (per line) | `tax_code_id` | `items.default_tax_code_id` |
+| Vendor Bill | Supplier selected | `supplier_tin` snapshot | `suppliers.tin` |
+| Vendor Bill | Supplier selected | `payment_terms_id` | `suppliers.default_payment_terms_id` |
+| Vendor Bill | Supplier selected | `due_date` | `document_date + payment_terms.due_days` |
+| Vendor Bill | Item selected (per line) | `expense_account_id` | `items.expense_account_id` |
+| Vendor Bill | Item selected (per line) | `ewt_atc_id` | `items.default_ewt_atc_id` (if item is EWT-subject) |
+| Receipt | Customer selected | AR balance summary | `SUM(subsidiary_ledger_entries WHERE ledger_type='ar' AND customer_id=? AND is_open=true)` |
+| Payment Voucher | Supplier selected | AP balance summary | `SUM(subsidiary_ledger_entries WHERE ledger_type='ap' AND supplier_id=? AND is_open=true)` |
+
+### Due Date Computation
+
+```
+due_date = document_date + payment_terms.due_days
+
+Where:
+  payment_terms.due_days is an integer (e.g., 30 for Net 30, 0 for COD)
+  document_date is the invoice/bill date
+
+If payment_terms.due_days = 0: due_date = document_date (Cash On Delivery)
+If payment_terms has day_of_month (e.g., "end of month"): due_date = last day of month of (document_date + due_days)
+  Phase 1 simplification: use only due_days for all payment terms. Day-of-month terms are Phase 2.
+```

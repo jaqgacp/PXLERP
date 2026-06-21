@@ -1,6 +1,6 @@
 # PXL ERP — Compliance Data Capture Map
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
@@ -49,12 +49,13 @@
 
 ---
 
-## Open Decisions Remaining
+## Open Decisions — Resolved (v3.2)
 
-| OD # | Question | Status |
-|---|---|---|
-| OD-11 | Should `slsp_entries` and `relief_entries` be materialized tables or computed views? | Recommended: computed at export time via Edge Function; no persistent table needed for Phase 1 |
-| OD-12 | Should `compliance_report_runs` track BIR submission status (submitted, accepted, rejected)? | For Phase 2 — Phase 1 is generation only |
+| OD # | Question | Decision | Resolved |
+|---|---|---|---|
+| OD-11 | Should SLSP and RELIEF data be materialized tables or computed at export? | **Computed at export time** via Edge Function. `slsp_exports` (#143) and `relief_exports` (#144) store per-batch export records. No persistent per-line tables. Ghost names `slsp_entries`, `slsp_records`, `slsp_summary`, `relief_entries`, `relief_summary` are not canonical and do not exist. | v3.2 ✅ |
+| OD-12 | Should `compliance_report_runs` track BIR submission status (submitted, accepted, rejected)? | **Phase 2 only** — Phase 1 is generation only. No blocking impact on freeze. | v3.2 ✅ |
+| **OD-13** | **Does posting engine write `vat_entries` and `ewt_entries`, or does the document save step?** | **POSTING ENGINE writes all immutable compliance entries.** Document save step computes and stores draft preview fields on the source document only (e.g., `total_vat_amount`, `total_ewt_amount`). The posting engine (Doc 06 Section 7, Step 11) writes final, immutable `vat_entries`, `ewt_entries`, `fwt_entries`, `percentage_tax_entries` within the same transaction as journal_entries. Draft/preview entries are deleted before INSERT on first post. Voids and reversals write reversal entries (negative amounts) — never silent UPDATE or DELETE. | v3.2 ✅ |
 
 ---
 
@@ -88,20 +89,20 @@ This document maps every Philippine BIR compliance output to the specific databa
 | Zero-rated sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='zero_rated'` | |
 | VAT-exempt sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='exempt'` | |
 | Government sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='government'` | Derived at posting from customers.party_special_class='government' |
-| Output VAT | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='OUTPUT'` | |
-| Input VAT from purchases | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='INPUT'` | |
+| Output VAT | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='output'` | |
+| Input VAT from purchases | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='input'` | |
 | Input VAT carried over | `vat_period_summaries` | `input_vat_carryover` | From prior period |
 | VAT payable / creditable | computed | OUTPUT VAT - INPUT VAT | Per BIR formula |
 
 ### Required Fields on Source Documents
 
 **`sales_invoices`**
-- `customer_id` → join to `customers.tin`, `customer_tax_profiles.is_vat_registered`
+- `customer_id` → join to `customers.tin`, `customers.vat_registration_status` CHECK IN ('vat','non_vat') — **[E-3 fix: customer_tax_profiles.is_vat_registered was removed; use customers.vat_registration_status directly]**
 - `document_date` → determines period
 - `is_vat_inclusive` → affects net amount computation
 
 **`sales_invoice_lines`**
-- `vat_direction` — 'OUTPUT'
+- `vat_direction` — 'output'
 - `vat_classification` — 'vatable' | 'zero_rated' | 'exempt' (stored on lines; 'government' only in vat_entries, derived at posting from party_special_class)
 - `net_amount` — amount before VAT
 - `vat_amount` — 12% of net_amount (or 0 for zero/exempt)
@@ -113,19 +114,19 @@ This document maps every Philippine BIR compliance output to the specific databa
 - `customer_tin` → snapshot at transaction time (required for SLSP if transaction above threshold)
 
 **`cash_sale_lines`**
-- `vat_direction` — 'OUTPUT'
+- `vat_direction` — 'output'
 - `vat_classification` — 'vatable' | 'zero_rated' | 'exempt' (stored on lines; 'government' only in vat_entries, derived at posting from party_special_class)
 - `net_amount`, `vat_amount`
 
 **`vendor_bill_lines`**
-- `vat_direction` — 'INPUT'
-- `vat_classification` — 'VATABLE' | 'CAPITAL_GOODS' | 'SERVICES'
+- `vat_direction` — 'input'
+- `vat_classification` — 'vatable' | 'capital_goods' | 'services'
 - `net_amount`, `vat_amount`
-- `supplier_id` → join to `suppliers.tin`, `supplier_tax_profiles.is_vat_registered`
+- `supplier_id` → join to `suppliers.tin`, `suppliers.vat_registration_status` CHECK IN ('vat','non_vat') — **[E-3 fix: supplier_tax_profiles.is_vat_registered removed]**
 
 **`cash_purchase_lines`** (contributes to Input VAT identically to vendor_bill_lines)
-- `vat_direction` — 'INPUT'
-- `vat_classification` — 'VATABLE' | 'CAPITAL_GOODS' | 'SERVICES'
+- `vat_direction` — 'input'
+- `vat_classification` — 'vatable' | 'capital_goods' | 'services'
 - `net_amount`, `vat_amount`
 - `supplier_tin` → snapshot at transaction time
 
@@ -141,10 +142,10 @@ This document maps every Philippine BIR compliance output to the specific databa
 | Buyer name | `customers` | `name` |
 | Invoice/receipt number | `sales_invoices` / `cash_sales` | `document_no` |
 | Invoice/receipt date | `sales_invoices` / `cash_sales` | `document_date` |
-| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='VATABLE'` |
+| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='vatable'` |
 | VAT amount | `vat_entries` | `SUM(vat_amount)` |
-| Exempt amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='EXEMPT'` |
-| Zero-rated amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='ZERO_RATED'` |
+| Exempt amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='exempt'` |
+| Zero-rated amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='zero_rated'` |
 | Total amount | computed | taxable + vat + exempt + zero-rated |
 
 Source documents: `sales_invoices` AND `cash_sales` (both contribute to SLSP)
@@ -157,9 +158,9 @@ Source documents: `sales_invoices` AND `cash_sales` (both contribute to SLSP)
 | Seller name | `suppliers` | `name` |
 | Invoice number | `vendor_bills` / `cash_purchases` | `document_no` |
 | Invoice date | `vendor_bills` / `cash_purchases` | `document_date` |
-| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_direction='INPUT' AND vat_classification='VATABLE'` |
+| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_direction='input' AND vat_classification='vatable'` |
 | Input VAT amount | `vat_entries` | `SUM(vat_amount)` |
-| Classification | `vat_entries` | `vat_classification` (VATABLE/CAPITAL_GOODS/SERVICES) |
+| Classification | `vat_entries` | `vat_classification` ('vatable'/'capital_goods'/'services') |
 
 Source documents: `vendor_bills` AND `cash_purchases` (both contribute to RELIEF)
 
@@ -279,13 +280,13 @@ Derived from `certificates_2307_received` per quarter:
 
 | Field | Source Table | Notes |
 |---|---|---|
-| Payee TIN | `ewt_entries` | `payee_tin` (snapshot) |
-| Payee name | `ewt_entries` | `payee_name` (snapshot) |
-| ATC code | `ewt_entries` | Final tax ATC codes (WF-series) |
-| Income payment | `ewt_entries` | `ewt_base_amount` |
-| Final tax withheld | `ewt_entries` | `ewt_amount` |
+| Payee TIN | `fwt_entries` | `payee_tin` (snapshot) |
+| Payee name | `fwt_entries` | `payee_registered_name` (snapshot) |
+| ATC code | `fwt_entries` | Final tax ATC codes (WF-series) |
+| Income payment | `fwt_entries` | `fwt_base_amount` |
+| Final tax withheld | `fwt_entries` | `fwt_amount` |
 
-- Separate certificate from 2307; generated from `ewt_entries` where ATC is a FINAL tax code
+> **IMPORTANT:** 2306 is generated from `fwt_entries` (Final Withholding Tax — WF-series ATC), NOT from `ewt_entries` (EWT/creditable — WC/WI-series). FWT is a FINAL tax; the payee cannot use it as a creditable tax against income tax. This is the key distinction from 2307.
 - Stored in `certificates_2306_issued` (parallel structure to `certificates_2307_issued`)
 
 ---
@@ -356,10 +357,10 @@ Source: `cash_sales` + `cash_sale_lines` + `vat_entries`
 | Date | `cash_sales.document_date` |
 | OR Number | `cash_sales.document_no` |
 | Customer TIN | `cash_sales.customer_tin` (snapshot) or `customers.tin` |
-| Taxable Sales | `SUM(cash_sale_lines.net_amount WHERE vat_classification='VATABLE')` |
+| Taxable Sales | `SUM(cash_sale_lines.net_amount WHERE vat_classification='vatable')` |
 | VAT | `SUM(vat_entries.vat_amount)` |
-| Zero-rated | `SUM(cash_sale_lines.net_amount WHERE vat_classification='ZERO_RATED')` |
-| Exempt | `SUM(cash_sale_lines.net_amount WHERE vat_classification='EXEMPT')` |
+| Zero-rated | `SUM(cash_sale_lines.net_amount WHERE vat_classification='zero_rated')` |
+| Exempt | `SUM(cash_sale_lines.net_amount WHERE vat_classification='exempt')` |
 | Total | computed |
 
 ### Cash Purchases Book
@@ -370,8 +371,8 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | Date | `cash_purchases.document_date` |
 | Reference No. | `cash_purchases.document_no` |
 | Supplier TIN | `cash_purchases.supplier_tin` (snapshot) or `suppliers.tin` |
-| Taxable Purchases | `SUM(cash_purchase_lines.net_amount WHERE vat_classification='VATABLE')` |
-| Input VAT | `SUM(vat_entries.vat_amount WHERE vat_direction='INPUT')` |
+| Taxable Purchases | `SUM(cash_purchase_lines.net_amount WHERE vat_classification='vatable')` |
+| Input VAT | `SUM(vat_entries.vat_amount WHERE vat_direction='input')` |
 | EWT | `SUM(ewt_entries.ewt_amount)` |
 | Total | computed |
 
@@ -397,7 +398,7 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | No modification after posting | RLS immutability policy + `enforce_posted_immutability()` trigger |
 | Complete audit trail | `audit_logs` + `field_change_history` |
 | ATP tracking | `number_series_atp` + `atp_usage_logs` |
-| DAT file log | `dat_file_generation_logs` records every export with SHA-256 hash |
+| DAT file log | `dat_generation_logs` records every export with SHA-256 hash |
 | User action log | `user_activity_logs` records every login, export, print |
 
 ---
@@ -431,14 +432,14 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | 1601EQ | `ewt_entries`, `ewt_remittances_1601eq` | atc_code, ewt_amount, fiscal_period_id |
 | 2307 Issued | `certificates_2307_issued`, `ewt_entries` | payee_tin (snapshot), quarterly totals |
 | 2307 Received | `certificates_2307_received` | customer_tin (snapshot), quarterly totals |
-| 2306 | `certificates_2306_issued`, `ewt_entries` (final ATC) | payee_tin (snapshot), final tax |
+| 2306 | `certificates_2306_issued`, `fwt_entries` | payee_tin (snapshot), final tax — source is fwt_entries (WF-series), NOT ewt_entries |
 | QAP | `ewt_entries` | payee_tin (snapshot), per-payee per-ATC monthly breakdown |
 | SAWT | `certificates_2307_received` | Customer alphalist |
 | BIR Books | `journal_entries`, `journal_lines` | All posted entries |
 | Cash Sales Book | `cash_sales`, `cash_sale_lines`, `vat_entries` | document_date, customer_tin, amounts |
 | Cash Purchases Book | `cash_purchases`, `cash_purchase_lines`, `vat_entries`, `ewt_entries` | document_date, supplier_tin, amounts |
 | CAS DAT Files | All transaction tables | Full data export |
-| 1604E | `ewt_entries` (annual) | Annual alphalist of payees |
+| 1604E *(Phase 2 — deferred)* | `ewt_entries` (annual aggregate from quarterly data) | Annual alphalist of payees — **filing table deferred to Phase 2; data derivable from Phase 1 `ewt_entries`** |
 
 ---
 
@@ -472,7 +473,7 @@ Applies to transactions with WF-series ATC codes (dividends, royalties, final in
 | Withholding Agent Name | `companies` | `name` |
 | Quarter Covered | `fwt_remittances_1601fq` | `quarter`, dates |
 | Total FWT | `fwt_remittances_1601fq` | `fwt_amount_total` |
-| Per-Payee Breakdown | `fwt_entries` → `certificates_2306` | payee_tin (snapshot), fwt_amount |
+| Per-Payee Breakdown | `fwt_entries` → `certificates_2306_issued` | payee_tin (snapshot), fwt_amount |
 
 Key difference from EWT: FWT is final — payees cannot claim these as creditable taxes. EWT (1601EQ) is creditable by the payee.
 
@@ -512,40 +513,10 @@ Amortization and revenue recognition JEs post to GL like any other journal entry
 
 ## 13. Compliance Output Generation Tables
 
-### `compliance_report_runs`
-Tracks every BIR compliance report generation request.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `report_type` | text | NOT NULL | '2550M' \| '2550Q' \| '2551Q' \| '1601EQ' \| '1601FQ' \| 'SLSP' \| 'RELIEF' \| 'QAP' \| 'SAWT' \| '1604E' \| 'ITR_1701Q' \| 'ITR_1701' \| 'ITR_1702Q' \| 'ITR_1702RT' |
-| `fiscal_period_id` | uuid | FK fiscal_periods, NULL | |
-| `fiscal_year_id` | uuid | FK fiscal_years, NULL | |
-| `period_from` | date | NOT NULL | |
-| `period_to` | date | NOT NULL | |
-| `parameters` | jsonb | NULL | Additional filter params |
-| `status` | text | CHECK IN ('QUEUED','PROCESSING','COMPLETED','FAILED') | |
-| `requested_by` | uuid | FK auth.users, NOT NULL | |
-| `requested_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `completed_at` | timestamptz | NULL | |
-| `record_count` | integer | NULL | |
-| `error_message` | text | NULL | |
-
-### `compliance_export_files`
-One record per file generated from a compliance report run.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `report_run_id` | uuid | FK compliance_report_runs, NOT NULL | |
-| `file_format` | text | CHECK IN ('PDF','XLSX','CSV','DAT') | |
-| `storage_path` | text | NOT NULL | Supabase Storage path |
-| `file_size_bytes` | bigint | NULL | |
-| `file_hash_sha256` | text | NULL | Integrity verification |
-| `generated_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `expires_at` | timestamptz | NULL | Auto-cleanup after 90 days |
-| `download_count` | integer | NOT NULL DEFAULT 0 | |
-| `last_downloaded_at` | timestamptz | NULL | |
-| `last_downloaded_by` | uuid | FK auth.users, NULL | |
+> **E-1 fix (v3.3):** `compliance_report_runs` and `compliance_export_files` are NOT canonical table names. They were removed from Doc02 in favor of the unified async job architecture. Canonical tables:
+>
+> - **`export_jobs`** (#189 in Doc02) — tracks every async compliance report generation request. Column spec: See Doc03 Section 44 and Doc08 Section 4. Compliance reports are requested via `export_jobs.export_type` values such as `'vat_2550m'`, `'ewt_1601eq'`, `'pt_2551q'`, `'slsp_sales'`, etc.
+>
+> - **`generated_report_files`** (#190 in Doc02) — stores metadata for generated report files persisted beyond the export job lifetime. Column spec: See Doc03 Section 44. Field `is_compliance_filing = true` marks BIR submission files.
+>
+> The link between an `export_jobs` record and its output file(s) is via `generated_report_files.export_job_id → export_jobs.id`. No direct FK to a `compliance_report_runs` table exists — that table has been removed.
