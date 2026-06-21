@@ -1,6 +1,6 @@
 # PXL ERP — Compliance Data Capture Map
-**Version:** 3.3 — Brutal Audit Fix Pass
-**Status:** v3.3 — Brutal Audit Fix Pass Applied. Freeze pending Section 47 sign-off.
+**Version:** 3.8 — Implementation Contract Completion Pass
+**Status:** v3.8 — All compliance capture contracts complete. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
 
 ---
 

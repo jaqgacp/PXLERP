@@ -1,7 +1,7 @@
 # PXL ERP — Complete Table Inventory
-**Version:** 3.7 — Implementation Readiness Fix Pass
+**Version:** 3.8 — Implementation Contract Completion Pass
 **Total Tables:** 207 active tables (removed: `financial_statement_mappings` #31, `mcit_computations` #156, `nolco_schedules` #157 — total slots = 209, 3 marked REMOVED)
-**Status:** v3.7 — All open decisions resolved. Not Yet Migration-Approved — pending Section 52 sign-off.
+**Status:** v3.8 — All open decisions resolved. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
 
 Legend:
 - **Type:** master | transaction | ledger | setup | audit | bridge | output | config | notification

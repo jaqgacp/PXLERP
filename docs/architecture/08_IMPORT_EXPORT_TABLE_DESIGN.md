@@ -1,6 +1,6 @@
 # PXL ERP — Import & Export Table Design
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 3.8 — Implementation Contract Completion Pass
+**Status:** v3.8 — Import and export contracts complete. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
 
 ---
 

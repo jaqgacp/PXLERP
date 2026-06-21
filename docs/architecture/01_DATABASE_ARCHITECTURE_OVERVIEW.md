@@ -1277,7 +1277,7 @@ STEP 5 — Generate Reconciliation Report
 
 STEP 6 — Certify Reconciliation
   Accountant clicks "Certify Bank Reconciliation"
-  System INSERTs bank_reconciliation_certifications (bank_account_id, period, certified_by, certified_at)
+  System INSERTs subledger_close_certifications (company_id, branch_id, subledger_type='bank', period, certified_by, certified_at)
   This satisfies Period Close Checklist Task 1 ("Bank reconciliation certified")
 ```
 
@@ -1290,14 +1290,14 @@ SETUP:
   Physical Count applies when company_feature_settings.inventory_enabled=true
 
 STEP 1 — Create Count Sheet
-  User creates physical_count_headers record:
+  User creates physical_count_entries record:
     count_date, warehouse_id, count_type ('full'|'cycle'), status='draft', created_by
   System auto-populates physical_count_lines (one per item in warehouse):
     item_id, warehouse_id, book_quantity (from inventory_balances.quantity_on_hand), counted_quantity=NULL
 
 STEP 2 — Conduct Count
   Count team enters counted_quantity on each physical_count_lines row
-  Status: physical_count_headers.status = 'counting'
+  Status: physical_count_entries.status = 'counting'
   Counters may be assigned via physical_count_lines.counted_by (user_id)
 
 STEP 3 — Review Variances
@@ -1309,7 +1309,7 @@ STEP 3 — Review Variances
 
 STEP 4 — Approve Adjustments
   User with INVENTORY_MANAGER or CONTROLLER role reviews variances
-  For approved variances: physical_count_headers.status = 'approved', approved_by, approved_at
+  For approved variances: physical_count_entries.status = 'approved', approved_by, approved_at
 
 STEP 5 — Post Inventory Adjustments
   System creates stock_adjustment records for each line with non-zero variance:
@@ -1320,12 +1320,12 @@ STEP 5 — Post Inventory Adjustments
   This writes inventory_movements AND updates inventory_balances AND creates JE
 
 STEP 6 — Complete
-  After all adjustments posted: physical_count_headers.status = 'completed'
+  After all adjustments posted: physical_count_entries.status = 'completed'
   INSERT audit_logs (event_type='PHYSICAL_COUNT_COMPLETED')
   Satisfies Period Close Checklist Task 4 ("Inventory count reconciled")
 ```
 
-**Tables used:** `physical_count_headers`, `physical_count_lines`, `stock_adjustments`, `inventory_movements`, `inventory_balances` — all in Doc02.
+**Tables used:** `physical_count_entries`, `physical_count_lines`, `stock_adjustments`, `inventory_movements`, `inventory_balances` — all in Doc02.
 
 ---
 

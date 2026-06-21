@@ -1,6 +1,6 @@
 # PXL ERP — Security & RLS Design
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 3.8 — Implementation Contract Completion Pass
+**Status:** v3.8 — Security and RLS design complete. Not Yet Migration-Approved — pending Sections 47–53 sign-off.
 
 ---
 

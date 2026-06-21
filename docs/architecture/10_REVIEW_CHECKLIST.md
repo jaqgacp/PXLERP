@@ -1,6 +1,6 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.6 — Normalization Pass Sign-Off
-**Status:** v3.6 — DATABASE FREEZE NOT APPROVED. Normalization pass applied cross-document column spec deduplication (Groups A–H), slot gap notation, and canonical name fixes. Freeze pending Sections 47, 48, 49, and 50 sign-off.
+**Version:** 3.8 — Implementation Contract Completion Pass Sign-Off
+**Status:** v3.8 — DATABASE FREEZE NOT APPROVED. Implementation Contract Completion Pass applied (22 gaps closed from Business Scenario Validation). Freeze pending Sections 47, 48, 49, 50, 51, 52, and 53 sign-off.
 **Sign-off Required Before:** SQL migration authoring begins
 
 ---
@@ -183,7 +183,7 @@ Each item requires explicit sign-off from the responsible party before proceedin
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 8.1 | Depreciation methods to support in Phase 1: SL, DB, SYD | CPA Lead | [ ] | |
+| 8.1 | Depreciation methods to support in Phase 1: SL, DB, UOP | CPA Lead | [ ] | |
 | 8.2 | Depreciation schedule pre-computed at acquisition confirmed | CPA Lead | [ ] | |
 | 8.3 | Monthly depreciation run → auto journal entry confirmed | DB Architect | [ ] | |
 | 8.4 | Asset disposal: gain/loss computation and JE confirmed | CPA Lead | [ ] | |
@@ -270,18 +270,18 @@ All open decisions must be resolved before SQL migrations begin.
 | OD-06 | Opening balances: per account or per account/branch? | **Per account/branch** for full branch P&L | CPA Lead | [x] Resolved |
 | OD-07 | Recurring journal frequency: daily/weekly/monthly only? | **Monthly + Quarterly + Annually** for Phase 1 | CPA Lead | [x] Resolved |
 | OD-08 | Cash Sales / Cash Purchases: separate headers or shortcuts? | **Separate transaction headers** — no AR/AP created | CPA Lead | [x] Resolved |
-| OD-09 | `document_relationships` link notification events to source docs? | Phase 2 consideration | DB Architect | [ ] |
-| OD-10 | `generated_documents` link to `export_jobs` when PDF produced via export? | Decide before Edge Function implementation | DB Architect | [ ] |
+| OD-09 | `document_relationships` link notification events to source docs? | **RESOLVED v3.8 (CC-16):** No — use `notifications.entity_type` + `notifications.entity_id` for source linking. No change to `document_relationships`. | DB Architect | [x] Resolved |
+| OD-10 | `generated_documents` link to `export_jobs` when PDF produced via export? | **RESOLVED v3.8 (CC-16):** Yes — `generated_documents.export_job_id uuid NULL FK → export_jobs.id` added. Set when document generated as part of export job. | DB Architect | [x] Resolved |
 | OD-11 | `slsp_records` and `relief_exports`: materialized tables or computed at export? | **RESOLVED v3.3: Computed at export time. `slsp_records` and `relief_exports` store per-record export data. Ghost names `slsp_entries`/`relief_entries` removed from all docs.** | CPA Lead | [x] |
-| OD-12 | `compliance_report_runs` track BIR submission status? | Phase 2 — Phase 1 is generation only | CPA Lead | [ ] |
+| OD-12 | `compliance_report_runs` track BIR submission status? | Phase 2 — Phase 1 is generation only | CPA Lead | [x] Resolved |
 | OD-13 | Does posting engine write `vat_entries` and `ewt_entries`, or does the document save step? | **RESOLVED v3.3: Posting engine writes all immutable compliance entries within the same transaction as journal_entries (Doc 06 §7 Step 11). Document save computes draft preview fields only.** | DB Architect | [x] |
-| OD-14 | Recurring journal template lines: fixed amounts only or percentage of account balance? | **Fixed amounts only** for Phase 1 | CPA Lead | [ ] |
-| OD-15 | `system_alerts` on Supabase Realtime? | **Yes** — add to Realtime list | DB Architect | [ ] |
-| OD-16 | Partition `user_activity_logs` by month? | **Phase 2** — single table with index for Phase 1 | DB Architect | [ ] |
-| OD-17 | Attachment storage: single shared bucket or per-company bucket? | **Single shared bucket** with `company_id/entity_type/entity_id/` path | DB Architect | [ ] |
-| OD-18 | Save column mapping template per import_type? | **Phase 2** — Phase 1: per-batch column_mapping in jsonb | DB Architect | [ ] |
-| OD-19 | `system_alerts` RLS: restrict to COMPANY_ADMIN and CONTROLLER? | **Yes** | DB Architect | [ ] |
-| OD-20 | `notifications` RLS: user sees own notifications only? | **Yes** | DB Architect | [ ] |
+| OD-14 | Recurring journal template lines: fixed amounts only or percentage of account balance? | **Fixed amounts only** for Phase 1 | CPA Lead | [x] Resolved |
+| OD-15 | `system_alerts` on Supabase Realtime? | **Yes** — add to Realtime list | DB Architect | [x] Resolved |
+| OD-16 | Partition `user_activity_logs` by month? | **Phase 2** — single table with index for Phase 1 | DB Architect | [x] Resolved |
+| OD-17 | Attachment storage: single shared bucket or per-company bucket? | **Single shared bucket** with `company_id/entity_type/entity_id/` path | DB Architect | [x] Resolved |
+| OD-18 | Save column mapping template per import_type? | **Phase 2** — Phase 1: per-batch column_mapping in jsonb | DB Architect | [x] Resolved |
+| OD-19 | `system_alerts` RLS: restrict to COMPANY_ADMIN and CONTROLLER? | **Yes** | DB Architect | [x] Resolved |
+| OD-20 | `notifications` RLS: user sees own notifications only? | **Yes** | DB Architect | [x] Resolved |
 
 ---
 
