@@ -1,6 +1,6 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.5 — Contract Freeze Fix Pass
-**Status:** v3.5 — DATABASE FREEZE NOT APPROVED. Contract freeze audit identified 10 additional cross-document consistency defects (CF1–CF10). All applied in v3.5. Freeze pending Sections 47, 48, and 49 sign-off.
+**Version:** 3.6 — Normalization Pass Sign-Off
+**Status:** v3.6 — DATABASE FREEZE NOT APPROVED. Normalization pass applied cross-document column spec deduplication (Groups A–H), slot gap notation, and canonical name fixes. Freeze pending Sections 47, 48, 49, and 50 sign-off.
 **Sign-off Required Before:** SQL migration authoring begins
 
 ---
@@ -909,3 +909,57 @@ All open decisions must be resolved before SQL migrations begin.
 | 49.10 | All CF1–CF10 items signed off by respective owners above | All | [ ] |
 
 **CONTRACT FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 are [x].**
+
+---
+
+## SECTION 50: Normalization Pass Sign-Off (v3.6 — Full Contract Normalization)
+
+> Full cross-document normalization pass applied Groups A–H. Eliminated duplicate column specs within Doc03, replaced inline column tables in Docs 06/07 with "See Doc03 Section XX" references, corrected ghost table names, lowercased all enum/status values, added 7 missing posting templates to Doc06, and added slot gap notation for retired slots #193–#198 in Doc02.
+
+### Fixes Applied (v3.6)
+
+| Group | Finding | Fix Applied | Doc(s) Changed |
+|---|---|---|---|
+| A-1/A-2 | §16 `roles` and `permissions` duplicated specs also in §24 | §16 entries replaced with "See §24" cross-references | Doc 03 |
+| A-3 | §12 `notification_delivery_logs` duplicated spec also in §43; §43 missing `retry_count` | §12 entry replaced with "See §43" reference; `retry_count integer NOT NULL DEFAULT 0` added to §43 | Doc 03 |
+| A-4/A-5 | §42 `import_rows` and `import_validation_errors` duplicated specs also in §15 | §42 entries replaced with "See §15" cross-references | Doc 03 |
+| A-6 | §42 `generated_report_files` duplicated spec also in §44 | §42 entry replaced with "See §44" cross-reference | Doc 03 |
+| A-7 | §41 `document_void_register` duplicated spec also in §11 (using non-canonical `entity_id`) | §41 entry replaced with "See §11" reference; note added that canonical uses `document_id` not `entity_id` | Doc 03 |
+| A-8 | §27 `vat_codes` used `vat_type` column name, conflicting with §21 canonical `classification` | §27 entry replaced with "See §21" cross-reference | Doc 03 |
+| A-9 | §21 `atc_codes` had abbreviated spec; §27 had `UNIQUE(code)` not partial unique index | §27 became canonical with `UNIQUE(code) WHERE effective_to IS NULL` | Doc 03 |
+| H-1 | `sales_invoice_lines` and `cash_sale_lines` `vat_classification` CHECK included `'government'` (derived value, never stored) | Removed `'government'` from CHECK constraints; 'government' is derived at posting from `customers.party_special_class` | Doc 03 |
+| H-2 | `slsp_records`/`sawt_records` referenced in TASK 3 and TASK 6 | Changed to canonical `slsp_exports`/`sawt_exports` | Doc 03 |
+| H-3 | `system_account_config.config_key` CHECK used `ACCOUNTS_RECEIVABLE`/`ACCOUNTS_PAYABLE` and was missing 4 values | Updated to `AR_TRADE`/`AP_TRADE`; added `INPUT_VAT_DEFERRED`, `INVENTORY_CONTROL`, `COST_OF_GOODS_SOLD`, `INCOME_SUMMARY` | Doc 03 |
+| H-4 | 1604E and 1604F not listed as separate Phase 2 deferrals | Added as separate Phase 2 deferrals | Doc 03 |
+| B-1–B-6 | Doc06 redefined full column specs for 6 posting engine tables already in Doc03 §9 | All 6 inline specs replaced with "See Doc03 Section 9" references | Doc 06 |
+| B-7 | Doc06 had two `## 11.` section headers | Second one renamed to `## 12.` | Doc 06 |
+| B-8 | Doc06 missing posting templates for 7 transaction types | Added: Petty Cash Voucher, Stock Adjustment, Asset Depreciation, Asset Disposal, Bank Fund Transfer, Sales Credit Memo, Vendor Credit | Doc 06 |
+| C-1 | Doc07 `audit_logs` full column table duplicated Doc03 §41 | Replaced with "See Doc03 Section 41" reference; event type table retained | Doc 07 |
+| C-2 | Doc07 `cas_registrations` full column table duplicated Doc03 §1 | Replaced with "See Doc03 Section 1" reference | Doc 07 |
+| C-3 | Doc07 `field_change_history.operation_id` link to `audit_logs` undocumented | Added note: links via shared UUID grouping, not direct FK | Doc 07 |
+| D (all) | Doc04 ghost names, wrong cardinality, wrong enum values | `inventory_balances`, `item_prices`, `asset_depreciation_schedules` (plural), tax profiles 1:many, relationship_type values lowercased, inventory_movements source list corrected | Doc 04 |
+| E-1 | Doc05 Section 13 referenced non-canonical `compliance_report_runs`/`compliance_export_files` | Replaced with `export_jobs` (#189) and `generated_report_files` (#190) | Doc 05 |
+| E-2 | Doc05 Cash Books section used UPPERCASE VAT enum values | Lowercased: `'VATABLE'`→`'vatable'`, `'ZERO_RATED'`→`'zero_rated'`, `'EXEMPT'`→`'exempt'`, `'INPUT'`→`'input'` | Doc 05 |
+| E-3 | Doc05 customer/supplier join text referenced non-canonical `customer_tax_profiles.is_vat_registered` | Changed to `customers.vat_registration_status CHECK IN ('vat','non_vat')` | Doc 05 |
+| F-1 | Doc08 `attachments.entity_type` list used ghost names `official_receipts`, `disbursement_vouchers` | Changed to canonical `receipts`, `payment_vouchers` | Doc 08 |
+| F-2 | Doc08 import types listed `warehouse_locations` (Phase 2) and `price_lists` (ghost name) | Removed `warehouse_locations`; changed `price_lists`→`item_prices` | Doc 08 |
+| F-3 | Doc08 `export_jobs` spec included non-existent `compliance_report_run_id` column | Column removed; explanatory note added | Doc 08 |
+| F-4 | Doc08 `import_rows.status` had `'error'` but Doc03 §15 canonical has `'invalid'` | Changed to `'invalid'` to match canonical spec | Doc 08 |
+| G-1 | Doc02 slots #193–#198 silently absent from table registry — no gap notation | Added RESERVED/REMOVED row in module table and registry table; explains consolidation into `export_jobs`/`generated_report_files` | Doc 02 |
+
+### Section 50 Sign-Off Items
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 50.1 | Group A+H (Doc03 internal duplicate specs) — all 9 tables: duplicate specs removed, cross-references correct, CHECK constraints fixed | DB Architect | [ ] |
+| 50.2 | `vat_classification` CHECK no longer includes `'government'` — confirmed that 'government' direction is derived at posting from `customers.party_special_class`, never stored on line rows | DB Architect + CPA Lead | [ ] |
+| 50.3 | `system_account_config.config_key` values `AR_TRADE`/`AP_TRADE` (not ACCOUNTS_RECEIVABLE/ACCOUNTS_PAYABLE) confirmed; 4 new keys confirmed | DB Architect + Dev Lead | [ ] |
+| 50.4 | Group B (Doc06) — 6 posting engine tables now reference Doc03 §9; 7 new posting templates reviewed and confirmed double-entry correct | Dev Lead + CPA Lead | [ ] |
+| 50.5 | Group C (Doc07) — `audit_logs` and `cas_registrations` now reference Doc03; `operation_id` grouping note confirmed | DB Architect | [ ] |
+| 50.6 | Group D (Doc04) — all ghost names replaced; `asset_depreciation_schedules` plural confirmed; tax profile 1:many cardinality confirmed; `relationship_type` lowercase confirmed | DB Architect + Dev Lead | [ ] |
+| 50.7 | Group E (Doc05) — export table names confirmed; all enum values confirmed lowercase; `vat_registration_status` join confirmed | DB Architect + CPA Lead | [ ] |
+| 50.8 | Group F (Doc08) — `attachments.entity_type` list confirmed; `item_prices` confirmed as canonical name; `export_jobs` spec confirmed no `compliance_report_run_id`; `import_rows.status='invalid'` confirmed | DB Architect | [ ] |
+| 50.9 | Group G (Doc02) — slots #193–#198 RESERVED/REMOVED notation confirmed; `export_jobs` (#189) and `generated_report_files` (#190) confirmed as consolidation targets | DB Architect | [ ] |
+| 50.10 | All Section 50 items marked [x] — normalization pass complete | All | [ ] |
+
+**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 are [x].**
