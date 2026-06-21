@@ -560,47 +560,10 @@ Mirror of `customer_tax_profiles` for suppliers. Versioned per Principle 11. **[
 ---
 
 ### `payment_terms`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| code | text | NOT NULL | — | 'NET30','COD','CIA', etc. |
-| name | text | NOT NULL | — | |
-| due_days | integer | NOT NULL | 0 | Days until due (0 = COD) |
-| discount_days | integer | NULL | — | Days to qualify for early payment discount |
-| discount_percent | numeric(10,6) | NULL | — | Early payment discount % |
-| is_active | boolean | NOT NULL | true | |
-| import_batch_id | uuid | NULL | — | FK → import_batches.id |
-| *+ standard audit columns* | | | | |
-
----
+> Canonical spec: See Doc03 Section 21 (`payment_terms` + `payment_term_lines`). The §5 duplicate has been removed. Canonical spec updated with all columns including `code`, `due_days`, `discount_days`, `discount_percent`. **[v3.6 dedup fix]**
 
 ### `items`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| item_code | text | NOT NULL | — | Unique item code |
-| item_name | text | NOT NULL | — | |
-| description | text | NULL | — | |
-| item_category_id | uuid | NULL | — | FK → item_categories.id |
-| base_uom_id | uuid | NOT NULL | — | FK → units_of_measure.id |
-| item_type | text | NOT NULL | 'inventory' | CHECK IN ('inventory','non_inventory','service','fixed_asset') |
-| sales_vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| purchase_vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| ewt_atc_id | uuid | NULL | — | FK → atc_codes.id (if EWT-subject when purchased) |
-| sales_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| cogs_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| inventory_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| purchase_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| standard_cost | numeric(18,4) | NULL | — | Standard cost (for reference; actual cost from FIFO layers) |
-| standard_price | numeric(18,4) | NULL | — | Default selling price |
-| is_tracked | boolean | NOT NULL | true | Track inventory quantity |
-| is_active | boolean | NOT NULL | true | |
-| import_batch_id | uuid | NULL | — | FK → import_batches.id |
-| *+ standard audit columns* | | | | |
-
-**Constraints:** `UNIQUE(company_id, item_code)`
+> Canonical spec: See Doc03 Section 21 (`items`). The §5 duplicate has been removed. Canonical spec updated with `base_uom_id uuid FK → units_of_measure.id` and all additional columns. **[v3.6 dedup fix]**
 
 ---
 
@@ -1400,13 +1363,16 @@ Immutable. One row per ATC per line per source document.
 | Column | Type | Null | Default | Description |
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
-| generated_document_id | uuid | NOT NULL | — | FK → generated_documents.id (current version) |
-| company_id | uuid | NOT NULL | — | |
-| version | integer | NOT NULL | — | Version number superseded |
-| storage_path | text | NOT NULL | — | Old storage path |
-| file_hash_sha256 | text | NULL | — | |
-| replaced_at | timestamptz | NOT NULL | now() | |
-| replaced_by | uuid | NOT NULL | — | FK → profiles.id |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| generated_document_id | uuid | NOT NULL | — | FK → generated_documents.id |
+| version_no | integer | NOT NULL | — | Version number superseded (1 = first version archived) **[v3.6: renamed from `version`]** |
+| storage_path | text | NOT NULL | — | Old Supabase Storage path (path of superseded version) |
+| file_hash_sha256 | text | NULL | — | Integrity hash of superseded file |
+| regeneration_reason | text | NULL | — | e.g., 'template_updated','data_correction' **[v3.6 addition]** |
+| replaced_at | timestamptz | NOT NULL | now() | When this version was superseded |
+| replaced_by | uuid | NOT NULL | — | FK → profiles.id (user who triggered regeneration) |
+
+> Audit. Immutable.
 
 ---
 
@@ -1830,10 +1796,17 @@ Creditable withholding taxes (2307 only) and other credits applied against incom
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
-| name | text | NOT NULL | — | e.g., 'Net 30', 'COD' |
+| code | text | NOT NULL | — | e.g., 'NET30', 'COD', 'CIA' **[v3.6 addition from §5 merge]** |
+| name | text | NOT NULL | — | Display name, e.g., 'Net 30 days' |
 | description | text | NULL | — | |
+| due_days | integer | NOT NULL | 0 | Days after invoice date until due (0 = COD) **[v3.6 addition]** |
+| discount_days | integer | NULL | — | Days after invoice to qualify for early payment discount **[v3.6 addition]** |
+| discount_percent | numeric(10,6) | NULL | — | Early payment discount percentage **[v3.6 addition]** |
 | is_active | boolean | NOT NULL | true | |
+| import_batch_id | uuid | NULL | — | FK → import_batches.id **[v3.6 addition]** |
 | *+ standard audit columns* | | | | |
+
+**Constraints:** `UNIQUE(company_id, code)`
 
 ### `payment_term_lines`
 | Column | Type | Null | Default | Description |
@@ -1873,19 +1846,23 @@ Creditable withholding taxes (2307 only) and other credits applied against incom
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
 | item_code | text | NOT NULL | — | Internal SKU/code |
-| name | text | NOT NULL | — | |
+| name | text | NOT NULL | — | Display name |
 | description | text | NULL | — | |
-| item_type | text | NOT NULL | — | CHECK IN ('inventory','service','non_inventory') |
-| unit_of_measure | text | NOT NULL | 'piece' | |
-| unit_price | numeric(18,4) | NOT NULL | 0 | Default selling price |
-| unit_cost | numeric(18,4) | NOT NULL | 0 | Standard cost (overridden by FIFO layer) |
+| item_category_id | uuid | NULL | — | FK → item_categories.id **[v3.6 addition from §5 merge]** |
+| item_type | text | NOT NULL | 'inventory' | CHECK IN ('inventory','non_inventory','service','fixed_asset') **[v3.6: expanded from 3 to 4 values; added 'fixed_asset']** |
+| base_uom_id | uuid | NOT NULL | — | FK → units_of_measure.id **[v3.6 fix: was raw text `unit_of_measure 'piece'`; FK required for UOM enforcement]** |
+| sales_vat_code_id | uuid | NULL | — | FK → vat_codes.id (default VAT code for sales lines) **[v3.6: was generic `vat_code_id`]** |
+| purchase_vat_code_id | uuid | NULL | — | FK → vat_codes.id (default VAT code for purchase lines) **[v3.6 addition]** |
+| ewt_atc_id | uuid | NULL | — | FK → atc_codes.id (default EWT ATC when purchased) |
 | sales_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| purchase_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
 | cogs_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
 | inventory_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
-| vat_code_id | uuid | NULL | — | FK → vat_codes.id |
-| ewt_atc_id | uuid | NULL | — | FK → atc_codes.id (default EWT on purchases) |
+| purchase_account_id | uuid | NULL | — | FK → chart_of_accounts.id |
+| standard_cost | numeric(18,4) | NOT NULL | 0 | Standard cost (reference only; actual cost from FIFO layers) **[v3.6: was `unit_cost`]** |
+| standard_price | numeric(18,4) | NOT NULL | 0 | Default selling price **[v3.6: was `unit_price`]** |
+| is_tracked | boolean | NOT NULL | true | Track inventory quantity in `inventory_balances` **[v3.6 addition]** |
 | is_active | boolean | NOT NULL | true | |
+| import_batch_id | uuid | NULL | — | FK → import_batches.id **[v3.6 addition]** |
 | *+ standard audit columns* | | | | |
 
 **Constraints:** `UNIQUE(company_id, item_code)`
@@ -2088,7 +2065,7 @@ Creditable withholding taxes (2307 only) and other credits applied against incom
 | 179 | `notification_delivery_logs` | MODULE 24: Notifications | Doc 03 § 21 |
 | 180 | `document_templates` | MODULE 25: Document Templates & Generated Output | Doc 03 § 14 |
 | 181 | `generated_documents` | MODULE 25: Document Templates & Generated Output | Doc 03 § 14 |
-| 182 | `generated_document_versions` | MODULE 25: Document Templates & Generated Output | Doc 03 § 14 |
+| 182 | `generated_document_versions` | MODULE 25: Document Templates & Generated Output | Doc 03 § 13 **[v3.6 fix: was § 14]** |
 | 183 | `budgets` | MODULE 26: Budget | Doc 03 § 21 |
 | 184 | `budget_lines` | MODULE 26: Budget | Doc 03 § 21 |
 | 185 | `period_close_checklists` | MODULE 27: Period Close | Doc 03 § 21 |
@@ -4291,18 +4268,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 ---
 
 ### `generated_document_versions`
-| Column | Type | Null | Default | Description |
-|---|---|---|---|---|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| company_id | uuid | NOT NULL | — | FK → companies.id |
-| generated_document_id | uuid | NOT NULL | — | FK → generated_documents.id |
-| version_no | integer | NOT NULL | — | Increments on each regeneration |
-| file_path | text | NOT NULL | — | Supabase Storage path |
-| generated_at | timestamptz | NOT NULL | now() | |
-| generated_by | uuid | NOT NULL | — | FK → profiles.id |
-| regeneration_reason | text | NULL | — | e.g., 'template_updated','data_correction' |
-
-> Audit. Immutable.
+> Canonical spec: See Doc03 Section 13 (`generated_document_versions`). The §43 duplicate has been removed. Canonical spec updated with `version_no`, `regeneration_reason`, and `file_hash_sha256`. **[v3.6 dedup fix]**
 
 ---
 

@@ -311,7 +311,7 @@ UNIQUE: `(company_id, fiscal_period_id)`
 
 - `posting_batches.idempotency_key` (text, UNIQUE) — set by Edge Function caller using `source_document_type + ':' + source_document_id + ':' + attempt_token`
 - On Edge Function retry: same idempotency_key → returns existing batch result, no re-processing
-- `journal_entries` duplicate guard: UNIQUE(company_id, source_document_type, source_document_id) WHERE je_type = 'auto' — prevents double-posting even without idempotency_key
+- `journal_entries` duplicate guard: UNIQUE(company_id, source_document_type, source_document_id) WHERE je_type = 'system' — prevents double-posting even without idempotency_key **[v3.6 fix: 'auto' is not a canonical je_type value; Doc03 canonical list is CHECK IN ('manual','system','reversal','opening','recurring','adjustment','amortization','revenue_recognition','auto_reversal'); posting-engine-generated JEs use je_type = 'system']**
 - Compliance entry deduplication: posting engine checks existence before INSERT; abort if found for same source document and status = 'posted'
 
 ---

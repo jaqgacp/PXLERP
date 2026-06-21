@@ -95,6 +95,24 @@ Fields added to `chart_of_accounts`:
 
 ### E. Other v3 Changes
 
+### F. Phase 1 vs Phase 2 Feature Scope — Explicit Decision Record (v3.6)
+
+> **Added to address Codex finding: architecture docs must explicitly state Phase 1 vs Phase 2 for all non-trivial feature areas.**
+
+| Feature Area | Tables (Doc02 #) | Phase Decision | Rationale |
+|---|---|---|---|
+| Amortization Schedules | `amortization_schedules`, `_lines`, `_runs`, `_run_details` (#201–204) | **Phase 1** | Required for prepaid expense amortization (prepaid rent, insurance, software) — standard accounting requirement |
+| Revenue Recognition Schedules | `revenue_recognition_schedules`, `_lines`, `_runs`, `_run_details` (#205–208) | **Phase 1** | Required for BIR-compliant deferred revenue treatment on multi-period service contracts and annual retainers |
+| Auto Reversal | `auto_reversal_runs` (#209) + `journal_entries` flag columns | **Phase 1** | Needed for accrual entries posted with next-period auto-reversal (standard accrual accounting) |
+| Budgets | `budgets`, `budget_lines` (#183–184) | **Phase 1** | Budget vs. actual variance analysis — core ERP feature for management reporting |
+| Period Close Checklist | `period_close_checklists`, `period_close_tasks` (#185–186) | **Phase 1** | Ensures systematic period-end process before fiscal period lock |
+| Generated Document Versions | `generated_document_versions` (#182) | **Phase 1** | Required for audit trail of document regeneration (BIR CAS compliance) |
+| 1604E Annual EWT Summary | No separate filing table — derivable from `ewt_entries` | **Phase 2** | Annual aggregate derivable from quarterly 1601EQ data; export-only in Phase 2 |
+| 1604F Annual FWT Summary | No separate filing table — derivable from `fwt_entries` | **Phase 2** | Same rationale as 1604E |
+| Financial Statement Mapping Table | ~~`financial_statement_mappings`~~ **REMOVED** | **REMOVED** | Replaced by COA-embedded `fs_section`, `fs_group`, `fs_sort_order`. **UI label must NOT say "Financial Statement Mappings." Use "COA Classification Setup" or "FS Mapping (COA)".** |
+| Warehouse Locations | ~~`warehouse_locations`~~ | **Phase 2** | Not needed for Phase 1 inventory; `warehouses` table suffices for bin-less stock tracking |
+| Price Lists (multi-tier) | ~~`price_lists`~~ → canonical: `item_prices` (#55) | **Phase 1 — `item_prices` only** | `item_prices` handles Phase 1 pricing. Ghost name `price_lists` removed from all docs. Multi-tier price list management is Phase 2. |
+
 - `posting_rule_sets.effective_from/effective_to` added (Principle 11)
 - `system_account_config` keys expanded: PERCENTAGE_TAX_PAYABLE, FWT_PAYABLE, INCOME_TAX_PAYABLE
 - `customer_tax_profiles` and `supplier_tax_profiles` now versioned with effective_from/effective_to
@@ -107,7 +125,7 @@ Fields added to `chart_of_accounts`:
 | OD-V3-ARCH-01 | Capital goods input VAT amortization (>PHP 1M): Phase 1 or Phase 2? | Phase 1 / Phase 2 | Phase 1: flag at entry + compute at filing. Monthly amortization JE in Phase 2. |
 | OD-V3-ARCH-02 | `companies.tax_type` shadow column: sync automatically via trigger or manual update only? | Auto-trigger / Manual | Auto-trigger after compliance_profiles INSERT (recommended for data integrity) |
 | OD-V3-ARCH-03 | `itr_computation_runs` — how many runs per `income_tax_return_filings`? Is the final run locked? | One final / Multiple allowed | Multiple allowed (recomputation); `is_final = true` marks the run used for filing |
-| OD-V3-ARCH-04 | `doc 03` is the stated canonical spec source, but specs for ~120 tables are scattered in docs 06/07/08. Consolidate into doc 03 or add a cross-reference index? | Consolidate / Cross-ref | Cross-reference index in doc 03 for Phase 1; consolidation in Phase 2 documentation sprint |
+| OD-V3-ARCH-04 | ~~`doc 03` is the stated canonical spec source, but specs for ~120 tables are scattered in docs 06/07/08.~~ | **RESOLVED (v3.4):** Doc 03 Sections 24–44 add specs for all previously uncovered tables. Section 22 cross-reference index covers all 207 active tables. Total spec coverage = 207/207. | RESOLVED |
 
 ## v3 Cross-Document Consistency Validation
 
@@ -118,7 +136,7 @@ Fields added to `chart_of_accounts`:
 - Doc 06: posting engine updated to route based on `party_special_class` at post time ✓
 - Doc 07: new audit events added for income tax computation runs and party classification changes ✓
 - Doc 08: import types updated for COA FS mapping fields and income tax mapping fields ✓
-- **REMAINING GAP**: Doc 03 does not have full column specs for ~120 tables inventoried in doc 02. See OD-V3-ARCH-04. A cross-reference index is added to doc 03 as interim resolution.
+- **RESOLVED (v3.4+):** Doc 03 now has full column specs for all 207 active tables — directly in Doc 03 Sections 1–44 or cross-referenced via the Section 22 index. OD-V3-ARCH-04 is RESOLVED. Spec coverage = 207/207.
 
 ---
 

@@ -148,7 +148,7 @@ Captures before/after values for every field modified on audited tables. Immutab
 | `field_name` | text | NOT NULL | Column name that changed |
 | `old_value` | text | NULL | Serialized old value (NULL if new record) |
 | `new_value` | text | NULL | Serialized new value (NULL if deleted) |
-| `change_type` | text | CHECK IN ('INSERT','UPDATE','DELETE'), NOT NULL | |
+| `change_type` | text | CHECK IN ('insert','update','delete'), NOT NULL | **[v3.6 fix: lowercase per architecture convention]** |
 | `changed_by` | uuid | FK auth.users, NOT NULL | |
 | `changed_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `operation_id` | uuid | NULL | Groups all field changes from a single save operation |
@@ -302,7 +302,7 @@ CAS requirement: every DAT file export must be logged permanently.
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `dat_type` | text | NOT NULL | 'GL' \| 'SL' \| 'SLS' \| 'PUR' \| 'INV' |
+| `dat_type` | text | CHECK IN ('gl','sl','sls','pur','inv'), NOT NULL | BIR CAS DAT file type — lowercase internal value **[v3.6 fix: was uppercase; CHECK constraint uses lowercase per architecture convention]** |
 | `period_from` | date | NOT NULL | |
 | `period_to` | date | NOT NULL | |
 | `fiscal_year_id` | uuid | FK fiscal_years, NULL | |
@@ -385,7 +385,7 @@ Immutable. Supabase Realtime enabled.
 ### Trigger Design
 Every audited table gets two triggers:
 1. **`{table}_audit_trigger`** — fires AFTER INSERT/UPDATE/DELETE, writes to `field_change_history`
-2. **`{table}_immutability_trigger`** — fires BEFORE UPDATE/DELETE, raises exception if `status = 'POSTED'`
+2. **`{table}_immutability_trigger`** — fires BEFORE UPDATE/DELETE, raises exception if `status IN ('posted','voided','reversed')` **[v3.6 fix: was 'POSTED' uppercase; see trigger function below for canonical lowercase values]**
 
 ### Immutability Enforcement
 ```sql
@@ -403,6 +403,6 @@ $$ LANGUAGE plpgsql;
 ### Sequence Gap Detection
 A scheduled Supabase pg_cron job runs nightly:
 - Checks `atp_usage_logs` for gaps in `allocated_number` per `number_series_id`
-- Inserts a row into `system_alerts` (alert_type='ATP_GAP_DETECTED', severity='CRITICAL') if gap found
+- Inserts a row into `system_alerts` (alert_type='atp_gap_detected', severity='critical') if gap found **[v3.6 fix: lowercase per system_alerts CHECK constraints]**
 - Required for CAS audit compliance
-- Also checks when `number_series.current_number` exceeds 80% of `max_number` → inserts `system_alerts` (alert_type='ATP_SERIES_NEAR_LIMIT', severity='WARNING')
+- Also checks when `number_series.current_number` exceeds 80% of `max_number` → inserts `system_alerts` (alert_type='atp_series_near_limit', severity='warning') **[v3.6 fix: lowercase]**

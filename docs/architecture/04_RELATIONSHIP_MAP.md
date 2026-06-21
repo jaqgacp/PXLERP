@@ -204,7 +204,7 @@ suppliers (1)
 ```
 item_categories (1)
   └── items (many)
-        ├── item_units_of_measure (bridge) ──► units_of_measure    ← canonical: units_of_measure #41
+        ├── uom_conversions ──► units_of_measure    ← canonical: uom_conversions #53 **[v3.6 fix: `item_units_of_measure` was ghost name]**
         ├── inventory_balances (many) ──► warehouses               ← canonical: inventory_balances (not item_warehouse_stock)
         └── item_prices (many, per price tier)                     ← canonical: item_prices #46 (price_lists = Phase 2)
 
@@ -642,8 +642,8 @@ import_batches (1)
 | `user_branch_access` | auth.users | branches | Which branches a user can access |
 | `user_roles` | auth.users | roles | Role assignments per user |
 | `role_permissions` | roles | permissions | Which permissions each role has |
-| `item_units_of_measure` | items | units_of_measure | UOM conversions per item |
-| `item_price_lists` | items | price_lists | Pricing per item per list |
+| `uom_conversions` | items / units_of_measure | units_of_measure | Per-item UOM conversion ratios — canonical: `uom_conversions` #53 **[v3.6 fix: `item_units_of_measure` was ghost name]** |
+| `item_prices` | items | (pricing tier) | Per-item price per tier — canonical: `item_prices` #55; Phase 1 only **[v3.6 fix: `item_price_lists`/`price_lists` were ghost names]** |
 | `approval_matrix_steps` | approval_matrix | auth.users/roles | Approver assignments per step |
 | `bank_reconciliation_lines` | bank_reconciliations | transactions | Matched/unmatched lines |
 | `document_relationships` | documents | documents | Cross-document traceability |

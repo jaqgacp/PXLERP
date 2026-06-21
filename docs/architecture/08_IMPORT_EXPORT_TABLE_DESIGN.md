@@ -71,7 +71,7 @@ Header record for every import operation.
 | `import_type` | text | NOT NULL | See import types below |
 | `source_filename` | text | NULL | Original uploaded filename |
 | `storage_path` | text | NULL | Supabase Storage path of uploaded file |
-| `file_format` | text | CHECK IN ('CSV','XLSX','JSON') | |
+| `file_format` | text | CHECK IN ('csv','xlsx','json') | **[v3.6 fix: lowercase per architecture convention; matches Doc03 §15]** |
 | `total_rows` | integer | NOT NULL DEFAULT 0 | Rows in file |
 | `processed_rows` | integer | NOT NULL DEFAULT 0 | Rows attempted |
 | `success_rows` | integer | NOT NULL DEFAULT 0 | Rows successfully imported |
@@ -105,14 +105,14 @@ Header record for every import operation.
 | `approval_matrix` | Setup | `approval_matrix`, `approval_matrix_steps` |
 | `customers` | Master Data | `customers`, `customer_tax_profiles`, `customer_addresses` |
 | `suppliers` | Master Data | `suppliers`, `supplier_tax_profiles`, `supplier_addresses` |
-| `items` | Master Data | `items`, `item_units_of_measure` (bridge table to `units_of_measure`) |
+| `items` | Master Data | `items`, `uom_conversions` (UOM conversion ratios via `units_of_measure`) **[v3.6 fix: `item_units_of_measure` was ghost name; canonical bridge table is `uom_conversions` #53]** |
 | `item_prices` | Master Data | `item_prices` (#46) — **[F-2 fix: was `price_lists`→`item_price_lists`, both were ghost names]** |
 | `bank_accounts` | Master Data | `company_bank_accounts` |
 | `opening_balances` | Opening | `opening_balance_entries` → `journal_entries` |
 | `ar_opening` | Opening | `subsidiary_ledger_entries` (AR), customer outstanding invoices |
 | `ap_opening` | Opening | `subsidiary_ledger_entries` (AP), supplier outstanding bills |
 | `inventory_opening` | Opening | `inventory_cost_layers`, `inventory_movements` |
-| `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedule` |
+| `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedules` **[v3.6 fix: `asset_depreciation_schedule` was ghost name (missing plural 's'); canonical: `asset_depreciation_schedules` #122]** |
 | `coa_fs_mapping` | Setup (v3) | `chart_of_accounts` — bulk update fs_section, fs_group, fs_sort_order, cash_flow_category fields |
 | `income_tax_mappings` | Setup (v3) | `chart_of_accounts` — bulk update is_mcit_gross_income, is_osd_gross_revenue, tax_deductibility fields |
 | `party_special_class` | Master Data (v3) | `customers`, `suppliers` — bulk set party_special_class (government/peza/boi/foreign_entity) |
@@ -154,7 +154,7 @@ All validation errors per import row.
 | `raw_value` | text | NULL | Value that caused the error |
 | `error_code` | text | NOT NULL | Machine-readable error code |
 | `error_message` | text | NOT NULL | Human-readable description |
-| `severity` | text | CHECK IN ('ERROR','WARNING'), NOT NULL DEFAULT 'ERROR' | WARNING rows can still import |
+| `severity` | text | CHECK IN ('error','warning'), NOT NULL DEFAULT 'error' | 'warning' rows can still import **[v3.6 fix: lowercase per architecture convention; matches Doc03 §15]** |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() | |
 
 ### Common Error Codes
@@ -351,6 +351,6 @@ Version history for re-uploaded attachments.
 
 - Only available for imports where no records have been posted
 - Sets `deleted_at` on all records with matching `import_batch_id`
-- Updates `import_batches.status = 'ROLLED_BACK'`
+- Updates `import_batches.status = 'rolled_back'` **[v3.6 fix: lowercase]**
 - Creates `audit_logs` entry (event_type='BULK_IMPORT_ROLLED_BACK')
 - Opening balance journal entries that have been POSTED cannot be rolled back via batch — require manual reversal JE

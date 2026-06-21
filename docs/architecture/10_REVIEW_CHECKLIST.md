@@ -249,7 +249,7 @@ Each item requires explicit sign-off from the responsible party before proceedin
 | 12.4 | Opening balance flow: `opening_balance_entries` → posted JE confirmed | CPA Lead | [ ] | |
 | 12.5 | DAT file export types enumerated and sufficient for CAS filing | CPA Lead | [ ] | |
 | 12.6 | Setup module import types confirmed: `payment_terms`, `atc_codes`, `tax_codes`, `warehouses`, `units_of_measure`, `approval_matrix` | Business Lead | [ ] | |
-| 12.7 | Master data import types confirmed: `customers`, `suppliers`, `items`, `price_lists`, `bank_accounts` | Business Lead | [ ] | |
+| 12.7 | Master data import types confirmed: `customers`, `suppliers`, `items`, `item_prices`, `bank_accounts` — **[v3.6: `price_lists` was ghost name; canonical: `item_prices` #55]** | Business Lead | [ ] | |
 | 12.8 | `export_jobs` table name confirmed (not `export_batches`) | DB Architect | [ ] | |
 | 12.9 | `attachment_versions` table confirmed for re-upload history | DB Architect | [ ] | |
 | 12.10 | `file_hash_sha256` on `attachments` for integrity verification confirmed | DB Architect | [ ] | |
@@ -962,4 +962,50 @@ All open decisions must be resolved before SQL migrations begin.
 | 50.9 | Group G (Doc02) — slots #193–#198 RESERVED/REMOVED notation confirmed; `export_jobs` (#189) and `generated_report_files` (#190) confirmed as consolidation targets | DB Architect | [ ] |
 | 50.10 | All Section 50 items marked [x] — normalization pass complete | All | [ ] |
 
-**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 are [x].**
+**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 AND 51.1–51.10 are [x].**
+
+---
+
+## SECTION 51: Codex Final Audit — Fix Verification Gate (v3.6)
+
+**Trigger:** Codex audit of commit 390abe33 returned DATABASE FREEZE NOT APPROVED with 9 categories of objective defects. This section tracks verification of all v3.6 fixes applied in response.
+
+### Changes Applied (v3.6 Codex Response Pass)
+
+| Fix # | Finding | Resolution | Doc(s) |
+|---|---|---|---|
+| FX-01 | `payment_terms` duplicate spec in §5 (simpler, missing `code`/`due_days` etc.) AND §21 | §5 replaced with redirect note; §21 upgraded to canonical merged spec with `code`, `due_days`, `discount_days`, `discount_percent`, `import_batch_id`, `UNIQUE(company_id, code)` | Doc 03 |
+| FX-02 | `items` duplicate spec in §5 (correct `base_uom_id` FK) AND §21 (stale `unit_of_measure text` raw field) | §5 replaced with redirect note; §21 upgraded to canonical merged spec — `base_uom_id uuid FK → units_of_measure.id`, `sales_vat_code_id`, `purchase_vat_code_id`, `standard_cost`, `standard_price`, `is_tracked`, `import_batch_id` | Doc 03 |
+| FX-03 | `generated_document_versions` duplicate spec in §13 AND §43 | §43 replaced with redirect note; §13 canonical spec upgraded with `version_no`, `regeneration_reason`, `file_hash_sha256` | Doc 03 |
+| FX-04 | Section 22 cross-ref: `generated_document_versions` listed as "§ 14" when spec is in §13 | Updated to "§ 13" | Doc 03 |
+| FX-05 | `item_units_of_measure` ghost name in Doc04 bridge table inventory AND items diagram | Replaced with canonical `uom_conversions` (#53) in both locations | Doc 04 |
+| FX-06 | `item_price_lists`/`price_lists` ghost names in Doc04 bridge table inventory | Replaced with canonical `item_prices` (#55) | Doc 04 |
+| FX-07 | `je_type = 'auto'` in Doc06 idempotency guard — 'auto' is not a canonical je_type value | Changed to `je_type = 'system'` with rationale note | Doc 06 |
+| FX-08 | `change_type CHECK IN ('INSERT','UPDATE','DELETE')` uppercase in Doc07 `field_change_history` | Lowercased to `('insert','update','delete')` | Doc 07 |
+| FX-09 | `dat_type 'GL'\|'SL'\|'SLS'\|'PUR'\|'INV'` had no CHECK and used uppercase | Added `CHECK IN ('gl','sl','sls','pur','inv')` — lowercase internal values | Doc 07 |
+| FX-10 | `status = 'POSTED'` in immutability trigger description text | Fixed to `status IN ('posted','voided','reversed')` | Doc 07 |
+| FX-11 | `severity='WARNING'`/`alert_type='ATP_SERIES_NEAR_LIMIT'` uppercase in trigger notes | Lowercased to `'warning'`/`'atp_series_near_limit'` and `'atp_gap_detected'`/`'critical'` | Doc 07 |
+| FX-12 | `file_format CHECK IN ('CSV','XLSX','JSON')` uppercase in Doc08 `import_batches` | Lowercased to `('csv','xlsx','json')` | Doc 08 |
+| FX-13 | `severity CHECK IN ('ERROR','WARNING')` uppercase in Doc08 `import_validation_errors` | Lowercased to `('error','warning')`, default changed to `'error'` | Doc 08 |
+| FX-14 | `import_batches.status = 'ROLLED_BACK'` uppercase in Doc08 rollback procedure | Lowercased to `'rolled_back'` | Doc 08 |
+| FX-15 | `item_units_of_measure` ghost name in Doc08 items import target | Changed to `uom_conversions` | Doc 08 |
+| FX-16 | `asset_depreciation_schedule` (missing plural) ghost name in Doc08 fixed_assets_opening | Changed to canonical `asset_depreciation_schedules` (#122) | Doc 08 |
+| FX-17 | Doc01 stale "REMAINING GAP: ~120 tables" statement | Replaced with "RESOLVED (v3.4+): 207/207 tables covered" | Doc 01 |
+| FX-18 | Doc01 OD-V3-ARCH-04 listed as unresolved (referenced ~120 table gap) | Marked RESOLVED (v3.4) | Doc 01 |
+| FX-19 | No explicit Phase 1 vs Phase 2 decision record for overengineering items | Added Section F "Phase 1 vs Phase 2 Feature Scope" decision table to Doc01 | Doc 01 |
+| FX-20 | `price_lists` ghost name in Doc10 checklist item 12.7 | Changed to `item_prices` | Doc 10 |
+
+### Section 51 Sign-Off Items
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 51.1 | FX-01/02/03/04: Doc03 duplicate specs eliminated — `payment_terms`, `items`, `generated_document_versions` each have exactly ONE canonical spec heading | DB Architect | [ ] |
+| 51.2 | FX-02: `items.base_uom_id uuid FK → units_of_measure.id` confirmed as canonical (replaces raw text `unit_of_measure`) | DB Architect + Dev Lead | [ ] |
+| 51.3 | FX-05/06/15: All `item_units_of_measure`, `item_price_lists`, `price_lists` ghost names removed from Docs 04 and 08 | DB Architect | [ ] |
+| 51.4 | FX-07: `je_type = 'system'` confirmed as correct guard for posting-engine-generated JEs (replaces non-existent 'auto') | Dev Lead | [ ] |
+| 51.5 | FX-08/09/10/11: Doc07 lowercase enum/status values confirmed — `change_type`, `dat_type`, immutability trigger description, `system_alerts` INSERT values | DB Architect | [ ] |
+| 51.6 | FX-12/13/14: Doc08 lowercase enum/status values confirmed — `file_format`, `severity`, rollback status | DB Architect | [ ] |
+| 51.7 | FX-16: `asset_depreciation_schedules` (plural) confirmed as canonical — matches Doc02 #122 and Doc03 §24 | DB Architect | [ ] |
+| 51.8 | FX-17/18/19: Doc01 Phase decision table reviewed and accepted by Business Lead and CPA Lead | Business Lead + CPA Lead | [ ] |
+| 51.9 | After v3.6 fixes: zero remaining ghost names in active architecture (non-cleanup) sections of all docs | DB Architect | [ ] |
+| 51.10 | After v3.6 fixes: total duplicate spec headings in Doc03 = 0; active canonical specs = 207; redirect notes only for previously-duplicated tables | DB Architect | [ ] |
