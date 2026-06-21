@@ -12,12 +12,12 @@
 - **`nolco_schedules` export**: REMOVED; replaced by `nolco_tracking` export type.
 - **Party classification import**: `party_special_class` bulk import allows updating customers/suppliers.party_special_class in batch — needed for companies migrating from systems where government/PEZA customers were not separately flagged.
 
-## v3 Open Decisions
+## v3 Open Decisions — ALL RESOLVED (v3.7)
 
-| OD# | Decision | Status |
+| OD# | Decision | **RESOLUTION** |
 |---|---|---|
-| OD-08-V3-01 | `coa_fs_mapping` import — allow partial update (only update rows where fs_section is null) or always overwrite? | Recommended: always overwrite with explicit confirm prompt — fs_section drives FS report generation. |
-| OD-08-V3-02 | `income_tax_mappings` import — update `is_mcit_gross_income` and `is_osd_gross_revenue` on COA accounts — require CPA review flag before allowing import? | Recommended: Yes — require role check (CONTROLLER_ROLE or higher). |
+| OD-08-V3-01 | `coa_fs_mapping` import — partial update or always overwrite? | **RESOLVED v3.7:** Always overwrite with explicit confirmation prompt. The import UI must display a "This will overwrite all existing FS mapping classifications for your COA. Proceed?" warning before import begins. Always overwrite (not merge) ensures the imported CPA-approved template is applied cleanly without old stale values mixing in. Developer: on import execution, run `UPDATE chart_of_accounts SET fs_section=?, fs_group=?, fs_sort_order=?, cash_flow_category=? WHERE company_id=? AND account_code=?` for each row. |
+| OD-08-V3-02 | `income_tax_mappings` import — require CPA review flag? | **RESOLVED v3.7:** Yes. The import_type `income_tax_mappings` (updates `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility` on COA) requires the caller to have role `CONTROLLER` or `COMPANY_ADMIN`. The Edge Function checks this before processing. Developer: `IF auth.uid() NOT IN (SELECT user_id FROM user_roles WHERE company_id=? AND role IN ('controller','company_admin')) THEN ABORT`. |
 
 ---
 
@@ -34,12 +34,12 @@
 
 ---
 
-## Open Decisions Remaining
+## Open Decisions — ALL RESOLVED (v3.7)
 
-| OD # | Question | Status |
+| OD # | Question | **RESOLUTION** |
 |---|---|---|
-| OD-17 | Should attachment storage use a single bucket per company or a single shared bucket with folder-based separation? | Recommended: single shared bucket with `company_id/entity_type/entity_id/` path structure. Confirm before Supabase Storage setup. |
-| OD-18 | Should the import template (column mapping) be saved per import_type so users don't re-map columns on every import? | Recommended: Yes — store as `import_column_templates` table (Phase 2). Phase 1: column_mapping stored per batch. |
+| OD-17 | Single bucket or per-company bucket for attachments? | **RESOLVED v3.7:** Single shared Supabase Storage bucket named `erp-attachments` with path structure `{company_id}/{entity_type}/{entity_id}/{filename}`. Supabase Storage RLS policies restrict download to authenticated users whose `company_id` matches the path prefix. Developer: `attachments.storage_path = '{company_id}/{entity_type}/{entity_id}/{uuid}_{original_filename}'`. The storage bucket name is `erp-attachments`. RLS policy: `USING (auth.uid() IN (SELECT user_id FROM user_company_access WHERE company_id = (storage.foldername(name))[1]::uuid))`. |
+| OD-18 | Save import column mapping templates? | **RESOLVED v3.7:** Phase 2. In Phase 1, `import_batches.column_mapping jsonb` stores the mapping used for each individual import. The user must re-map columns on each import. The `import_templates` table (#174) exists in the schema but the column mapping save/load feature is Phase 2. Developer: `import_templates` table may be created in Phase 1 migration but the UI save/load feature is deferred. |
 
 ---
 

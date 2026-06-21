@@ -1,6 +1,6 @@
 # PXL ERP — Posting Engine Table Design
-**Version:** 3.3 — Brutal Audit Fix Pass
-**Status:** v3.3 — Brutal Audit Fix Pass Applied. Freeze pending Section 47 sign-off.
+**Version:** 3.7 — Implementation Readiness Fix Pass
+**Status:** v3.7 — All open decisions resolved. Complete posting rules for all 21 transaction types. Freeze pending Section 52 sign-off.
 
 ---
 
@@ -13,13 +13,13 @@
 - **Government customer routing (v3)**: When posting a sales document, the engine reads `customers.party_special_class`. If `party_special_class = 'government'`, the resulting `vat_entries` record is written with `vat_classification = 'government'`. This value is NOT stored on `sales_invoice_lines` or `cash_sale_lines` — it is derived and set at posting time. Party_special_class values: NULL (regular), 'government', 'peza', 'boi', 'foreign_entity'. Only 'government' triggers a special vat_entries classification; others affect zero-rating rules (PEZA/BOI zero-rated, foreign = export zero-rated).
 - Confirmed: EWT line routing uses ATC code series prefix (WC/WI = EWT → 1601EQ; WF = FWT → 1601FQ)
 
-## v3 Remaining Open Decisions
+## v3 Open Decisions — ALL RESOLVED (v3.7)
 
-| OD# | Decision | Options | Recommended |
-|---|---|---|---|
-| OD-PE-01 | `posting_rule_sets` — are rules company-specific or system-wide (seeded)? | Company-specific (customizable) / System-seeded (immutable) | System-seeded with `is_system=true`; companies get copies they can clone |
-| OD-PE-02 | When `taxpayer_type = 'non_vat'`, do `vat_entries` get created with zero VAT or skipped entirely? | Create zero-rate vat_entries / Skip vat_entries, create pt_entries only | Skip vat_entries; create percentage_tax_entries directly |
-| OD-PE-03 | Capital goods input VAT (>PHP 1M) — Phase 1: accrue monthly amortization via recurring JE or compute at filing time? | Recurring JE / Compute at filing | Phase 1: Compute at filing; recurring JE in Phase 2 |
+| OD# | Decision | **RESOLUTION** |
+|---|---|---|
+| OD-PE-01 | `posting_rule_sets` — company-specific or system-seeded? | **RESOLVED v3.7:** System-seeded with `is_system=true`. At company onboarding, the setup wizard seeds one active `posting_rule_set` per standard `transaction_type` with `is_system=true`. Companies may clone a system rule (INSERT new row with `is_system=false`) to customize. System rules cannot be deleted or deactivated. Cloned rules take precedence over system rules when `effective_from` matches or is later. Implementation: at post time, load rule where `company_id=? AND transaction_type=? AND effective_from<=document_date AND (effective_to IS NULL OR effective_to>document_date)` ORDER BY `is_system ASC, effective_from DESC` LIMIT 1. |
+| OD-PE-02 | When `taxpayer_type='non_vat'`, vat_entries or pt_entries? | **RESOLVED v3.7:** Skip `vat_entries` entirely. Insert `percentage_tax_entries` only. The posting engine checks `company_compliance_profiles.taxpayer_type` at step 11. If `'non_vat'`: (a) do NOT write to `vat_entries`; (b) INSERT `percentage_tax_entries` with `pt_rate` from `percentage_tax_codes` effective on `document_date`. If `'vat'`: write `vat_entries` as normal; no `percentage_tax_entries`. No mixing. |
+| OD-PE-03 | Capital goods input VAT (>PHP 1M) — Phase 1 handling? | **RESOLVED v3.7:** Phase 1: classify the input VAT as `INPUT_VAT_CAPITAL_GOODS` at posting time (book full amount to deferred capital goods VAT account). Compute amortized monthly amounts at filing time (outside the posting engine — accountant manually computes on 2550M). Phase 2 will add a recurring JE generator for monthly capital goods VAT amortization. Developer action: at posting, check `cash_purchase_lines.input_vat_amount > 1_000_000` OR the aggregate capital goods amount; if true, route to `INPUT_VAT_CAPITAL_GOODS` system config key instead of `INPUT_VAT`. |
 
 ## v3 Cross-Document Consistency Validation
 
@@ -96,7 +96,9 @@ Defines the top-level rule set for each transaction type.
 **v3 Principle 11 Note:** If BIR changes VAT rate or EWT rates, a new `posting_rule_set` with updated `effective_from` is inserted. Historical transactions use the rule set active on their `document_date`. Do NOT update existing active rule sets — insert new versions.
 
 **Valid `transaction_type` values:**
-`sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `stock_adjustment` | `asset_depreciation` | `bank_fund_transfer` | `journal_entry` | `stock_transfer` | `asset_disposal`
+`sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `petty_cash_replenishment` | `stock_adjustment` | `stock_transfer` | `customer_return` | `purchase_return` | `sales_debit_memo` | `supplier_debit_memo` | `asset_acquisition` | `asset_depreciation` | `asset_disposal` | `bank_fund_transfer` | `bank_adjustment` | `inter_branch_transfer` | `journal_entry`
+
+**[v3.7: added 8 previously missing transaction types — petty_cash_replenishment, stock_transfer, customer_return, purchase_return, sales_debit_memo, supplier_debit_memo, asset_acquisition, bank_adjustment, inter_branch_transfer. Each has a documented posting rule in Section 8.]**
 
 > **Percentage Tax Note (Principle 3 Driver 1):** `sales_invoice` and `cash_sale` posting rules check `company_compliance_profiles.taxpayer_type` at post time. If `taxpayer_type = 'non_vat'`, the posting engine creates `percentage_tax_entries` instead of `vat_entries`. No separate `transaction_type` is needed — the same source documents drive different compliance entries depending on the company's taxpayer type.
 
@@ -434,6 +436,337 @@ CR: Input VAT (reversed input VAT amount)                          FROM_SYSTEM_C
 - Writes negative `vat_entries` record (reversal of input VAT)
 - Updates `subsidiary_ledger_entries` (AP debit)
 - transaction_type = `'vendor_credit'` — **[B-8 addition]**
+
+---
+
+## 8b. Complete Posting Rules — All Remaining Transaction Types (v3.7)
+
+> **v3.7 note:** These rules complete the posting engine. Every transaction type listed in `posting_rule_sets.transaction_type` now has a documented rule. No transaction type may be posted without a rule in this section or Section 8.
+
+---
+
+### Sales Invoice Posting (AR Created)
+
+**Source document:** `sales_invoices` + `sales_invoice_lines`
+**Posting trigger:** `sales_invoices.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Accounts Receivable (sales_invoices.total_amount)              FROM_SYSTEM_CONFIG 'AR_TRADE'
+CR: Revenue Account (per sales_invoice_lines.net_amount)           FROM_ITEM (revenue_account_id) or FROM_CUSTOMER (sales_account_id)
+CR: Output VAT Payable (per sales_invoice_lines.vat_amount)        FROM_SYSTEM_CONFIG 'OUTPUT_VAT'
+CR: EWT Payable (ewt_entries.ewt_amount) [if EWT-subject]          FROM_SYSTEM_CONFIG 'EWT_PAYABLE'
+```
+
+**Note on AR amount:** `AR_TRADE` debit = `total_amount - ewt_amount`. EWT withheld by the customer reduces cash receivable; it does NOT reduce the revenue or the VAT — EWT is a pre-payment of the seller's income tax collected at source.
+
+**Journal lines detail:**
+- Line 1: DR `AR_TRADE` — `total_amount - ewt_amount` (net receivable after EWT)
+- Line 2: CR Revenue per line — `net_amount` (sum across all lines)
+- Line 3: CR `OUTPUT_VAT` — `vat_amount` (sum across all vat lines)
+- Line 4: CR `EWT_PAYABLE` — `ewt_amount` [only if customer `is_ewt_agent=true`]
+
+**Compliance writes (Step 11):**
+- INSERT `vat_entries` (one per line): `vat_direction='output'`, `vat_classification` derived from `customers.party_special_class` ('government' if government, 'zero_rated' if PEZA/BOI/foreign_entity, 'vatable' otherwise)
+- INSERT `ewt_entries` (if applicable): payee snapshot from `customer_tax_profiles` effective on `document_date`
+
+**Subsidiary ledger:** INSERT `subsidiary_ledger_entries` with `ledger_type='ar'`, `document_type='sales_invoice'`, `document_id=sales_invoice.id`, `debit_amount=total_amount-ewt_amount`
+
+**Audit write:** INSERT `audit_logs` (`event_type='document_posted'`, `entity_type='sales_invoices'`, `entity_id=sales_invoice.id`)
+
+**Idempotency:** UNIQUE `(company_id, source_document_type, source_document_id) WHERE je_type='system'` on `journal_entries` prevents duplicate posting.
+
+**Period validation:** `document_date` must fall in a `fiscal_period` with `status='open'`. Abort if `'closed'` or `'locked'`.
+
+**Reversal:** Sales Invoice reversal = Sales Credit Memo (separate document). No direct JE reversal of a sales_invoice.
+
+---
+
+### Vendor Bill Posting (AP Created)
+
+**Source document:** `vendor_bills` + `vendor_bill_lines`
+**Posting trigger:** `vendor_bills.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Inventory / Expense Account (per vendor_bill_lines.net_amount)   FROM_ITEM or FROM_LINE
+DR: Input VAT (per vendor_bill_lines.input_vat_amount)               FROM_SYSTEM_CONFIG 'INPUT_VAT' (or 'INPUT_VAT_CAPITAL_GOODS' if capital goods)
+CR: Accounts Payable (vendor_bills.total_amount - ewt_amount)        FROM_SYSTEM_CONFIG 'AP_TRADE'
+CR: EWT Payable (ewt_entries.ewt_amount) [if EWT-subject]            FROM_SYSTEM_CONFIG 'EWT_PAYABLE'
+CR: FWT Payable (fwt_entries.fwt_amount) [if FWT-subject ATC]        FROM_SYSTEM_CONFIG 'FWT_PAYABLE'
+```
+
+**Note on AP amount:** `AP_TRADE` credit = `total_amount - ewt_amount` (or `- fwt_amount`). The net amount owed to the supplier is reduced by the withholding tax the company is obligated to remit to BIR on the supplier's behalf.
+
+**VAT routing (per line):**
+- `vat_classification='vatable'` → `INPUT_VAT`
+- `vat_classification='capital_goods'` → `INPUT_VAT_CAPITAL_GOODS` (if input_vat_amount > 1,000,000, Phase 1 books full amount here; accountant computes monthly amortization manually on 2550M)
+- `vat_classification='services'` → `INPUT_VAT` (services VAT treated same as standard input VAT in Phase 1)
+- `vat_classification='zero_rated'` or `'exempt'` → no VAT entry
+
+**Compliance writes (Step 11):**
+- INSERT `vat_entries` (one per taxable line): `vat_direction='input'`
+- INSERT `ewt_entries` (one per EWT-subject line): ATC from `vendor_bill_lines.ewt_atc_id`; payee snapshot from `supplier_tax_profiles` effective on `document_date`
+- INSERT `fwt_entries` (one per FWT-subject line): ATC starts with 'WF'
+
+**Subsidiary ledger:** INSERT `subsidiary_ledger_entries` with `ledger_type='ap'`, `document_type='vendor_bill'`, `credit_amount=total_amount-ewt_amount`
+
+**Audit/Idempotency/Period/Reversal:** Same pattern as Sales Invoice. Reversal = Vendor Credit Memo (separate document).
+
+---
+
+### Receipt Posting (AR Collection)
+
+**Source document:** `receipts` (official receipts, collection receipts)
+**Posting trigger:** `receipts.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Cash / Bank (receipts.amount_received)                          FROM_LINE (receipts.bank_account_id → gl_account) or FROM_SYSTEM_CONFIG 'CASH_ON_HAND'
+CR: Accounts Receivable (receipts.amount_applied)                   FROM_SYSTEM_CONFIG 'AR_TRADE'
+CR: Unearned Discount (if early-payment discount applied)           FROM_LINE (discount_account_id)
+```
+
+**Application logic:**
+- A receipt applies to one or more open `subsidiary_ledger_entries` (AR). The `amount_applied` per invoice is recorded via `document_relationships` (relationship_type='paid_by') linking receipt to sales_invoice.
+- After posting: UPDATE `subsidiary_ledger_entries.is_open = false` for fully applied AR lines. For partial applications, the `amount_applied` column on the subsidiary ledger entry tracks remaining balance.
+- `receipts.unapplied_amount = amount_received - total(amount_applied)` → if > 0, a credit to Advances from Customers (unearned revenue account) is posted.
+
+**Compliance writes (Step 11):**
+- No new `vat_entries` — VAT was already captured at sales_invoice posting.
+- If receipt issues an Official Receipt under BIR's CAS: ATP series number must be pre-allocated (`atp_series_allocations`); number written to `receipts.or_number`.
+
+**Subsidiary ledger:** UPDATE/close `subsidiary_ledger_entries` records that are fully settled.
+
+**Period/Idempotency/Audit:** Standard pattern.
+
+**Reversal:** If receipt is voided, reverse JE: DR AR_TRADE / CR Cash. INSERT `document_void_register`.
+
+---
+
+### Payment Voucher Posting (AP Payment)
+
+**Source document:** `payment_vouchers` + `payment_voucher_lines`
+**Posting trigger:** `payment_vouchers.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Accounts Payable (payment_vouchers.total_amount - ewt_amount)    FROM_SYSTEM_CONFIG 'AP_TRADE'
+DR: EWT Payable (ewt_entries.ewt_amount) [if EWT was pre-booked]     FROM_SYSTEM_CONFIG 'EWT_PAYABLE'
+CR: Cash / Bank (net_amount_paid)                                     FROM_LINE (bank_account_id → gl_account)
+```
+
+**EWT handling:**
+- If EWT was pre-booked at vendor_bill posting: DR `EWT_PAYABLE` (removes the liability), no new ewt_entries INSERT.
+- If EWT was NOT pre-booked (cash purchase without prior bill): CR `EWT_PAYABLE` + INSERT `ewt_entries` at this step.
+- `net_amount_paid = total_amount - ewt_amount` (cash actually transferred to supplier).
+
+**Application logic:** Links to one or more `vendor_bills` via `document_relationships` (relationship_type='paid_by'). After posting: UPDATE `subsidiary_ledger_entries.is_open = false` for fully applied AP lines.
+
+**Compliance writes (Step 11):**
+- If EWT first booked here (not at bill): INSERT `ewt_entries`.
+- INSERT `audit_logs` (`event_type='document_posted'`).
+
+**Subsidiary ledger:** UPDATE/close `subsidiary_ledger_entries` (AP) for applied bills.
+
+**Period/Idempotency/Reversal:** Standard pattern. Reversal = void the PV; reverse JE re-opens the AP lines.
+
+---
+
+### Petty Cash Replenishment Posting
+
+**Source document:** `petty_cash_replenishments`
+**Posting trigger:** `petty_cash_replenishments.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Petty Cash Fund (petty_cash_funds.account_id)                   FROM_LINE (petty_cash_fund_id → account)
+CR: Cash in Bank (replenishment check account)                       FROM_LINE (bank_account_id → gl_account) or FROM_SYSTEM_CONFIG 'CASH_IN_BANK'
+```
+
+**Logic:** A petty cash replenishment restores the petty cash fund to its imprest amount. The total replenishment amount = sum of all fully posted petty cash vouchers since last replenishment. The individual expenses were already posted at voucher time (DR Expense / CR Petty Cash Fund). The replenishment reverses the cash fund depletion: DR Petty Cash Fund / CR Bank.
+
+**Compliance:** No VAT or EWT entries — those were captured at individual voucher posting.
+
+**Audit:** INSERT `audit_logs` (`event_type='document_posted'`). Link replenishment to vouchers via `document_relationships` (relationship_type='replenished_by').
+
+**Period/Idempotency/Reversal:** Standard pattern.
+
+---
+
+### Customer Return Posting
+
+**Source document:** `customer_returns` (goods returned by customer)
+**Posting trigger:** `customer_returns.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Sales Returns / Revenue Account (customer_return_lines.net_amount)      FROM_LINE (contra_revenue_account_id)
+DR: Output VAT Payable (reversed VAT)                                        FROM_SYSTEM_CONFIG 'OUTPUT_VAT'
+CR: Accounts Receivable (AR_TRADE)                                           FROM_SYSTEM_CONFIG 'AR_TRADE'
+```
+
+**Inventory (if item is tracked):**
+```
+DR: Inventory Control (qty × unit_cost)                                      FROM_SYSTEM_CONFIG 'INVENTORY_CONTROL'
+CR: COGS (reversed COGS for returned goods)                                  FROM_SYSTEM_CONFIG 'COST_OF_GOODS_SOLD'
+```
+
+**Compliance writes (Step 11):**
+- INSERT negative `vat_entries` (reversal of original output VAT).
+- INSERT `inventory_movements` (type='return_in', direction='IN').
+
+**Subsidiary ledger:** INSERT/UPDATE `subsidiary_ledger_entries` (AR credit to reduce receivable). Links to original `sales_invoice` via `document_relationships` (relationship_type='reversed_by').
+
+**Period/Idempotency/Audit/Reversal:** Standard pattern.
+
+---
+
+### Purchase Return Posting
+
+**Source document:** `purchase_returns` (goods returned to supplier)
+**Posting trigger:** `purchase_returns.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Accounts Payable (AP_TRADE)                                              FROM_SYSTEM_CONFIG 'AP_TRADE'
+CR: Inventory / Expense Account (purchase_return_lines.net_amount)           FROM_ITEM or FROM_LINE
+CR: Input VAT (reversed input VAT)                                           FROM_SYSTEM_CONFIG 'INPUT_VAT'
+```
+
+**Inventory (if item is tracked):**
+```
+DR: COGS (reversed COGS for returned goods)                                  FROM_SYSTEM_CONFIG 'COST_OF_GOODS_SOLD'
+CR: Inventory Control (qty × unit_cost)                                      FROM_SYSTEM_CONFIG 'INVENTORY_CONTROL'
+```
+
+**Compliance writes (Step 11):**
+- INSERT negative `vat_entries` (reversal of input VAT).
+- INSERT `inventory_movements` (type='return_out', direction='OUT').
+
+**Subsidiary ledger:** INSERT `subsidiary_ledger_entries` (AP debit to reduce payable). Links to original `vendor_bill` via `document_relationships` (relationship_type='reversed_by').
+
+**Period/Idempotency/Audit/Reversal:** Standard pattern.
+
+---
+
+### Sales Debit Memo Posting
+
+**Source document:** `sales_debit_memos` (issued to customer to increase amount owed)
+**Posting trigger:** `sales_debit_memos.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Accounts Receivable (AR_TRADE)                                           FROM_SYSTEM_CONFIG 'AR_TRADE'
+CR: Revenue Account (per lines.net_amount)                                   FROM_ITEM or FROM_LINE
+CR: Output VAT (per lines.vat_amount)                                        FROM_SYSTEM_CONFIG 'OUTPUT_VAT'
+```
+
+**Use case:** Issued when the original invoice undercharged the customer, or to bill for additional charges (freight, penalties). Treated as an additional receivable.
+
+**Compliance writes (Step 11):** INSERT positive `vat_entries` (additional output VAT).
+
+**Subsidiary ledger:** INSERT `subsidiary_ledger_entries` (AR debit — increases receivable). Links to original sales_invoice or standalone.
+
+**Period/Idempotency/Audit/Reversal:** Standard pattern.
+
+---
+
+### Supplier Debit Memo Posting
+
+**Source document:** `supplier_debit_memos` (issued by us to supplier — we claim a credit from them)
+**Posting trigger:** `supplier_debit_memos.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Accounts Payable (AP_TRADE)                                              FROM_SYSTEM_CONFIG 'AP_TRADE'
+CR: Purchase Returns / Expense Adjustment (per lines.net_amount)             FROM_LINE
+CR: Input VAT (reversed input VAT if applicable)                             FROM_SYSTEM_CONFIG 'INPUT_VAT'
+```
+
+**Use case:** Issued when the original vendor bill overcharged us, or to claim a penalty against the supplier. Reduces our AP balance.
+
+**Compliance writes (Step 11):** INSERT negative `vat_entries` (input VAT reduction) if applicable.
+
+**Subsidiary ledger:** INSERT `subsidiary_ledger_entries` (AP debit — reduces payable). Links to original vendor_bill if applicable.
+
+**Period/Idempotency/Audit/Reversal:** Standard pattern.
+
+---
+
+### Asset Acquisition Posting
+
+**Source document:** `fixed_assets` record created with acquisition data; OR `vendor_bill` with `is_asset_acquisition=true` flag (Phase 1: asset creation linked to vendor bill)
+**Posting trigger:** Asset `status` transitions from `'pending'` to `'active'`; OR vendor_bill posting that creates a fixed asset record.
+
+**Pattern A — Direct asset acquisition (cash purchase):**
+```
+DR: Fixed Asset at Cost (fixed_assets.acquisition_cost)                      FROM_LINE (fixed_assets.asset_account_id)
+CR: Cash / Bank                                                               FROM_SYSTEM_CONFIG 'CASH_IN_BANK' or 'CASH_ON_HAND'
+DR: Input VAT (vat_amount, if applicable)                                     FROM_SYSTEM_CONFIG 'INPUT_VAT_CAPITAL_GOODS'
+```
+
+**Pattern B — Asset acquired via vendor bill:**
+The vendor_bill posting handles the AP side (DR Asset Account / DR Input VAT / CR AP_TRADE). No separate JE is posted at asset activation — the vendor_bill post IS the acquisition post. Asset record is created and linked to the vendor_bill via `document_relationships` (relationship_type='billed_from').
+
+**Depreciation schedule:** After posting, the system auto-creates `asset_depreciation_schedules` and `asset_depreciation_schedule_lines` based on `fixed_assets.depreciation_method`, `useful_life_months`, `salvage_value`, and `acquisition_date`. This is a record creation, not a posting step.
+
+**Compliance writes:** INSERT `vat_entries` if applicable (same as vendor_bill pattern).
+
+**Audit:** INSERT `audit_logs` (`event_type='asset_acquired'`).
+
+---
+
+### Bank Adjustment Posting
+
+**Source document:** `bank_adjustments` (reconciliation adjustments, bank charges, interest earned, error corrections)
+**Posting trigger:** `bank_adjustments.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: [debit_account_id]   (bank_adjustments.debit_account_id)                FROM_LINE
+CR: [credit_account_id]  (bank_adjustments.credit_account_id)               FROM_LINE
+```
+
+**Use cases:**
+- Bank service charge: DR Bank Charges Expense / CR Cash in Bank
+- Interest earned: DR Cash in Bank / CR Interest Income
+- NSF check (bounced check): DR AR_TRADE (re-open) / CR Cash in Bank
+- Error correction: DR/CR as needed with `adjustment_reason` text
+
+**No compliance entries** (no VAT, no EWT) unless the adjustment involves a taxable item (e.g., bank interest may be subject to FWT in some cases — accountant must manually create a separate FWT entry in that case via Journal Entry; Phase 1 does not auto-detect).
+
+**Audit:** INSERT `audit_logs` (`event_type='document_posted'`).
+
+**Period/Idempotency/Reversal:** Standard pattern.
+
+---
+
+### Stock Transfer Posting
+
+**Source document:** `stock_transfers` (movement between warehouses within same company)
+**Posting trigger:** `stock_transfers.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Inventory Control — Destination Warehouse   (qty × unit_cost)            FROM_SYSTEM_CONFIG 'INVENTORY_CONTROL' with branch_id = destination_branch_id
+CR: Inventory Control — Source Warehouse        (qty × unit_cost)            FROM_SYSTEM_CONFIG 'INVENTORY_CONTROL' with branch_id = source_branch_id
+```
+
+**Note:** If source and destination are in the same branch (warehouse to warehouse within same branch), only `inventory_movements` are created — no JE needed (no GL account change). If source and destination are in different branches, the posting engine creates two JE lines to reflect the inter-branch inventory movement in each branch's GL.
+
+**Compliance writes:** INSERT two `inventory_movements` records (type='transfer_out' for source, type='transfer_in' for destination).
+
+**No VAT, no EWT.** Intra-company stock transfer is not a taxable event.
+
+**Audit/Period/Idempotency/Reversal:** Standard pattern.
+
+---
+
+### Inter-Branch Transfer Posting
+
+**Source document:** `inter_branch_transfers` (table #102 — cash/fund transfers between company branches)
+**Posting trigger:** `inter_branch_transfers.status` transitions from `'approved'` to `'posted'`
+
+```
+DR: Inter-Branch Receivable / Cash — Destination Branch                      FROM_LINE (destination_account_id or CASH_IN_BANK for destination branch)
+CR: Inter-Branch Payable / Cash — Source Branch                              FROM_LINE (source_account_id or CASH_IN_BANK for source branch)
+```
+
+**Note:** This covers CASH fund movement between branches (e.g., Head Office sends funds to Branch). Distinct from `bank_fund_transfers` (#101) which covers transfers between bank accounts. For Phase 1 (company-level RLS, no branch-level books), the JE uses two lines with different `branch_id` dimension values — the branch filter is application-layer only.
+
+**No VAT, no EWT.** Intra-company fund transfer is not a taxable event.
+
+**Audit/Period/Idempotency/Reversal:** Standard pattern.
 
 ---
 

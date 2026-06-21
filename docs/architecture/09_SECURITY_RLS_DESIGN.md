@@ -62,12 +62,12 @@ When client contracts require hard branch isolation (e.g., franchise networks wh
 - Added performance index guidance for high-volume compliance tables: `vat_entries`, `ewt_entries`, `percentage_tax_entries`, `income_tax_computation_lines`
 - `customer_tax_profiles` versioning: RLS policy updated — SELECT must filter `WHERE effective_to IS NULL OR effective_to >= current_date` for active-profile lookups; historical lookups at transaction `document_date` require unfiltered access for posting engine (service role)
 
-## v3 Remaining Open Decisions
+## v3 Open Decisions — ALL RESOLVED (v3.7)
 
-| OD# | Decision | Recommended |
+| OD# | Decision | **RESOLUTION** |
 |---|---|---|
-| OD-SEC-V3-01 | `income_tax_computation_lines` — user-visible or service-role-only? | Both: accountants can view; computation triggered via service role |
-| OD-SEC-V3-02 | Should `nolco_tracking` modifications require COMPANY_ADMIN approval or can ACCOUNTANT role update? | ACCOUNTANT can compute; COMPANY_ADMIN approves/locks |
+| OD-SEC-V3-01 | `income_tax_computation_lines` — user-visible or service-role-only? | **RESOLVED v3.7:** User-visible for ACCOUNTANT, CONTROLLER, and COMPANY_ADMIN roles (SELECT). Computation (INSERT/DELETE) is service-role-only via the ITR computation Edge Function. RLS policy: `SELECT: USING (company_id = auth.jwt()->>'company_id' AND EXISTS (SELECT 1 FROM user_roles WHERE user_id=auth.uid() AND role IN ('accountant','controller','company_admin')))`. No direct user INSERT/UPDATE/DELETE allowed — these only come via the Edge Function running as service role. |
+| OD-SEC-V3-02 | `nolco_tracking` — ACCOUNTANT update or COMPANY_ADMIN only? | **RESOLVED v3.7:** ACCOUNTANT can INSERT and UPDATE (compute NOLCO amounts, update carry-forward balances). COMPANY_ADMIN can additionally mark records as `is_locked=true` to prevent further changes. RLS: INSERT/UPDATE allowed for roles `('accountant','controller','company_admin')`; UPDATE of `is_locked` field restricted to `('controller','company_admin')` — enforced via Row Security Check trigger: `IF NEW.is_locked <> OLD.is_locked AND current_user_role NOT IN ('controller','company_admin') THEN RAISE EXCEPTION`. |
 
 ## v3 Cross-Document Consistency Validation
 

@@ -332,10 +332,11 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | date_from | date | NOT NULL | — | Fiscal year start |
 | date_to | date | NOT NULL | — | Fiscal year end |
 | is_current | boolean | NOT NULL | false | Only one TRUE per company |
-| status | text | NOT NULL | 'open' | CHECK IN ('open','closed') |
+| status | text | NOT NULL | 'open' | CHECK IN ('open','closed','locked') — 'locked' = year-end locked after all periods closed and year-end closing journal posted; no further posting allowed without explicit unlock |
 | *+ standard audit columns* | | | | |
 
 **Constraints:** `UNIQUE(company_id, year_code)`, only one `is_current = true` per company (enforced by trigger)
+**Status Transition:** open → closed (all periods closed) → locked (year-end journal posted, CPA sign-off). Locked fiscal years cannot receive new postings. **[v3.7: added 'locked' value — matches Doc06 fiscal_years spec and period-end sequence Step 13]**
 
 ---
 

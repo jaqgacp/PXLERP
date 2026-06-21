@@ -1009,3 +1009,49 @@ All open decisions must be resolved before SQL migrations begin.
 | 51.8 | FX-17/18/19: Doc01 Phase decision table reviewed and accepted by Business Lead and CPA Lead | Business Lead + CPA Lead | [ ] |
 | 51.9 | After v3.6 fixes: zero remaining ghost names in active architecture (non-cleanup) sections of all docs | DB Architect | [ ] |
 | 51.10 | After v3.6 fixes: total duplicate spec headings in Doc03 = 0; active canonical specs = 207; redirect notes only for previously-duplicated tables | DB Architect | [ ] |
+
+---
+
+## SECTION 52: Implementation Readiness Fix Pass Sign-Off (v3.7)
+
+> Full implementation readiness audit identified 3 categories of remaining blockers: (1) incomplete posting engine, (2) unresolved open decisions, (3) missing implementation contracts for income tax and reports. All applied in v3.7.
+
+### Fixes Applied (v3.7)
+
+| Fix # | Finding | Resolution | Doc(s) |
+|---|---|---|---|
+| IR-01 | `fiscal_years.status` conflict: Doc03 had CHECK IN ('open','closed') — 2 values; Doc06 had 3 values including 'locked' | Doc03 updated to CHECK IN ('open','closed','locked') with status transition note | Doc 03 |
+| IR-02 | 8 transaction types missing from `posting_rule_sets.transaction_type` valid values | Added: petty_cash_replenishment, stock_transfer, customer_return, purchase_return, sales_debit_memo, supplier_debit_memo, asset_acquisition, bank_adjustment, inter_branch_transfer | Doc 06 |
+| IR-03 | 13 transaction types had no documented posting rule | Added complete posting rules for: Sales Invoice, Vendor Bill, Receipt, Payment Voucher, Petty Cash Replenishment, Customer Return, Purchase Return, Sales Debit Memo, Supplier Debit Memo, Asset Acquisition, Bank Adjustment, Stock Transfer, Inter-Branch Transfer — each with DR/CR lines, compliance writes, subsidiary ledger, idempotency, reversal behavior | Doc 06 |
+| IR-04 | OD-PE-01, OD-PE-02, OD-PE-03 unresolved in Doc06 | All 3 resolved: system-seeded rules, non-VAT skips vat_entries, capital goods Phase 1 = flag+file | Doc 06 |
+| IR-05 | OD-V3-T1, OD-V3-T2, OD-V3-T3, OD-V3-T4 unresolved in Doc02 | All 4 resolved: on-demand ITR computation, multiple runs/is_final not locking, line-by-line book-tax, 1:many 2307 link | Doc 02 |
+| IR-06 | OD-09, OD-10, OD-11, OD-12 unresolved in Doc02 | All 4 resolved: EWT at voucher, CSV-only bank import, account+department budget, in-app only notifications | Doc 02 |
+| IR-07 | OD-07-V3-01, OD-07-V3-02, OD-15, OD-16 unresolved in Doc07 | All 4 resolved: field_change_history for COA, entity_id=run, system_alerts on Realtime, no partitioning Phase 1 | Doc 07 |
+| IR-08 | OD-08-V3-01, OD-08-V3-02, OD-17, OD-18 unresolved in Doc08 | All 4 resolved: always-overwrite with confirm, CONTROLLER role required, single shared bucket, Phase 2 template saving | Doc 08 |
+| IR-09 | OD-SEC-V3-01, OD-SEC-V3-02 unresolved in Doc09 | Both resolved: ACCOUNTANT SELECT + service-role compute; ACCOUNTANT INSERT/UPDATE NOLCO, COMPANY_ADMIN locks | Doc 09 |
+| IR-10 | OD-V3-ARCH-01, OD-V3-ARCH-02, OD-V3-ARCH-03 unresolved in Doc01 | All 3 resolved: capital goods Phase 1 flag+file, companies.tax_type auto-trigger, multiple ITR runs/is_final pattern | Doc 01 |
+| IR-11 | No income tax implementation guide — developer would guess on deduction methods, MCIT, NOLCO, credits, ITR flow | Complete Income Tax Implementation Guide added (Section 19): setup requirements, deduction method behavior table, MCIT rule, NOLCO computation, tax credits, book-to-tax, ITR run flow, GL posting pattern | Doc 01 |
+| IR-12 | No report generation contract — developer would guess on Balance Sheet aggregation, Income Statement structure, Cash Flow method | Complete Report Generation Contract added (Section 20): Balance Sheet, Income Statement, Trial Balance, General Ledger, Cash Flow (indirect), AR/AP Aging, Customer/Supplier Ledger, VAT Report, EWT Report, Taxable Income Computation | Doc 01 |
+
+### Section 52 Sign-Off Items
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 52.1 | IR-01: `fiscal_years.status CHECK IN ('open','closed','locked')` confirmed in both Doc03 and Doc06 — 0 conflicts | DB Architect | [ ] |
+| 52.2 | IR-02/03: All 21 transaction types in `posting_rule_sets` have a documented posting rule in Doc06 Section 8/8b — confirmed by Dev Lead | Dev Lead | [ ] |
+| 52.3 | IR-03: Sales Invoice DR/CR reviewed by CPA — AR net of EWT, Output VAT, EWT Payable amounts confirmed correct | CPA Lead | [ ] |
+| 52.4 | IR-03: Vendor Bill DR/CR reviewed by CPA — AP net of EWT/FWT, Input VAT routing (standard/capital goods) confirmed correct | CPA Lead | [ ] |
+| 52.5 | IR-03: Receipt posting — AR subledger close logic (is_open=false on settlement) confirmed by Dev Lead | Dev Lead | [ ] |
+| 52.6 | IR-03: Payment Voucher — EWT pre-booked vs not-pre-booked logic confirmed by CPA (two different flows documented) | CPA Lead | [ ] |
+| 52.7 | IR-03: Customer Return / Purchase Return inventory reversal (COGS / Inventory Control) confirmed correct by CPA | CPA Lead | [ ] |
+| 52.8 | IR-03: Asset Acquisition — Pattern A (direct) vs Pattern B (via vendor bill) implementation paths confirmed by Dev Lead | Dev Lead | [ ] |
+| 52.9 | IR-03: Inter-Branch Transfer vs Bank Fund Transfer distinction confirmed (cash fund movement vs bank account transfer) | DB Architect + Dev Lead | [ ] |
+| 52.10 | IR-04 through IR-10: All resolved ODs reviewed and resolutions confirmed by respective owners (see IR-04→10 columns) | All | [ ] |
+| 52.11 | IR-11: Income Tax Implementation Guide reviewed by CPA Lead — MCIT rate (2%), NOLCO carry-forward period, CWT credit treatment all confirmed | CPA Lead | [ ] |
+| 52.12 | IR-11: Cooperative income_tax_regime out-of-scope guard (setup wizard reject) confirmed in implementation plan | Dev Lead | [ ] |
+| 52.13 | IR-12: Balance Sheet generation algorithm (fs_section grouping, normal balance rule, retained earnings handling) reviewed and accepted | CPA Lead + Dev Lead | [ ] |
+| 52.14 | IR-12: Cash Flow Statement (indirect method, cash_flow_category COA tags) confirmed as Phase 1 approach | CPA Lead | [ ] |
+| 52.15 | IR-12: AR/AP Aging buckets (Current/1-30/31-60/61-90/90+) confirmed by CPA as standard PH MSME aging schedule | CPA Lead | [ ] |
+| 52.16 | All Section 52 items marked [x] — Implementation Readiness Fix Pass complete | All | [ ] |
+
+**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 AND 51.1–51.10 AND 52.1–52.16 are [x].**
