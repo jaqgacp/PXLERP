@@ -451,12 +451,15 @@ CR: Output VAT Payable (vat_entries.vat_amount)        account: FROM_SYSTEM_CONF
 ### Cash Purchase Posting (No AP Created)
 
 ```
-DR: Inventory / Expense Account (cash_purchase_lines.gross_amount)  account: FROM_ITEM or FROM_LINE
-DR: Input VAT (vat_entries.vat_amount)                              account: FROM_SYSTEM_CONFIG 'INPUT_VAT'
-CR: Cash / Bank (cash_purchases.net_payable_amount)                 account: FROM_SYSTEM_CONFIG 'CASH_ON_HAND' or 'CASH_IN_BANK'
+DR: Inventory / Expense Account (cash_purchase_lines.net_amount)    account: FROM_ITEM or FROM_LINE
+DR: Input VAT (cash_purchase_lines.input_vat_amount)                account: FROM_SYSTEM_CONFIG 'INPUT_VAT'
+CR: Cash / Bank                                                      account: FROM_SYSTEM_CONFIG 'CASH_ON_HAND' or 'CASH_IN_BANK'
 CR: EWT Payable (ewt_entries.ewt_amount)     [if EWT-subject line]  account: FROM_SYSTEM_CONFIG 'EWT_PAYABLE'
+CR: FWT Payable (fwt_entries.fwt_amount)     [if FWT-subject line]  account: FROM_SYSTEM_CONFIG 'FWT_PAYABLE'
 ```
-- `net_payable_amount = gross_amount + vat_amount - ewt_amount`
+Column reference: `net_amount` = cost before VAT; `input_vat_amount` = VAT portion; `total_amount` = net_amount + input_vat_amount.
+Cash paid = `total_amount - ewt_amount` (or `total_amount - fwt_amount` for FWT lines).
+- `net_payable_amount = net_amount + input_vat_amount - ewt_amount` (or - fwt_amount for FWT lines)
 - EWT Payable is **credited** because the company withholds from the supplier and owes that amount to the BIR — it is a liability, not a deduction from the expense.
 - No `subsidiary_ledger_entries` with ledger_type='AP'
 - EWT is captured at purchase time; no deferred payment step required

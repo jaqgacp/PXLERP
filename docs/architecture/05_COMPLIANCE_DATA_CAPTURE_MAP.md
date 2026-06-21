@@ -280,13 +280,13 @@ Derived from `certificates_2307_received` per quarter:
 
 | Field | Source Table | Notes |
 |---|---|---|
-| Payee TIN | `ewt_entries` | `payee_tin` (snapshot) |
-| Payee name | `ewt_entries` | `payee_name` (snapshot) |
-| ATC code | `ewt_entries` | Final tax ATC codes (WF-series) |
-| Income payment | `ewt_entries` | `ewt_base_amount` |
-| Final tax withheld | `ewt_entries` | `ewt_amount` |
+| Payee TIN | `fwt_entries` | `payee_tin` (snapshot) |
+| Payee name | `fwt_entries` | `payee_registered_name` (snapshot) |
+| ATC code | `fwt_entries` | Final tax ATC codes (WF-series) |
+| Income payment | `fwt_entries` | `fwt_base_amount` |
+| Final tax withheld | `fwt_entries` | `fwt_amount` |
 
-- Separate certificate from 2307; generated from `ewt_entries` where ATC is a FINAL tax code
+> **IMPORTANT:** 2306 is generated from `fwt_entries` (Final Withholding Tax — WF-series ATC), NOT from `ewt_entries` (EWT/creditable — WC/WI-series). FWT is a FINAL tax; the payee cannot use it as a creditable tax against income tax. This is the key distinction from 2307.
 - Stored in `certificates_2306_issued` (parallel structure to `certificates_2307_issued`)
 
 ---
@@ -432,7 +432,7 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | 1601EQ | `ewt_entries`, `ewt_remittances_1601eq` | atc_code, ewt_amount, fiscal_period_id |
 | 2307 Issued | `certificates_2307_issued`, `ewt_entries` | payee_tin (snapshot), quarterly totals |
 | 2307 Received | `certificates_2307_received` | customer_tin (snapshot), quarterly totals |
-| 2306 | `certificates_2306_issued`, `ewt_entries` (final ATC) | payee_tin (snapshot), final tax |
+| 2306 | `certificates_2306_issued`, `fwt_entries` | payee_tin (snapshot), final tax — source is fwt_entries (WF-series), NOT ewt_entries |
 | QAP | `ewt_entries` | payee_tin (snapshot), per-payee per-ATC monthly breakdown |
 | SAWT | `certificates_2307_received` | Customer alphalist |
 | BIR Books | `journal_entries`, `journal_lines` | All posted entries |

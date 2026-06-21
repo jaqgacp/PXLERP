@@ -77,7 +77,7 @@ Header record for every import operation.
 | `success_rows` | integer | NOT NULL DEFAULT 0 | Rows successfully imported |
 | `error_rows` | integer | NOT NULL DEFAULT 0 | Rows with errors |
 | `skipped_rows` | integer | NOT NULL DEFAULT 0 | Rows skipped (duplicates, etc.) |
-| `status` | text | CHECK IN ('PENDING','VALIDATING','VALIDATED','IMPORTING','COMPLETED','FAILED','ROLLED_BACK') | |
+| `status` | text | CHECK IN ('pending','validating','validated','importing','completed','failed','rolled_back') | |
 | `validation_completed_at` | timestamptz | NULL | |
 | `import_started_at` | timestamptz | NULL | |
 | `import_completed_at` | timestamptz | NULL | |
@@ -132,7 +132,7 @@ One record per row in the import file.
 | `row_number` | integer | NOT NULL | Row number in source file (1-based) |
 | `raw_data` | jsonb | NOT NULL | Original row data as key-value |
 | `mapped_data` | jsonb | NULL | After column mapping applied |
-| `status` | text | CHECK IN ('PENDING','VALID','ERROR','IMPORTED','SKIPPED','ROLLED_BACK') | |
+| `status` | text | CHECK IN ('pending','valid','error','imported','skipped','rolled_back') | |
 | `created_record_id` | uuid | NULL | UUID of the record created by this row |
 | `created_record_type` | text | NULL | Table name of created record |
 | `error_count` | integer | NOT NULL DEFAULT 0 | |
@@ -213,8 +213,8 @@ Tracks asynchronous report/export generation jobs. Supabase Realtime enabled.
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `export_type` | text | NOT NULL | See export types below |
 | `parameters` | jsonb | NOT NULL | Filter params: date range, accounts, branches, etc. |
-| `format` | text | CHECK IN ('PDF','XLSX','CSV','DAT','JSON') | |
-| `status` | text | CHECK IN ('QUEUED','PROCESSING','COMPLETED','FAILED') | |
+| `format` | text | CHECK IN ('pdf','xlsx','csv','dat','json') | |
+| `status` | text | CHECK IN ('queued','processing','completed','failed') | |
 | `requested_by` | uuid | FK auth.users, NOT NULL | |
 | `requested_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `started_at` | timestamptz | NULL | |
@@ -324,22 +324,22 @@ Version history for re-uploaded attachments.
 
 ```
 1. User uploads file → Supabase Storage
-2. Edge Function creates import_batches record (status='PENDING')
-3. Edge Function reads file, creates import_rows (status='PENDING')
+2. Edge Function creates import_batches record (status='pending')
+3. Edge Function reads file, creates import_rows (status='pending')
 4. VALIDATION PASS:
    a. For each row: validate required fields, formats, references
    b. Create import_validation_errors for failures
-   c. Update import_rows.status = 'VALID' | 'ERROR'
-   d. Update import_batches.status = 'VALIDATED'
+   c. Update import_rows.status = 'valid' | 'error'
+   d. Update import_batches.status = 'validated'
    e. Update counts: total_rows, error_rows, success_rows
 5. User reviews validation results
-6. User approves import (all-or-nothing for VALID rows; ERROR rows are skipped)
+6. User approves import (all-or-nothing for valid rows; error rows are skipped)
 7. IMPORT PASS:
-   a. For each VALID row: create target record(s)
+   a. For each valid row: create target record(s)
    b. Set created_record_id on import_rows
    c. Set import_batch_id on created records
-   d. Update import_rows.status = 'IMPORTED'
-   e. Update import_batches.status = 'COMPLETED'
+   d. Update import_rows.status = 'imported'
+   e. Update import_batches.status = 'completed'
 8. Audit log: BULK_IMPORT_COMPLETED
 9. Notify initiator: import completed (row counts, error summary)
 ```

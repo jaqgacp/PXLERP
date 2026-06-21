@@ -1,6 +1,6 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.3 — Brutal Audit Fix Pass (Codex Review)
-**Status:** v3.3 — DATABASE FREEZE NOT APPROVED. Codex audit found 9 blockers. Fixes applied in this pass. Freeze pending final verification of all Section 47 items.
+**Version:** 3.4 — Codex Review Fix Pass (Second Codex Review)
+**Status:** v3.4 — DATABASE FREEZE NOT APPROVED. Codex second review scored 52/100. 13 required fixes applied in v3.4. Freeze pending Sections 47 and 48 sign-off.
 **Sign-off Required Before:** SQL migration authoring begins
 
 ---
@@ -792,8 +792,82 @@ All open decisions must be resolved before SQL migrations begin.
 | 47.11 | Overengineering review: Phase 2 deferral candidates confirmed (budgets, period_close_checklists, 1604E/F annual) | Project Lead | [ ] |
 | 47.12 | All Section 47 items marked [x] | All | [ ] |
 
-**DATABASE FREEZE APPROVED only when items 47.1–47.12 are all [x].**
+**DATABASE FREEZE APPROVED only when items 47.1–47.12 and 48.1–48.10 are all [x].**
 
 ---
 
-*Next step after Section 47 is fully signed off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*
+## SECTION 48: Codex Review Fix Pass Sign-Off (v3.4 — Second Codex Review Response)
+
+> Codex reviewed v3.3 and scored 52/100, verdict: NOT SAFE TO MERGE. 13 required fixes identified. All fixes applied in v3.4.
+
+### Fixes Applied (v3.4)
+
+| # | Codex Finding | Fix Applied | Doc(s) Changed |
+|---|---|---|---|
+| RF1 | Doc03 says DATABASE FREEZE APPROVED but Doc10 says NOT APPROVED | Doc03 header updated to v3.4 — DATABASE FREEZE NOT APPROVED | Doc 03 |
+| RF2 | Section 22: 123 rows for 207 tables; 103 missing, 19 extra/stale | Section 22 completely rebuilt from Doc 02 registry — 207 rows, 0 missing, 0 extra | Doc 03 |
+| RF3 | `export_jobs` has no direct Doc03 spec heading | Full spec added to Doc 03 § 44; `generated_report_files` spec also added | Doc 03 |
+| RF4 | Ghost/stale names remain in active docs | Remaining ghost names removed: `journal_entry_lines`→`journal_lines`, `import_jobs`→`import_batches`, stale S22 names purged | Doc 03 |
+| RF5 | Doc05 says 2306 comes from `ewt_entries` — wrong | 2306 source corrected to `fwt_entries` in Doc 05 §7 table and compliance readiness table | Doc 05 |
+| RF6 | Cash purchase posting uses `gross_amount` — not in spec | Fixed to `net_amount` (cost before VAT) + `input_vat_amount` in Doc 06 cash purchase example; FWT payable line added | Doc 06 |
+| RF7 | `journal_entries` missing `posting_batch_id` column | `posting_batch_id uuid NULL FK → posting_batches.id` added to `journal_entries` spec | Doc 03 |
+| RF8 | Doc07/Doc08 uppercase status CHECK constraints | Normalized to lowercase: `pending`, `validating`, `completed`, `failed`, `queued`, `approved`, `rejected`, `cancelled`, `info`, `warning`, `error`, `critical` | Doc 07, 08 |
+| RF9 | Effective-date overlap enforcement only app-layer text | Effective-date overlap table added (Section 48 below) — per-table enforcement method documented | Doc 10 |
+| RF10 | 19 stale SPEC REQUIRED text mentions | Stale text cleaned: Section 22 rebuilt, Task 9 status corrected, Section 45 summary updated | Doc 03 |
+| RF11 | Mixed v3.1/v3.2/v3.3 status language across docs | Doc 03 updated to v3.4; status language consistent across docs | Doc 03 |
+| RF12 | Overengineering / Phase 1 deferrals not reviewed in Doc10 | Phase 2 deferral candidate review added below (Section 48 overengineering table) | Doc 10 |
+| RF13 | Checklist stale contradictions | Section 48 sign-off rows added below; all items [ ] pending human review | Doc 10 |
+
+### Effective-Date Overlap Enforcement Per Table (RF9)
+
+> For all tables with effective_from/effective_to versioning, the enforcement method per table:
+
+| Table | Effective Key Scope | Enforcement Method |
+|---|---|---|
+| `company_compliance_profiles` | `company_id` | Application-layer: query `WHERE company_id = ? AND effective_to IS NULL` before INSERT; partial unique index on `(company_id) WHERE effective_to IS NULL` for current row |
+| `customer_tax_profiles` | `(company_id, customer_id)` | Application-layer: same pattern; UNIQUE `(company_id, customer_id) WHERE effective_to IS NULL` |
+| `supplier_tax_profiles` | `(company_id, supplier_id)` | Application-layer: same pattern; UNIQUE `(company_id, supplier_id) WHERE effective_to IS NULL` |
+| `posting_rule_sets` | `(company_id, rule_set_code)` | Application-layer: same pattern; UNIQUE `(company_id, rule_set_code) WHERE effective_to IS NULL` |
+| `tax_codes` | `(company_id, code)` | No overlapping ranges expected; single active row per code; application-layer guard |
+| `vat_codes` / `ewt_codes` / `fwt_codes` / `percentage_tax_codes` / `atc_codes` | `(company_id, code)` | Same as tax_codes; BIR codes do not version frequently |
+
+> **Enforcement standard:** All versioned tables use the partial unique index pattern (`WHERE effective_to IS NULL`) as the database-level constraint to guarantee exactly one current row per entity. Application-layer validation additionally checks for overlapping date ranges before inserting a new version.
+
+### Phase 2 Deferral / Overengineering Review (RF12)
+
+> Codex warned 207 active tables may be over-scoped for Phase 1. Review per subsystem:
+
+| Subsystem | Tables | Phase 1 Verdict | Rationale |
+|---|---|---|---|
+| Amortization (4 tables) | `amortization_schedules`, `amortization_schedule_lines`, `amortization_runs`, `amortization_run_details` | KEEP Phase 1 | Required for prepaid expense compliance timing (BIR deductibility rule). Prepaid rent/insurance/software are common MSME scenarios. |
+| Revenue Recognition (4 tables) | `revenue_recognition_schedules`, `revenue_recognition_schedule_lines`, `revenue_recognition_runs`, `revenue_recognition_run_details` | **CANDIDATE FOR PHASE 2** | PFRS 15 compliance is complex; most PH MSMEs use cash-basis or simple accrual. Can be Phase 2 deferral without breaking Phase 1 compliance. Recommend Project Lead + CPA Lead confirm. |
+| Auto Reversal (1 table) | `auto_reversal_runs` | KEEP Phase 1 | Needed for recurring accrual JEs which are standard in monthly close. |
+| Field-level audit history | `field_change_history` | KEEP Phase 1 | BIR CAS requirement — all changes to BIR-reportable records must be traceable. |
+| Budget (2 tables) | `budgets`, `budget_lines` | **CANDIDATE FOR PHASE 2** | Feature-gated already. No BIR requirement. Budget vs actual can be Phase 2. Recommend deferring unless customer requires it at launch. |
+| Period Close Checklists (2 tables) | `period_close_checklists`, `period_close_tasks` | **CANDIDATE FOR PHASE 2** | The `fiscal_locks` table handles the locking requirement. Checklist is a process-management convenience, not a compliance requirement. |
+| Notifications (3 tables) | `notification_templates`, `notifications`, `notification_delivery_logs` | KEEP Phase 1 | Core UX for approval workflows. Removing would require redesigning approval flow. |
+| Generated Document Versions (1 table) | `generated_document_versions` | **CANDIDATE FOR PHASE 2** | Version history for regenerated PDFs is a nice-to-have. Primary `generated_documents` table is sufficient for Phase 1. |
+| 1604E / 1604F annual tables | No table | DEFERRED (already) | Annual alphalist derivable from quarterly 1601EQ/1601FQ records. Confirmed in Doc 03 § 46 Task 6. |
+
+**Net overengineering verdict:** Up to 4 table groups (revenue recognition, budgets, period close checklists, generated_document_versions) are candidates for Phase 2 deferral — totaling ~11 tables. However, none require schema changes to defer; they are feature-gated or can be excluded from initial migrations. **Decision requires Project Lead + CPA Lead sign-off (item 48.7 below).**
+
+### Section 48 Sign-Off Items
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 48.1 | All RF1–RF13 fixes reviewed by DB Architect | DB Architect | [ ] |
+| 48.2 | Section 22 rebuilt count verified: 207 rows, 0 extra, 0 missing | DB Architect | [ ] |
+| 48.3 | `export_jobs` spec in Doc 03 § 44 reviewed and matches Doc 08 | DB Architect | [ ] |
+| 48.4 | 2306 source corrected to `fwt_entries`: CPA confirms this is correct | CPA Lead | [ ] |
+| 48.5 | Cash purchase posting example (`net_amount`, `input_vat_amount`) confirmed by CPA | CPA Lead | [ ] |
+| 48.6 | `journal_entries.posting_batch_id` FK strategy confirmed by Dev Lead | Dev Lead | [ ] |
+| 48.7 | Phase 2 deferral candidates confirmed: revenue_recognition, budgets, period_close_checklists, generated_document_versions — defer or keep? | Project Lead + CPA Lead | [ ] |
+| 48.8 | All lowercase status CHECK constraints verified in Doc 07, 08 | DB Architect | [ ] |
+| 48.9 | Effective-date overlap enforcement table reviewed and partial unique index strategy accepted | DB Architect | [ ] |
+| 48.10 | All Section 48 items marked [x] | All | [ ] |
+
+**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 are [x].**
+
+---
+
+*Next step after Sections 47 and 48 are fully signed off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*

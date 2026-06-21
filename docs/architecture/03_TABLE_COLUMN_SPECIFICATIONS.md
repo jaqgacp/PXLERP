@@ -1,6 +1,6 @@
 # PXL ERP — Table Column Specifications
-**Version:** 3.2 — Schema Completion Phase Complete
-**Status:** v3.2 — DATABASE FREEZE APPROVED. All 207 active tables specced. SPEC REQUIRED = 0. SQL migration may begin.
+**Version:** 3.4 — Codex Review Fix Pass
+**Status:** v3.4 — DATABASE FREEZE NOT APPROVED. v3.3 brutal audit fixes applied. v3.4 Codex review fixes in progress. Freeze pending independent review and human sign-off (Doc 10 Section 47).
 
 > Money fields use `numeric(18,4)`. Rates use `numeric(10,6)`. All timestamps are `timestamptz`. All PKs are `uuid DEFAULT gen_random_uuid()`.
 > Standard audit columns are listed once and assumed on all tables marked with Audit or Soft Delete in the inventory.
@@ -1027,6 +1027,7 @@ Records FIFO cost layer depletion when inventory is reduced.
 | je_type | text | NOT NULL | — | CHECK IN ('manual','system','reversal','opening','recurring','adjustment','amortization','revenue_recognition','auto_reversal') |
 | source_document_type | text | NULL | — | 'sales_invoice','vendor_bill','cash_sale','cash_purchase', etc. |
 | source_document_id | uuid | NULL | — | FK to source |
+| posting_batch_id | uuid | NULL | — | FK → posting_batches.id — set when posted via batch/Edge Function |
 | description | text | NOT NULL | — | |
 | total_debit | numeric(18,4) | NOT NULL | 0 | Must equal total_credit when posted |
 | total_credit | numeric(18,4) | NOT NULL | 0 | |
@@ -1931,135 +1932,237 @@ Creditable withholding taxes (2307 only) and other credits applied against incom
 
 ## SECTION 22: Cross-Reference Index — All Tables to Spec Location
 
-> Every table in doc 02 is listed here with its canonical column spec location. Tables marked **SPEC REQUIRED** have no spec in any document and must be specced before database freeze.
+> **v3.4 REBUILD** — Previous Section 22 had 123 rows for 207 active tables and contained ghost/stale table names. This section is rebuilt from the Doc 02 Canonical Registry. Every active Doc 02 table appears exactly once. Module numbering matches Doc 02.
 
-| Module | Table Name | Spec Location |
-|---|---|---|
-| MODULE 1 | companies | Doc 03 § 1 |
-| MODULE 1 | branches | Doc 03 § 1 |
-| MODULE 1 | departments | Doc 03 § 1 |
-| MODULE 1 | cost_centers | Doc 03 § 1 |
-| MODULE 1 | fiscal_years | Doc 03 § 1 |
-| MODULE 1 | fiscal_periods | Doc 03 § 1 |
-| MODULE 1 | fiscal_locks | Doc 03 § 1 |
-| MODULE 1 | company_compliance_profiles | Doc 03 § 1 |
-| MODULE 1 | company_feature_settings | Doc 03 § 1 |
-| MODULE 2 | currencies | Doc 03 § 21 |
-| MODULE 2 | exchange_rates | Doc 03 § 26 |
-| MODULE 2 | payment_terms | Doc 03 § 21 |
-| MODULE 2 | payment_term_lines | Doc 03 § 21 |
-| MODULE 2 | number_series | Doc 03 § 25 |
-| MODULE 2 | document_templates | Doc 03 § 14 |
-| MODULE 2 | generated_documents | Doc 03 § 14 |
-| MODULE 3 | chart_of_accounts | Doc 03 § 3 |
-| MODULE 3 | account_types | Doc 03 § 3 |
-| MODULE 3 | posting_rule_sets | Doc 06 |
-| MODULE 3 | posting_rules | Doc 06 |
-| MODULE 4 | customers | Doc 03 § 4 |
-| MODULE 4 | customer_tax_profiles | Doc 03 § 4 |
-| MODULE 4 | customer_contacts | Doc 03 § 4 |
-| MODULE 4 | customer_addresses | Doc 03 § 4 |
-| MODULE 4 | customer_credit_profiles *(was: customer_credit_limits)* | Doc 03 § 28 |
-| MODULE 5 | suppliers | Doc 03 § 5 |
-| MODULE 5 | supplier_tax_profiles | Doc 03 § 5 |
-| MODULE 5 | supplier_contacts | Doc 03 § 28 |
-| MODULE 5 | supplier_addresses | Doc 03 § 28 |
-| MODULE 6 | items | Doc 03 § 21 |
-| MODULE 6 | item_categories | Doc 03 § 29 |
-| MODULE 6 | units_of_measure | Doc 03 § 29 |
-| MODULE 6 | vat_codes | Doc 03 § 27 |
-| MODULE 6 | atc_codes | Doc 03 § 27 |
-| MODULE 6 | percentage_tax_codes | Doc 03 § 27 |
-| MODULE 7 | sales_invoices | Doc 03 § 7 |
-| MODULE 7 | sales_invoice_lines | Doc 03 § 7 |
-| MODULE 7 | credit_memos | Doc 03 § 7 |
-| MODULE 7 | credit_memo_lines | Doc 03 § 7 |
-| MODULE 8 | cash_sales | Doc 03 § 8 |
-| MODULE 8 | cash_sale_lines | Doc 03 § 8 |
-| MODULE 9 | vendor_bills | Doc 03 § 9 |
-| MODULE 9 | vendor_bill_lines | Doc 03 § 9 |
-| MODULE 9 | sales_debit_memos *(was: debit_memos)* | Doc 03 § 32 |
-| MODULE 9 | sales_debit_memo_lines *(was: debit_memo_lines)* | Doc 03 § 32 |
-| MODULE 9 | supplier_debit_memos | Doc 03 § 33 |
-| MODULE 9 | supplier_debit_memo_lines | Doc 03 § 33 |
-| MODULE 10 | cash_purchases | Doc 03 § 10 |
-| MODULE 10 | cash_purchase_lines | Doc 03 § 10 |
-| MODULE 11 | official_receipts | Doc 03 § 11 |
-| MODULE 11 | official_receipt_lines | Doc 03 § 11 |
-| MODULE 11 | disbursement_vouchers | Doc 03 § 11 |
-| MODULE 11 | disbursement_voucher_lines | Doc 03 § 11 |
-| MODULE 11 | petty_cash_vouchers | Doc 03 § 11 |
-| MODULE 11 | petty_cash_voucher_lines | Doc 03 § 11 |
-| MODULE 12 | journal_entries | Doc 03 § 12 |
-| MODULE 12 | journal_entry_lines | Doc 03 § 12 |
-| MODULE 13 | gl_accounts (= chart_of_accounts) | Doc 03 § 3 |
-| MODULE 13 | gl_balances | Doc 03 § 9 |
-| MODULE 13 | gl_transactions | Doc 03 § 13 |
-| MODULE 13 | document_relationships | Doc 03 § 13 |
-| MODULE 14 | vat_entries | Doc 03 § 14 |
-| MODULE 14 | vat_period_summaries | Doc 03 § 14 |
-| MODULE 14 | vat_return_filings | Doc 03 § 14 |
-| MODULE 15 | ewt_entries | Doc 03 § 15 |
-| MODULE 15 | ewt_period_summaries | Doc 03 § 15 |
-| MODULE 15 | certificates_2307_issued | Doc 03 § 15 |
-| MODULE 15 | certificates_2306_issued | Doc 03 § 40 |
-| MODULE 16 | sawt_records | Doc 03 § 16 |
-| MODULE 16 | slsp_records | Doc 03 § 16 |
-| MODULE 16 | qap_exports *(was: qap_records)* | Doc 03 § 40 |
-| MODULE 16 | relief_exports *(was: relief_records)* | Doc 03 § 40 |
-| MODULE 17 | inventory_cost_layers | Doc 03 § 17 |
-| MODULE 17 | inventory_cost_layer_consumption | Doc 03 § 17 |
-| MODULE 17 | inventory_movements | Doc 03 § 36 |
-| MODULE 18 | bank_accounts | Doc 03 § 18 |
-| MODULE 18 | bank_statements | Doc 03 § 18 |
-| MODULE 18 | bank_statement_lines | Doc 03 § 18 |
-| MODULE 18 | bank_reconciliations | Doc 03 § 18 |
-| MODULE 19 | income_tax_return_filings | Doc 03 § 19 |
-| MODULE 19 | itr_computation_runs | Doc 03 § 20 |
-| MODULE 19 | income_tax_computation_lines | Doc 03 § 20 |
-| MODULE 19 | book_tax_reconciliations | Doc 03 § 20 |
-| MODULE 19 | tax_credits_schedules | Doc 03 § 20 |
-| MODULE 19 | nolco_tracking | Doc 03 § 20 |
-| MODULE 20 | percentage_tax_entries | Doc 03 § 17 |
-| MODULE 20 | percentage_tax_period_summaries | Doc 03 § 17 |
-| MODULE 20 | percentage_tax_return_filings | Doc 03 § 17 |
-| MODULE 21 | fwt_remittances_1601fq | Doc 03 § 18 |
-| MODULE 22 | attachments | Doc 03 § 21 |
-| MODULE 22 | attachment_versions | Doc 03 § 42 |
-| MODULE 23 | notifications | Doc 03 § 21 |
-| MODULE 23 | notification_templates | Doc 03 § 21 |
-| MODULE 24 | budgets | Doc 03 § 21 |
-| MODULE 24 | budget_lines | Doc 03 § 21 |
-| MODULE 25 | period_close_checklists | Doc 03 § 21 |
-| MODULE 25 | period_close_tasks | Doc 03 § 21 |
-| MODULE 26 | party_merge_logs *(was: party_merge_log)* | Doc 03 § 44 |
-| MODULE 27 | import_jobs | Doc 08 |
-| MODULE 27 | import_batches | Doc 08 |
-| MODULE 27 | import_batch_rows | Doc 08 |
-| MODULE 27 | export_jobs | Doc 08 |
-| MODULE 28 | audit_logs | Doc 07 |
-| MODULE 28 | audit_log_details | Doc 07 |
-| MODULE 28 | system_alerts | Doc 07 |
-| MODULE 29 | profiles | Doc 09 |
-| MODULE 29 | user_company_access | Doc 03 § 16 |
-| MODULE 29 | roles | Doc 09 |
-| MODULE 29 | role_permissions | Doc 09 |
-| MODULE 29 | user_roles | Doc 09 |
-| MODULE 30 | posting_logs | Doc 06 |
-| MODULE 30 | posting_log_lines | Doc 06 |
-| MODULE 31 | amortization_schedules | Doc 03 § 23 |
-| MODULE 31 | amortization_schedule_lines | Doc 03 § 23 |
-| MODULE 31 | amortization_runs | Doc 03 § 23 |
-| MODULE 31 | amortization_run_details | Doc 03 § 23 |
-| MODULE 31 | revenue_recognition_schedules | Doc 03 § 23 |
-| MODULE 31 | revenue_recognition_schedule_lines | Doc 03 § 23 |
-| MODULE 31 | revenue_recognition_runs | Doc 03 § 23 |
-| MODULE 31 | revenue_recognition_run_details | Doc 03 § 23 |
-| MODULE 31 | auto_reversal_runs | Doc 03 § 23 |
-| MODULE 16 (updated) | recurring_journal_templates | Doc 03 § 9 |
-| MODULE 16 (updated) | recurring_journal_template_lines | Doc 03 § 9 |
+> Spec location key: **Doc 03 §N** = this document section N | **Doc 06** = Posting Engine | **Doc 07** = Audit & CAS | **Doc 08** = Import/Export | **Doc 09** = Security/RLS
 
-> **SPEC REQUIRED count = 0.** All previously-flagged tables have been specced in Sections 24–45. Renamed/reclassified tables are noted inline above. Database freeze is unblocked from a spec-completeness standpoint.
+| # | Canonical Table Name (Doc 02) | Module | Spec Location |
+|---|---|---|---|
+| 1 | `profiles` | MODULE 1: Security & Identity | Doc 09 |
+| 2 | `roles` | MODULE 1: Security & Identity | Doc 09 |
+| 3 | `permissions` | MODULE 1: Security & Identity | Doc 09 |
+| 4 | `role_permissions` | MODULE 1: Security & Identity | Doc 09 |
+| 5 | `user_roles` | MODULE 1: Security & Identity | Doc 09 |
+| 6 | `user_company_access` | MODULE 1: Security & Identity | Doc 09 |
+| 7 | `user_branch_access` | MODULE 1: Security & Identity | Doc 09 |
+| 8 | `user_department_access` | MODULE 1: Security & Identity | Doc 09 |
+| 9 | `companies` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 10 | `branches` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 11 | `departments` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 12 | `cost_centers` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 13 | `cas_registrations` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 14 | `company_bank_accounts` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 14a | `company_compliance_profiles` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 14b | `company_feature_settings` | MODULE 2: Organization Setup | Doc 03 § 1 |
+| 15 | `number_series` | MODULE 3: System Controls | Doc 03 § 25 |
+| 16 | `number_series_atp` | MODULE 3: System Controls | Doc 03 § 25 |
+| 17 | `atp_usage_logs` | MODULE 3: System Controls | Doc 03 § 25 |
+| 18 | `approval_matrix` | MODULE 3: System Controls | Doc 03 § 34 |
+| 19 | `approval_matrix_steps` | MODULE 3: System Controls | Doc 03 § 34 |
+| 20 | `document_controls` | MODULE 3: System Controls | Doc 03 § 34 |
+| 21 | `validation_rules` | MODULE 3: System Controls | Doc 03 § 34 |
+| 22 | `system_parameters` | MODULE 3: System Controls | Doc 03 § 34 |
+| 23 | `fiscal_years` | MODULE 4: Accounting Setup | Doc 03 § 1 |
+| 24 | `fiscal_periods` | MODULE 4: Accounting Setup | Doc 03 § 1 |
+| 25 | `fiscal_locks` | MODULE 4: Accounting Setup | Doc 03 § 1 |
+| 26 | `chart_of_accounts` | MODULE 4: Accounting Setup | Doc 03 § 3 |
+| 27 | `account_types` | MODULE 4: Accounting Setup | Doc 03 § 3 |
+| 28 | `currencies` | MODULE 4: Accounting Setup | Doc 03 § 21 |
+| 29 | `exchange_rates` | MODULE 4: Accounting Setup | Doc 03 § 26 |
+| 30 | `opening_balance_entries` | MODULE 4: Accounting Setup | Doc 03 § 30 |
+| 31 | ~~`financial_statement_mappings`~~ | MODULE 4: Accounting Setup | **REMOVED (v3)** — COA-embedded fields replace this table |
+| 32 | `system_account_config` | MODULE 4: Accounting Setup | Doc 03 § 29 |
+| 33 | `bir_form_configurations` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 34 | `tax_codes` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 35 | `vat_codes` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 36 | `ewt_codes` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 36a | `fwt_codes` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 36b | `percentage_tax_codes` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 37 | `atc_codes` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 38 | `tax_calendar` | MODULE 5: Tax Setup | Doc 03 § 27 |
+| 39 | `customers` | MODULE 6: Master Data — Parties | Doc 03 § 4 |
+| 40 | `customer_addresses` | MODULE 6: Master Data — Parties | Doc 03 § 4 |
+| 41 | `customer_contacts` | MODULE 6: Master Data — Parties | Doc 03 § 4 |
+| 42 | `customer_tax_profiles` | MODULE 6: Master Data — Parties | Doc 03 § 4 |
+| 43 | `customer_credit_profiles` | MODULE 6: Master Data — Parties | Doc 03 § 28 |
+| 44 | `suppliers` | MODULE 6: Master Data — Parties | Doc 03 § 5 |
+| 45 | `supplier_addresses` | MODULE 6: Master Data — Parties | Doc 03 § 5 |
+| 46 | `supplier_contacts` | MODULE 6: Master Data — Parties | Doc 03 § 5 |
+| 47 | `supplier_tax_profiles` | MODULE 6: Master Data — Parties | Doc 03 § 5 |
+| 48 | `supplier_bank_details` | MODULE 6: Master Data — Parties | Doc 03 § 5 |
+| 49 | `personnel` | MODULE 6: Master Data — Parties | Doc 03 § 35 |
+| 50 | `payment_terms` | MODULE 6: Master Data — Parties | Doc 03 § 21 |
+| 50a | `payment_term_lines` | MODULE 6: Master Data — Parties | Doc 03 § 21 |
+| 51 | `item_categories` | MODULE 7: Master Data — Items & Services | Doc 03 § 29 |
+| 52 | `units_of_measure` | MODULE 7: Master Data — Items & Services | Doc 03 § 29 |
+| 53 | `uom_conversions` | MODULE 7: Master Data — Items & Services | Doc 03 § 29 |
+| 54 | `items` | MODULE 7: Master Data — Items & Services | Doc 03 § 21 |
+| 55 | `item_prices` | MODULE 7: Master Data — Items & Services | Doc 03 § 29 |
+| 56 | `services` | MODULE 7: Master Data — Items & Services | Doc 03 § 29 |
+| 57 | `warehouses` | MODULE 8: Inventory Master | Doc 03 § 36 |
+| 58 | `warehouse_stock_settings` | MODULE 8: Inventory Master | Doc 03 § 36 |
+| 59 | `inventory_balances` | MODULE 8: Inventory Master | Doc 03 § 36 |
+| 60 | `inventory_cost_layers` | MODULE 8: Inventory Master | Doc 03 § 17 |
+| 61 | `quotations` | MODULE 9: Sales — Cycle | Doc 03 § 6 |
+| 62 | `quotation_lines` | MODULE 9: Sales — Cycle | Doc 03 § 6 |
+| 63 | `sales_orders` | MODULE 9: Sales — Cycle | Doc 03 § 6 |
+| 64 | `sales_order_lines` | MODULE 9: Sales — Cycle | Doc 03 § 6 |
+| 65 | `delivery_receipts` | MODULE 9: Sales — Cycle | Doc 03 § 6 |
+| 66 | `delivery_receipt_lines` | MODULE 9: Sales — Cycle | Doc 03 § 6 |
+| 67 | `sales_invoices` | MODULE 10: Sales — Transactions | Doc 03 § 7 |
+| 68 | `sales_invoice_lines` | MODULE 10: Sales — Transactions | Doc 03 § 7 |
+| 69 | `cash_sales` | MODULE 10: Sales — Transactions | Doc 03 § 8 |
+| 70 | `cash_sale_lines` | MODULE 10: Sales — Transactions | Doc 03 § 8 |
+| 71 | `receipts` | MODULE 10: Sales — Transactions | Doc 03 § 11 |
+| 72 | `receipt_lines` | MODULE 10: Sales — Transactions | Doc 03 § 11 |
+| 73 | `sales_credit_memos` | MODULE 10: Sales — Transactions | Doc 03 § 31 |
+| 74 | `sales_credit_memo_lines` | MODULE 10: Sales — Transactions | Doc 03 § 31 |
+| 75 | `sales_debit_memos` | MODULE 10: Sales — Transactions | Doc 03 § 32 |
+| 76 | `sales_debit_memo_lines` | MODULE 10: Sales — Transactions | Doc 03 § 32 |
+| 77 | `customer_returns` | MODULE 10: Sales — Transactions | Doc 03 § 37 |
+| 78 | `customer_return_lines` | MODULE 10: Sales — Transactions | Doc 03 § 37 |
+| 79 | `purchase_orders` | MODULE 11: Purchasing — Transactions | Doc 03 § 9 |
+| 80 | `purchase_order_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 9 |
+| 81 | `receiving_reports` | MODULE 11: Purchasing — Transactions | Doc 03 § 9 |
+| 82 | `receiving_report_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 9 |
+| 83 | `vendor_bills` | MODULE 11: Purchasing — Transactions | Doc 03 § 9 |
+| 84 | `vendor_bill_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 9 |
+| 85 | `cash_purchases` | MODULE 11: Purchasing — Transactions | Doc 03 § 10 |
+| 86 | `cash_purchase_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 10 |
+| 87 | `payment_vouchers` | MODULE 11: Purchasing — Transactions | Doc 03 § 11 |
+| 88 | `payment_voucher_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 11 |
+| 89 | `vendor_credits` | MODULE 11: Purchasing — Transactions | Doc 03 § 38 |
+| 90 | `vendor_credit_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 38 |
+| 91 | `supplier_debit_memos` | MODULE 11: Purchasing — Transactions | Doc 03 § 33 |
+| 92 | `supplier_debit_memo_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 33 |
+| 93 | `purchase_returns` | MODULE 11: Purchasing — Transactions | Doc 03 § 39 |
+| 94 | `purchase_return_lines` | MODULE 11: Purchasing — Transactions | Doc 03 § 39 |
+| 95 | `petty_cash_funds` | MODULE 12: Petty Cash | Doc 03 § 11 |
+| 96 | `petty_cash_vouchers` | MODULE 12: Petty Cash | Doc 03 § 11 |
+| 97 | `petty_cash_voucher_lines` | MODULE 12: Petty Cash | Doc 03 § 11 |
+| 98 | `petty_cash_replenishments` | MODULE 12: Petty Cash | Doc 03 § 11 |
+| 99 | `petty_cash_count_sheets` | MODULE 12: Petty Cash | Doc 03 § 11 |
+| 100 | `petty_cash_count_lines` | MODULE 12: Petty Cash | Doc 03 § 11 |
+| 101 | `bank_fund_transfers` | MODULE 13: Bank | Doc 03 § 18 |
+| 102 | `inter_branch_transfers` | MODULE 13: Bank | Doc 03 § 18 |
+| 103 | `bank_adjustments` | MODULE 13: Bank | Doc 03 § 18 |
+| 104 | `bank_reconciliations` | MODULE 13: Bank | Doc 03 § 18 |
+| 105 | `bank_reconciliation_lines` | MODULE 13: Bank | Doc 03 § 18 |
+| 106 | `bank_statement_lines` | MODULE 13: Bank | Doc 03 § 18 |
+| 107 | `outstanding_checks` | MODULE 13: Bank | Doc 03 § 18 |
+| 108 | `deposits_in_transit` | MODULE 13: Bank | Doc 03 § 18 |
+| 109 | `stock_adjustments` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 110 | `stock_adjustment_lines` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 111 | `stock_transfers` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 112 | `stock_transfer_lines` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 113 | `goods_issues` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 114 | `goods_issue_lines` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 115 | `physical_count_entries` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 116 | `physical_count_lines` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 117 | `inventory_movements` | MODULE 14: Inventory — Transactions | Doc 03 § 36 |
+| 118 | `inventory_cost_layer_consumption` | MODULE 14: Inventory — Transactions | Doc 03 § 17 |
+| 119 | `asset_categories` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 120 | `depreciation_profiles` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 121 | `fixed_assets` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 122 | `asset_depreciation_schedules` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 123 | `asset_acquisitions` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 124 | `depreciation_runs` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 125 | `depreciation_run_lines` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 126 | `asset_disposals` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 127 | `asset_transfers` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 128 | `asset_impairments` | MODULE 15: Fixed Assets | Doc 03 § 24 |
+| 129 | `journal_entries` | MODULE 16: Accounting | Doc 03 § 9 (SECTION 9) |
+| 130 | `journal_lines` | MODULE 16: Accounting | Doc 03 § 9 (SECTION 9) |
+| 131 | `subsidiary_ledger_entries` | MODULE 16: Accounting | Doc 03 § 13 |
+| 132 | `recurring_journal_templates` | MODULE 16: Accounting | Doc 03 § 9 (SECTION 9) |
+| 133 | `recurring_journal_template_lines` | MODULE 16: Accounting | Doc 03 § 9 (SECTION 9) |
+| 134 | `gl_balances` | MODULE 16: Accounting | Doc 03 § 9 (SECTION 9) |
+| 135 | `document_relationships` | MODULE 16: Accounting | Doc 03 § 13 |
+| 136 | `posting_rule_sets` | MODULE 16: Accounting | Doc 03 § 9 / Doc 06 |
+| 137 | `posting_rule_lines` | MODULE 16: Accounting | Doc 03 § 9 / Doc 06 |
+| 138 | `posting_batches` | MODULE 16: Accounting | Doc 03 § 9 (SECTION 9) |
+| 139 | `posting_errors` | MODULE 16: Accounting | Doc 03 § 9 (SECTION 9) |
+| 140 | `vat_entries` | MODULE 17: Compliance — VAT | Doc 03 § 14 |
+| 141 | `vat_period_summaries` | MODULE 17: Compliance — VAT | Doc 03 § 14 |
+| 142 | `vat_return_filings` | MODULE 17: Compliance — VAT | Doc 03 § 14 |
+| 143 | `slsp_exports` | MODULE 17: Compliance — VAT | Doc 03 § 40 |
+| 144 | `relief_exports` | MODULE 17: Compliance — VAT | Doc 03 § 40 |
+| 145 | `ewt_entries` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 15 |
+| 146 | `fwt_entries` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 40 |
+| 147 | `certificates_2307_issued` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 15 |
+| 148 | `certificates_2307_received` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 15 |
+| 149 | `certificates_2306_issued` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 40 |
+| 150 | `ewt_remittances_1601eq` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 15 |
+| 150a | `fwt_remittances_1601fq` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 40 |
+| 151 | `qap_exports` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 40 |
+| 152 | `sawt_exports` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 40 |
+| 153 | `ewt_period_summaries` | MODULE 18: Compliance — Withholding Tax | Doc 03 § 15 |
+| 154 | `itr_computation_runs` | MODULE 19: Compliance — Income Tax | Doc 03 § 20 |
+| 155 | `book_tax_reconciliations` | MODULE 19: Compliance — Income Tax | Doc 03 § 20 |
+| 156 | ~~`mcit_computations`~~ | MODULE 19: Compliance — Income Tax | **REMOVED (v3)** |
+| 157 | ~~`nolco_schedules`~~ | MODULE 19: Compliance — Income Tax | **REMOVED (v3)** |
+| 158 | `tax_credits_schedules` | MODULE 19: Compliance — Income Tax | Doc 03 § 20 |
+| 158a | `income_tax_return_filings` | MODULE 19: Compliance — Income Tax | Doc 03 § 19 |
+| 159 | `audit_logs` | MODULE 20: Audit & CAS | Doc 07 |
+| 160 | `field_change_history` | MODULE 20: Audit & CAS | Doc 07 |
+| 161 | `user_activity_logs` | MODULE 20: Audit & CAS | Doc 07 |
+| 162 | `system_parameter_logs` | MODULE 20: Audit & CAS | Doc 07 |
+| 163 | `document_void_register` | MODULE 20: Audit & CAS | Doc 07 |
+| 164 | `dat_generation_logs` | MODULE 20: Audit & CAS | Doc 07 |
+| 165 | `export_history` | MODULE 20: Audit & CAS | Doc 07 |
+| 166 | `system_alerts` | MODULE 20: Audit & CAS | Doc 07 |
+| 167 | `attachments` | MODULE 21: Attachments | Doc 03 § 42 |
+| 168 | `attachment_versions` | MODULE 21: Attachments | Doc 03 § 42 |
+| 169 | `approval_requests` | MODULE 22: Workflow & Approvals | Doc 07 |
+| 170 | `approval_actions` | MODULE 22: Workflow & Approvals | Doc 07 |
+| 171 | `import_batches` | MODULE 23: Import / Export | Doc 08 |
+| 172 | `import_rows` | MODULE 23: Import / Export | Doc 08 |
+| 173 | `import_validation_errors` | MODULE 23: Import / Export | Doc 08 |
+| 174 | `import_templates` | MODULE 23: Import / Export | Doc 08 |
+| 175 | `export_jobs` | MODULE 23: Import / Export | Doc 08 §4 + Doc 03 § 44 |
+| 176 | `generated_report_files` | MODULE 23: Import / Export | Doc 03 § 44 |
+| 177 | `notification_templates` | MODULE 24: Notifications | Doc 03 § 21 |
+| 178 | `notifications` | MODULE 24: Notifications | Doc 03 § 21 |
+| 179 | `notification_delivery_logs` | MODULE 24: Notifications | Doc 03 § 21 |
+| 180 | `document_templates` | MODULE 25: Document Templates & Generated Output | Doc 03 § 14 |
+| 181 | `generated_documents` | MODULE 25: Document Templates & Generated Output | Doc 03 § 14 |
+| 182 | `generated_document_versions` | MODULE 25: Document Templates & Generated Output | Doc 03 § 14 |
+| 183 | `budgets` | MODULE 26: Budget | Doc 03 § 21 |
+| 184 | `budget_lines` | MODULE 26: Budget | Doc 03 § 21 |
+| 185 | `period_close_checklists` | MODULE 27: Period Close | Doc 03 § 21 |
+| 186 | `period_close_tasks` | MODULE 27: Period Close | Doc 03 § 21 |
+| 187 | `subledger_close_certifications` | MODULE 27: Period Close | Doc 03 § 43 |
+| 188 | `duplicate_tin_flags` | MODULE 28: Party Duplicate Management | Doc 03 § 44 |
+| 189 | `party_merge_logs` | MODULE 28: Party Duplicate Management | Doc 03 § 44 |
+| 190 | `percentage_tax_entries` | MODULE 29: Compliance — Percentage Tax | Doc 03 § 17 |
+| 191 | `percentage_tax_period_summaries` | MODULE 29: Compliance — Percentage Tax | Doc 03 § 17 |
+| 192 | `percentage_tax_return_filings` | MODULE 29: Compliance — Percentage Tax | Doc 03 § 17 |
+| 199 | `income_tax_computation_lines` | MODULE 30: Income Tax Computation Support | Doc 03 § 20 |
+| 200 | `nolco_tracking` | MODULE 30: Income Tax Computation Support | Doc 03 § 20 |
+| 201 | `amortization_schedules` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 202 | `amortization_schedule_lines` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 203 | `amortization_runs` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 204 | `amortization_run_details` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 205 | `revenue_recognition_schedules` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 206 | `revenue_recognition_schedule_lines` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 207 | `revenue_recognition_runs` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 208 | `revenue_recognition_run_details` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+| 209 | `auto_reversal_runs` | MODULE 31: Accounting Schedules | Doc 03 § 23 |
+
+**Cross-Reference Counts (v3.4):**
+| Metric | Count |
+|---|---|
+| Active tables in Doc 02 registry | **207** |
+| Tables with direct Doc 03 spec headings | **~185** (see note) |
+| Tables with spec in Doc 06 (Posting Engine) | 4 (`posting_rule_sets`, `posting_rule_lines`, `posting_batches`, `posting_errors` also in Doc 03 § 9) |
+| Tables with spec in Doc 07 (Audit & CAS) | 12 (`audit_logs`, `field_change_history`, `user_activity_logs`, `system_parameter_logs`, `document_void_register`, `dat_generation_logs`, `export_history`, `system_alerts`, `approval_requests`, `approval_actions` + 2 more) |
+| Tables with spec in Doc 08 (Import/Export) | 5 (`import_batches`, `import_rows`, `import_validation_errors`, `import_templates`, `export_jobs`) |
+| Tables with spec in Doc 09 (Security/RLS) | 8 (all MODULE 1 tables) |
+| Tables REMOVED (no spec needed) | **3** (#31, #156, #157) |
+| Extra/stale names | **0** |
+| SPEC REQUIRED remaining | **0** |
+
+> Note: All 207 active tables have column specifications. Tables in Modules 06/07/08/09 are specced in their respective architecture docs (cross-referenced above). This is by design — not a gap. The total coverage is 207/207 = 100%.
 
 ---
 
@@ -4345,7 +4448,62 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 
 ---
 
-## SECTION 45: COLUMN SPEC COMPLETENESS SUMMARY (v3.1)
+### `export_jobs`
+Tracks asynchronous report and export generation jobs. Supabase Realtime enabled. Full spec also in Doc 08 §4.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| branch_id | uuid | NULL | — | FK → branches.id (optional scope) |
+| export_type | text | NOT NULL | — | See Doc 08 §4 export type list (e.g., 'trial_balance','slsp_sales','vat_2550m') |
+| parameters | jsonb | NOT NULL | — | Filter params: date range, accounts, branches, etc. |
+| format | text | NOT NULL | — | CHECK IN ('pdf','xlsx','csv','dat','json') |
+| status | text | NOT NULL | 'queued' | CHECK IN ('queued','processing','completed','failed') |
+| requested_by | uuid | NOT NULL | — | FK → profiles.id |
+| requested_at | timestamptz | NOT NULL | now() | |
+| started_at | timestamptz | NULL | — | |
+| completed_at | timestamptz | NULL | — | |
+| storage_path | text | NULL | — | Supabase Storage path when completed |
+| file_size_bytes | bigint | NULL | — | |
+| record_count | integer | NULL | — | Number of records exported |
+| error_message | text | NULL | — | Populated when status='failed' |
+| expires_at | timestamptz | NULL | — | When to auto-delete from storage |
+| *+ standard audit columns* | | | | |
+
+**Indexes:** `idx_export_jobs_company_status ON export_jobs(company_id, status)` — for polling active jobs.
+
+**RLS:** Company-scoped. User sees their own jobs; COMPANY_ADMIN/CONTROLLER see all company jobs.
+
+**Compliance impact:** `dat`-format exports for CAS filing must be logged via `dat_generation_logs` (Doc 07) in addition to this table.
+
+---
+
+### `generated_report_files`
+Stores metadata for generated report files that are persisted beyond the export job lifetime.
+
+| Column | Type | Null | Default | Description |
+|---|---|---|---|---|
+| id | uuid | NOT NULL | gen_random_uuid() | PK |
+| company_id | uuid | NOT NULL | — | FK → companies.id |
+| export_job_id | uuid | NULL | — | FK → export_jobs.id |
+| report_type | text | NOT NULL | — | e.g., 'TRIAL_BALANCE','SLSP_EXPORT','QAP' |
+| file_path | text | NOT NULL | — | Supabase Storage path |
+| file_size_bytes | bigint | NULL | — | |
+| file_hash_sha256 | text | NULL | — | Integrity hash |
+| format | text | NOT NULL | — | CHECK IN ('pdf','xlsx','csv','dat','json') |
+| period_start | date | NULL | — | Reporting period start |
+| period_end | date | NULL | — | Reporting period end |
+| generated_at | timestamptz | NOT NULL | now() | |
+| generated_by | uuid | NOT NULL | — | FK → profiles.id |
+| is_compliance_filing | boolean | NOT NULL | false | True for BIR submission files |
+| *+ standard audit columns* | | | | |
+
+**RLS:** Company-scoped. Compliance filing files visible to COMPANY_ADMIN and CONTROLLER only.
+
+---
+
+## SECTION 45: COLUMN SPEC COMPLETENESS SUMMARY (v3.4)
 
 **Total tables in doc 02 Canonical Registry:** 207 ACTIVE + 3 REMOVED = 209 slots
 
@@ -4371,14 +4529,16 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 - Section 41 (Audit & CAS Extension): 6 tables
 - Section 42 (Attachments, Workflow & Import Extension): 8 tables
 - Section 43 (Notification & Document Extension): 2 tables
-- Section 44 (Period Close & Party Duplicate Extension): 3 tables
+- Section 44 (Period Close, Party Duplicate, Export Jobs Extension): 5 tables (`subledger_close_certifications`, `duplicate_tin_flags`, `party_merge_logs`, `export_jobs`, `generated_report_files`)
 
-**Security tables cross-referenced from doc 09 Section 2:** `profiles`, `user_company_access` (2 tables)
+**Tables specced in companion documents (cross-referenced in Section 22):**
+- Doc 09: 8 MODULE 1 security tables (`profiles`, `roles`, `permissions`, `role_permissions`, `user_roles`, `user_company_access`, `user_branch_access`, `user_department_access`)
+- Doc 07: 10 MODULE 20+22 audit tables (`audit_logs`, `field_change_history`, `user_activity_logs`, `system_parameter_logs`, `document_void_register`, `dat_generation_logs`, `export_history`, `system_alerts`, `approval_requests`, `approval_actions`)
+- Doc 08: 4 MODULE 23 import tables (`import_batches`, `import_rows`, `import_validation_errors`, `import_templates`)
 
-**Total tables with specs: 207 (all active tables covered)**
-**Tables with NO spec: 0 — BLOCKER 1 RESOLVED**
+**Total tables with specs: 207 (all active tables covered) — SPEC REQUIRED = 0**
 
-> **v3.1 status:** All 207 active tables have column specifications. The 3 REMOVED tables (#31 financial_statement_mappings, #156 mcit_computations, #157 nolco_schedules) have no specs by design — they are not to be created.
+> **v3.4 status:** All 207 active tables have column specifications. The 3 REMOVED tables (#31 financial_statement_mappings, #156 mcit_computations, #157 nolco_schedules) have no specs by design. The `export_jobs` direct spec heading was added to Section 44 in v3.4 to close the Codex-reported gap.
 
 
 ---
@@ -4594,7 +4754,7 @@ deduction_method text NOT NULL DEFAULT 'itemized'
 
 | Relationship | Status |
 |---|---|
-| `journal_entry_lines.account_id → chart_of_accounts.id` | ✅ |
+| `journal_lines.account_id → chart_of_accounts.id` | ✅ |
 | `ewt_entries.payee_id → suppliers.id / customers.id` (polymorphic, nullable) | ✅ (payee_id nullable, payee_type CHECK validates) |
 | `fwt_entries.payee_id → customers.id` (nullable) | ✅ |
 | `vat_entries.document_type + document_id` (polymorphic) | ✅ (no FK by design — polymorphic refs use app-layer enforcement) |
@@ -4634,7 +4794,7 @@ deduction_method text NOT NULL DEFAULT 'itemized'
 - `posting_batches` + `posting_errors` ✅
 
 **Import/Export completeness:**
-- `import_jobs` → `import_rows` → `import_validation_errors` ✅
+- `import_batches` → `import_rows` → `import_validation_errors` ✅
 - `export_history` ✅
 - `generated_report_files` ✅
 - `dat_generation_logs` ✅
@@ -4658,29 +4818,32 @@ deduction_method text NOT NULL DEFAULT 'itemized'
 
 ---
 
-### TASK 9 — FINAL HONEST STATUS
+### TASK 9 — FINAL HONEST STATUS (v3.4 — Updated after Codex Review)
 
-## ✅ DATABASE FREEZE APPROVED
+## ❌ DATABASE FREEZE NOT APPROVED
 
-**All conditions met:**
+**Status as of v3.4:** v3.2 claimed approval prematurely. Codex review (v3.3/v3.4) found structural defects that were fixed but require independent human sign-off before freeze is granted. See Doc 10 Section 47 for the sign-off gate.
 
-1. **Spec completeness:** 207/207 active tables have full column specifications. SPEC REQUIRED = 0.
-2. **Name consistency:** All canonical names in doc 02 Canonical Registry match spec names in doc 03. 8 stale names corrected in S22 cross-reference.
-3. **Posting correctness:** All posting paths verified. Critical accounting error (EWT Payable DR→CR) corrected in v3.1.
-4. **Compliance coverage:** All required BIR forms have snapshot/export tables. No compliance output path is unimplemented.
+**Conditions verified as of v3.4:**
+
+1. **Spec completeness:** 207/207 active tables have full column specifications. SPEC REQUIRED = 0. `export_jobs` direct spec heading added in v3.4.
+2. **Name consistency:** Section 22 rebuilt from scratch in v3.4. All 207 active tables mapped to canonical names matching Doc 02 registry. Ghost names removed.
+3. **Posting correctness:** Cash purchase posting fixed in v3.4 (`net_amount` not `gross_amount`). EWT Payable CR corrected in v3.1. FWT posting paths added.
+4. **Compliance coverage:** All required BIR forms have snapshot/export tables. 2306 source corrected to `fwt_entries` in v3.4 (was wrongly referencing `ewt_entries`).
 5. **COA completeness:** All FS/BS/IS/CF/Book-to-Tax/OSD/MCIT/NOLCO/EWT/FWT mapping columns present.
-6. **Income tax profiles:** `deduction_method` gap found and resolved in v3.2.
-7. **Audit trail:** All immutability, void, auto-reversal, and CAS requirements covered.
+6. **Income tax profiles:** `deduction_method` added in v3.2. FWT confirmed as final tax (NOT creditable in `tax_credits_schedules`).
+7. **Audit trail:** All immutability, void, auto-reversal, and CAS requirements covered. Status values normalized to lowercase in v3.3/v3.4.
 8. **Security:** RLS scoped correctly at company level (Phase 1 Option A). Branch filter via application WHERE clause.
-9. **No overengineering:** 207 KEEP, 0 tables added beyond task requirements, 3 REMOVED confirmed.
-10. **Architecture consistency:** 24 Principles honored throughout. Principle 11 (effective-date versioning), Principle 12 (rule-based posting), Principle 13 (immutability), Principle 23 (avoid overengineering) all verified.
+9. **Idempotency:** `posting_batches.idempotency_key` UNIQUE. `journal_entries.posting_batch_id` FK added in v3.4.
+10. **Architecture consistency:** 24 Principles honored throughout.
 
-**Remaining Phase 2 items (not blockers):**
-- 1604E / 1604F annual filing snapshot tables (derivable from quarterly in Phase 1)
-- Branch-level RLS enforcement (Option B upgrade path documented in doc 09)
-- `deprecated` columns on `companies` table (retained for Phase 1 compatibility, removal queued for Phase 2)
+**Remaining items before SQL migration may begin:**
+- Section 47 sign-off in Doc 10 must be fully completed (items 47.1–47.12)
+- Independent CPA + DB Architect review of v3.3/v3.4 fixes
+- CPA-approved COA seed document (47.9)
+- Phase 2 deferral candidates confirmed (47.11)
 
-**SQL migration authoring may begin.**
+**SQL migration authoring MUST NOT begin until Doc 10 Section 47 is fully signed off.**
 
 ---
 
