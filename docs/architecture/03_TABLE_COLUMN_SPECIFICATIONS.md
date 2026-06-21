@@ -1000,7 +1000,7 @@ Records FIFO cost layer depletion when inventory is reduced.
 | posting_date | date | NOT NULL | — | |
 | fiscal_year_id | uuid | NOT NULL | — | FK → fiscal_years.id |
 | fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
-| je_type | text | NOT NULL | — | CHECK IN ('manual','system','reversal','opening','recurring','adjustment','amortization','revenue_recognition','auto_reversal') |
+| je_type | text | NOT NULL | — | CHECK IN ('manual','system','reversal','opening','recurring','adjustment','amortization','revenue_recognition','auto_reversal','closing') |
 | source_document_type | text | NULL | — | 'sales_invoice','vendor_bill','cash_sale','cash_purchase', etc. |
 | source_document_id | uuid | NULL | — | FK to source |
 | posting_batch_id | uuid | NULL | — | FK → posting_batches.id — set when posted via batch/Edge Function |
@@ -1023,7 +1023,7 @@ Records FIFO cost layer depletion when inventory is reduced.
 | *+ standard audit columns* | | | | |
 
 **Constraint:** `CHECK(total_debit = total_credit)` when status = 'posted'
-**v3 Note:** `je_type` expanded to include 'amortization', 'revenue_recognition', 'auto_reversal' for schedule-generated entries. `amortization_run_detail_id` and `revenue_recognition_run_detail_id` provide full traceability from JE back to source schedule line.
+**v3.8 Note:** `je_type` expanded to include 'amortization', 'revenue_recognition', 'auto_reversal' (schedule-generated entries) and 'closing' (year-end closing JEs per Doc06 Section 13). `amortization_run_detail_id` and `revenue_recognition_run_detail_id` provide full traceability from JE back to source schedule line.
 
 ---
 
@@ -1366,6 +1366,7 @@ Immutable. One row per ATC per line per source document.
 | file_size_bytes | bigint | NULL | — | |
 | file_hash_sha256 | text | NULL | — | Integrity check |
 | version | integer | NOT NULL | 1 | |
+| export_job_id | uuid | NULL | — | FK → export_jobs.id — set when generated as part of an export job; NULL for on-demand generation |
 | generated_at | timestamptz | NOT NULL | now() | |
 | generated_by | uuid | NOT NULL | — | FK → profiles.id |
 | expires_at | timestamptz | NULL | — | Auto-cleanup from storage |

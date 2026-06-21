@@ -93,8 +93,8 @@ All non-canonical table names found in diagrams replaced with canonical names fr
 
 | OD # | Question | Status |
 |---|---|---|
-| OD-09 | Should `document_relationships` also link notification events to their source documents? | Unresolved — Phase 2 consideration |
-| OD-10 | Should `generated_documents` link to `export_jobs` when a PDF is produced as part of an export? | Unresolved — decide before implementing Edge Functions |
+| OD-09 | Should `document_relationships` also link notification events to their source documents? | **RESOLVED v3.8:** No. `document_relationships` links operational documents only (invoice → receipt, bill → payment, etc.). Notification-to-source linking is handled by `notifications.entity_type` + `notifications.entity_id` columns — these point directly to the source document without using `document_relationships`. Phase 2 may add a `notification_relationships` table if cross-document notification threading is needed. |
+| OD-10 | Should `generated_documents` link to `export_jobs` when a PDF is produced as part of an export? | **RESOLVED v3.8:** Yes — `generated_documents.export_job_id` (FK → `export_jobs.id`, nullable). When a PDF (invoice, 2307, etc.) is generated as part of an export job, the `export_job_id` is set. When generated on-demand from a single document view, `export_job_id` is NULL. This allows filtering all documents produced by a given export job for audit purposes. Developer: add `export_job_id uuid NULL FK export_jobs` to `generated_documents` spec in Doc03. |
 
 ---
 

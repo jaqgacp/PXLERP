@@ -1,6 +1,6 @@
 # PXL ERP — Posting Engine Table Design
-**Version:** 3.7 — Implementation Readiness Fix Pass
-**Status:** v3.7 — All open decisions resolved. Complete posting rules for all 21 transaction types. Freeze pending Section 52 sign-off.
+**Version:** 3.8 — Implementation Contract Completion Pass
+**Status:** v3.8 — All gaps closed. Posting engine complete: inventory_movements, period summaries, year-end closing, EWT detection, background jobs. Freeze pending Sections 52–53 sign-off.
 
 ---
 
@@ -290,13 +290,35 @@ UNIQUE: `(company_id, fiscal_period_id)`
 7.  INSERT journal_entries (status='posted', posted_at=now()) — links posting_batch_id + idempotency_key
 8.  INSERT journal_lines (all lines)
 9.  UPSERT gl_balances (per account per period, INSERT ... ON CONFLICT DO UPDATE)
-10. INSERT subsidiary_ledger_entries (ar / ap / inventory / fixed_asset)
-    → SKIP for cash_sale and cash_purchase transaction types
+10. INSERT subsidiary_ledger_entries (ar / ap / fixed_asset) AND inventory writes:
+    → SKIP subsidiary_ledger_entries for cash_sale and cash_purchase transaction types (no AR/AP)
+    → For inventory-impacting transactions (sales_invoice, cash_sale, vendor_bill, cash_purchase,
+       stock_adjustment, stock_transfer, customer_return, purchase_return):
+       a. INSERT inventory_movements (one per line item per inventory change):
+          - item_id, warehouse_id, movement_type ('sale_out','purchase_in','return_in','return_out',
+            'transfer_in','transfer_out','adjustment_in','adjustment_out'), quantity, unit_cost,
+            total_cost, source_document_type, source_document_id, fiscal_period_id
+       b. UPSERT inventory_balances (per item per warehouse):
+          - quantity_on_hand += movement quantity (+ for IN, − for OUT)
+          - average_unit_cost recomputed (weighted average for IN; unchanged for OUT in FIFO Phase 1)
+          - UNIQUE: (company_id, item_id, warehouse_id)
 11. WRITE compliance entries (within same transaction — immutable snapshots):
     a. INSERT vat_entries (one per taxable line) — tax_period_id, vat_direction, vat_classification, amounts
     b. INSERT ewt_entries (one per EWT-subject line per ATC) — payee snapshot fields, ewt_amount
     c. INSERT fwt_entries (if FWT-subject transaction) — payee snapshot fields, fwt_amount
     d. INSERT percentage_tax_entries (if non-VAT taxpayer_type) — pt_amount, atc_code
+    e. UPSERT vat_period_summaries (VAT companies only):
+       - UNIQUE: (company_id, tax_period_id, vat_direction, vat_classification)
+       - total_base_amount += line.base_amount; total_vat_amount += line.vat_amount
+       - This is the aggregate source for BIR Form 2550M/2550Q schedule population
+    f. UPSERT ewt_period_summaries (if any ewt_entries written):
+       - UNIQUE: (company_id, tax_period_id, ewt_atc_id)
+       - total_base_amount += ewt_entry.ewt_base_amount; total_ewt_amount += ewt_entry.ewt_amount
+       - This is the aggregate source for 1601EQ schedule population
+    g. UPSERT percentage_tax_period_summaries (non-VAT companies only, if percentage_tax_entries written):
+       - UNIQUE: (company_id, tax_period_id, atc_code)
+       - total_gross_receipts += line.gross_amount; total_pt_amount += line.pt_amount
+       - This is the aggregate source for BIR Form 2551Q schedule population
     → If document was previously in draft and had preview/draft entries, DELETE them before INSERT
     → Void/reversal: INSERT reversal entries (negative amounts), never silent DELETE or UPDATE
 12. UPDATE source document status → 'posted', posting_date = now()
@@ -323,7 +345,7 @@ UNIQUE: `(company_id, fiscal_period_id)`
 ### Cash Sale Posting (No AR Created)
 
 ```
-DR: Cash / Bank (cash_sales.payment_amount)           account: FROM_SYSTEM_CONFIG 'CASH_ON_HAND' or 'CASH_IN_BANK'
+DR: Cash / Bank (cash_sales.total_amount)              account: FROM_SYSTEM_CONFIG 'CASH_ON_HAND' or 'CASH_IN_BANK'
 CR: Revenue Account (cash_sale_lines.net_amount)       account: FROM_ITEM or FROM_LINE (revenue_account_id)
 CR: Output VAT Payable (vat_entries.vat_amount)        account: FROM_SYSTEM_CONFIG 'OUTPUT_VAT'
 ```
@@ -552,9 +574,12 @@ DR: EWT Payable (ewt_entries.ewt_amount) [if EWT was pre-booked]     FROM_SYSTEM
 CR: Cash / Bank (net_amount_paid)                                     FROM_LINE (bank_account_id → gl_account)
 ```
 
-**EWT handling:**
-- If EWT was pre-booked at vendor_bill posting: DR `EWT_PAYABLE` (removes the liability), no new ewt_entries INSERT.
-- If EWT was NOT pre-booked (cash purchase without prior bill): CR `EWT_PAYABLE` + INSERT `ewt_entries` at this step.
+**EWT detection algorithm (determines which path to execute):**
+- Query: `SELECT COUNT(*) FROM ewt_entries WHERE source_document_id = (linked vendor_bill_id) AND source_document_type = 'vendor_bill'`
+- If COUNT > 0 → EWT was pre-booked at bill posting → PATH A
+- If COUNT = 0 → EWT was not pre-booked → PATH B
+- PATH A (EWT pre-booked): DR `EWT_PAYABLE` (clears the existing liability), no new ewt_entries INSERT. The `payment_voucher_lines.ewt_atc_id` must match the ATC from the original bill's ewt_entries.
+- PATH B (EWT not pre-booked, e.g., PV issued directly without prior bill): CR `EWT_PAYABLE` + INSERT `ewt_entries` at this step with source_document_type='payment_voucher'.
 - `net_amount_paid = total_amount - ewt_amount` (cash actually transferred to supplier).
 
 **Application logic:** Links to one or more `vendor_bills` via `document_relationships` (relationship_type='paid_by'). After posting: UPDATE `subsidiary_ledger_entries.is_open = false` for fully applied AP lines.
@@ -922,3 +947,86 @@ Executed at the start of each fiscal period. Processes all `journal_entries` whe
 ```
 
 **Applicable to all source JE types:** manual accruals, system-generated recurring JEs with auto_reverse=true, and any JE marked auto_reversal_flag=true.
+
+---
+
+## 13. Year-End Closing Process (v3.8)
+
+> **Prerequisite:** ALL fiscal periods for the fiscal year must have `status='locked'` before year-end close can execute. The year-end close process locks the fiscal year itself.
+
+### Year-End Closing JE Sequence
+
+Year-end closing transfers net income to Retained Earnings and resets nominal accounts (Revenue, Expense, COGS) to zero. This is a 3-step JE sequence executed in a single database transaction.
+
+```
+STEP 1 — Close Revenue and Other Income to Income Summary
+  DR: Each Revenue account (reverse their credit balances)   FROM gl_balances for fiscal_year
+  DR: Each Other Income account (reverse their credit balances)
+  CR: Income Summary (FROM_SYSTEM_CONFIG 'INCOME_SUMMARY')
+  → Amount per account = SUM(period_credit - period_debit) for all periods in fiscal_year WHERE account_type IN ('revenue','other_income','contra_expense')
+
+STEP 2 — Close Expense Accounts to Income Summary
+  DR: Income Summary (FROM_SYSTEM_CONFIG 'INCOME_SUMMARY')
+  CR: Each Expense account (reverse their debit balances)
+  CR: Each COGS account (reverse their debit balances)
+  CR: Each Other Expense account (reverse their debit balances)
+  → Amount per account = SUM(period_debit - period_credit) for all periods in fiscal_year WHERE account_type IN ('expense','cost_of_sales','other_expense','contra_revenue')
+
+STEP 3 — Close Income Summary to Retained Earnings
+  IF Income Summary balance > 0 (net income):
+    DR: Income Summary (FROM_SYSTEM_CONFIG 'INCOME_SUMMARY')
+    CR: Retained Earnings (FROM_SYSTEM_CONFIG 'RETAINED_EARNINGS')
+    → Amount = net income for the fiscal year
+  IF Income Summary balance < 0 (net loss):
+    DR: Retained Earnings (FROM_SYSTEM_CONFIG 'RETAINED_EARNINGS')
+    CR: Income Summary (FROM_SYSTEM_CONFIG 'INCOME_SUMMARY')
+    → Amount = net loss (absolute value)
+```
+
+**Implementation rules:**
+- `je_type = 'closing'` on all three closing JEs
+- `source_document_type = 'fiscal_years'`, `source_document_id = fiscal_year.id`
+- All three JEs must be posted in one DB transaction; if any step fails, all three roll back
+- UPSERT `gl_balances` for each closing line (these will show in the Balance Sheet)
+- After posting all three closing JEs:
+  - UPDATE `fiscal_years.status = 'closed'`
+  - If company policy requires: UPDATE `fiscal_years.status = 'locked'` immediately (no further adjustments)
+- INSERT `audit_logs` (event_type='YEAR_END_CLOSE_COMPLETED', entity_type='fiscal_years', entity_id=fiscal_year.id)
+- Idempotency: check `journal_entries WHERE source_document_type='fiscal_years' AND source_document_id=fiscal_year.id AND je_type='closing'` before executing — abort if already found
+
+### Year-End Close Trigger
+
+Year-end close is initiated manually by a user with CONTROLLER or COMPANY_ADMIN role. It is NOT automated. The user navigates to Fiscal Year → [Year] → Close Year. The system validates:
+1. All 12 (or 13) fiscal periods for the year are `status='locked'`
+2. No open or approved (unposted) documents remain in the year
+3. Depreciation run completed for the last period
+4. Amortization run completed for the last period
+
+If any validation fails, the close is aborted with a specific error message.
+
+### Post-Close Behavior
+
+- Opening balances for the new fiscal year are NOT automatically created. The `opening_balances` table carries forward Balance Sheet accounts manually or via a "New Year Opening" process where the accountant reviews and posts opening JEs (`je_type='opening'`).
+- The Retained Earnings balance after closing = prior Retained Earnings + current year net income (or − net loss).
+- Revenue, Expense, COGS accounts show zero balance in the new fiscal year — confirmed because closing JEs zero them out in `gl_balances`.
+
+---
+
+## 14. Background Jobs (Scheduled Processes)
+
+> **Platform:** Supabase pg_cron. All jobs run under service role. Failure is logged to `import_batches` (for import jobs) or `audit_logs` (for compliance jobs). Each job is idempotent.
+
+| Job Name | Schedule | Trigger | Description | Idempotency |
+|---|---|---|---|---|
+| `recurring_journal_generator` | Daily, 00:05 AM | pg_cron | Processes `recurring_journal_templates` with `next_run_date = today`. Generates JEs, updates `next_run_date`. | CHECK for existing JE with `recurring_template_id + fiscal_period_id` before INSERT |
+| `auto_reversal_processor` | Daily, 00:10 AM | pg_cron | Processes `journal_entries WHERE auto_reversal_flag=true AND auto_reversal_date=today AND auto_reversal_run_id IS NULL`. | `auto_reversal_run_id` set after processing prevents reprocessing |
+| `atp_gap_detector` | Nightly, 02:00 AM | pg_cron | Checks `atp_usage_logs` for gaps in OR/invoice sequences (skipped numbers). Inserts `system_alerts` for any detected gaps. | Checks last_checked_number stored on `number_series`; only scans new numbers |
+| `notification_cleanup` | Nightly, 03:00 AM | pg_cron | Soft-deletes `notifications` older than 90 days where `is_read=true`. | Idempotent DELETE by date threshold |
+| `export_job_processor` | Continuous (Edge Function triggered by `export_jobs` INSERT via Supabase Realtime) | INSERT on `export_jobs` | Processes pending `export_jobs` (SLSP, RELIEF, QAP, SAWT, DAT). Sets status 'processing' then 'completed' or 'failed'. | `export_jobs.status` prevents re-processing; UNIQUE job key per request |
+| `import_job_processor` | Continuous (Edge Function triggered by `import_batches` INSERT) | INSERT on `import_batches` | Processes pending import batches for all master data types. | `import_batches.status` gate; row-level idempotency via external_id if provided |
+| `depreciation_runner` | Manual (triggered by user from Period Close Checklist) | User action | Processes `asset_depreciation_schedule_lines` for target period. See Section 10 (amortization pattern — same process). | `depreciation_schedule_lines.status='processed'` prevents re-run |
+| `vat_period_summary_refresh` | On-demand (called by posting engine — Step 11e) | Posting transaction | UPSERT `vat_period_summaries` per posted document. No standalone job needed — summaries are maintained in real time by the posting engine. | UPSERT ON CONFLICT DO UPDATE — inherently idempotent |
+
+**Failure handling:** If a pg_cron job fails, Supabase logs the error to pg_cron.job_run_details. The system also INSERTs a `system_alerts` record with `alert_type='job_failure'`, `entity_type='cron_job'`, `message=error_text`. The alert appears on the admin dashboard. Jobs retry on next scheduled execution.
+
+**Retry logic (export/import Edge Functions):** On failure, `export_jobs.status` is set to 'failed' with `error_message`. The user can manually re-trigger. No automatic retry — prevents duplicate file generation.

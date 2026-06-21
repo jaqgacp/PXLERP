@@ -1,7 +1,7 @@
 # PXL ERP — Database Architecture Overview
-**Version:** 3.1 — Normalization Pass
+**Version:** 3.8 — Implementation Contract Completion Pass
 **Prepared by:** PXL Database Architecture Team
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Status:** v3.8 — Implementation Contract Completion Pass — All 22 gaps from Business Scenario Validation closed. Freeze pending Sections 52–53 sign-off.
 
 ---
 
@@ -812,6 +812,33 @@ CR: Income Tax Payable (FROM_SYSTEM_CONFIG 'INCOME_TAX_PAYABLE')  = income_tax_d
 ```
 This is NOT auto-posted by the computation engine. The accountant reviews the `itr_computation_runs` result and manually creates this JE in the period before filing.
 
+### TRAIN Law Graduated Income Tax Rates (Individual — Effective 2023 onwards)
+
+Per BIR Revenue Regulations implementing the TRAIN Law (RA 10963), the following rates apply to `income_tax_regime='individual'` using `deduction_method='itemized'` or `'osd'`:
+
+| Taxable Income (PHP) | Tax Due |
+|---|---|
+| Not over 250,000 | 0% (Exempt) |
+| Over 250,000 to 400,000 | 15% of excess over 250,000 |
+| Over 400,000 to 800,000 | 22,500 + 20% of excess over 400,000 |
+| Over 800,000 to 2,000,000 | 102,500 + 25% of excess over 800,000 |
+| Over 2,000,000 to 8,000,000 | 402,500 + 30% of excess over 2,000,000 |
+| Over 8,000,000 | 2,202,500 + 35% of excess over 8,000,000 |
+
+**Implementation in `itr_computation_runs` engine (Step 9 — individual/partnership):**
+```
+IF taxable_income <= 250_000 THEN income_tax_due = 0
+ELSIF taxable_income <= 400_000 THEN income_tax_due = (taxable_income - 250_000) * 0.15
+ELSIF taxable_income <= 800_000 THEN income_tax_due = 22_500 + (taxable_income - 400_000) * 0.20
+ELSIF taxable_income <= 2_000_000 THEN income_tax_due = 102_500 + (taxable_income - 800_000) * 0.25
+ELSIF taxable_income <= 8_000_000 THEN income_tax_due = 402_500 + (taxable_income - 2_000_000) * 0.30
+ELSE income_tax_due = 2_202_500 + (taxable_income - 8_000_000) * 0.35
+```
+
+**8% GRT rate:** For `deduction_method='eight_percent'` (individuals with gross receipts ≤ PHP 3M): `income_tax_due = gross_receipts * 0.08`. This replaces both regular income tax AND percentage tax. System must check that `company_compliance_profiles.taxpayer_type='non_vat'` when `deduction_method='eight_percent'` is used — 8% option is incompatible with VAT registration.
+
+**Partnership:** Treated same as corporate (`income_tax_regime='partnership'`): flat 25% corporate income tax rate. MCIT does NOT apply to partnerships.
+
 ### Cooperative Income Tax Regime
 
 - `income_tax_regime='cooperative'` is included in the CHECK constraint but is **out of scope for Phase 1**.
@@ -1055,4 +1082,386 @@ INCOME TAX DUE:                            MAX(Regular, MCIT) or 8% gross receip
 Less: CWT Credits (2307):                  [tax_credits_schedules]
 Less: Prior Year Excess Credits:           [tax_credits_schedules]
 INCOME TAX STILL DUE AND PAYABLE:
+```
+
+---
+
+### Inventory Valuation Report
+
+**Source tables:** `inventory_balances`, `items`, `warehouses`, `inventory_movements`
+
+**Phase 1 method:** FIFO (First-In, First-Out) with weighted average cost approximation for ongoing movements.
+
+**Algorithm:**
+```
+1. SELECT inventory_balances WHERE company_id=? AND (item_id=? optional) AND (warehouse_id=? optional)
+2. JOIN items ON item_id: item_code, item_name, unit_of_measure
+3. JOIN warehouses ON warehouse_id: warehouse_name, branch_id
+4. Report columns: Item Code | Item Name | Warehouse | UOM | Qty on Hand | Average Unit Cost | Total Value
+5. Total Value = quantity_on_hand × average_unit_cost (from inventory_balances.average_unit_cost)
+6. Grand Total = SUM(quantity_on_hand × average_unit_cost) across all items
+7. Reconciliation: SUM(Total Value) must equal GL balance for INVENTORY_CONTROL account(s)
+```
+
+**Phase 1 cost method:** Weighted average cost. `inventory_balances.average_unit_cost` is recomputed on every IN movement:
+```
+new_average_cost = (current_qty × current_avg_cost + received_qty × received_unit_cost)
+                   / (current_qty + received_qty)
+```
+OUT movements (sales, adjustments) use the current `average_unit_cost` — they do NOT change the average cost.
+
+---
+
+### Inventory Movement Report (Inventory Ledger)
+
+**Source tables:** `inventory_movements`, `items`, `warehouses`, `journal_entries`
+
+**Algorithm:**
+```
+1. SELECT inventory_movements WHERE company_id=? AND item_id=? AND warehouse_id=?
+   AND movement_date BETWEEN ? AND ?
+   ORDER BY movement_date ASC, created_at ASC
+2. JOIN items, warehouses
+3. JOIN journal_entries ON source_document_id (via source_document_type + source_document_id)
+4. Running qty balance computed in application layer
+5. Report columns: Date | Document Type | Document No | Movement Type | Qty In | Qty Out | Running Balance | Unit Cost | Total Value
+```
+
+**Movement types:** `purchase_in` | `sale_out` | `return_in` | `return_out` | `transfer_in` | `transfer_out` | `adjustment_in` | `adjustment_out` | `opening_balance`
+
+---
+
+### Depreciation Schedule Report
+
+**Source tables:** `fixed_assets`, `asset_depreciation_schedule_lines`, `asset_categories`
+
+**Algorithm:**
+```
+1. SELECT fixed_assets WHERE company_id=? AND status IN ('active','fully_depreciated')
+2. JOIN asset_categories ON asset_category_id
+3. FOR EACH asset:
+   a. acquisition_cost = fixed_assets.acquisition_cost
+   b. salvage_value = fixed_assets.salvage_value
+   c. useful_life_months = fixed_assets.useful_life_months
+   d. depreciation_method = fixed_assets.depreciation_method
+   e. SELECT asset_depreciation_schedule_lines WHERE fixed_asset_id=? ORDER BY period_number
+   f. Show: Period | Period Date | Opening NBV | Depreciation | Accumulated Depreciation | Closing NBV
+4. Grand totals: Total Acquisition Cost | Total Accumulated Depreciation | Total Net Book Value
+```
+
+**Reconciliation:** SUM(fixed_assets.net_book_value) must equal GL balance for asset account less accumulated depreciation account.
+
+---
+
+### Asset Register Report
+
+**Source tables:** `fixed_assets`, `asset_categories`, `asset_depreciation_schedules`
+
+**Columns:** Asset Code | Asset Name | Category | Location / Branch | Acquisition Date | Acquisition Cost | Depreciation Method | Useful Life (months) | Salvage Value | Accumulated Depreciation | Net Book Value | Status
+
+**Source query:**
+```sql
+SELECT fa.asset_code, fa.asset_name, ac.category_name, br.branch_name,
+       fa.acquisition_date, fa.acquisition_cost, fa.depreciation_method,
+       fa.useful_life_months, fa.salvage_value,
+       fa.accumulated_depreciation, fa.net_book_value, fa.status
+FROM fixed_assets fa
+JOIN asset_categories ac ON fa.asset_category_id = ac.id
+LEFT JOIN branches br ON fa.branch_id = br.id
+WHERE fa.company_id = ? AND fa.deleted_at IS NULL
+ORDER BY ac.category_name, fa.asset_code
+```
+
+---
+
+### Branch P&L Report
+
+Same algorithm as Income Statement but with an additional WHERE filter:
+```
+WHERE journal_lines.branch_id = ? (target branch)
+```
+All `journal_lines` carry `branch_id` dimension. The Branch P&L shows revenue, expenses, and net income attributable to a specific branch, derived from JE lines tagged to that branch.
+
+**Note:** Branch P&L does NOT redistribute shared overhead. Only directly-tagged JE lines appear. Shared expenses must be manually allocated via journal entry adjustments tagged to each branch.
+
+---
+
+### Bank Reconciliation Report
+
+**Source tables:** `bank_statement_lines`, `company_bank_accounts`, `journal_lines`, `journal_entries`
+
+**Algorithm:**
+```
+BALANCE PER BANK STATEMENT:
+  1. Start with bank_statement_lines.closing_balance for the period
+     (from bank_statement_lines WHERE bank_account_id=? AND statement_period=?)
+
+RECONCILING ITEMS — ADD:
+  2. Deposits in Transit = journal_lines for CASH_IN_BANK DR that are NOT matched to a bank_statement_line
+     (is_reconciled=false on bank_statement_lines or on book-side tracking)
+
+RECONCILING ITEMS — DEDUCT:
+  3. Outstanding Checks = journal_lines for CASH_IN_BANK CR that are NOT cleared on bank statement
+
+ADJUSTED BANK BALANCE = Bank Balance + Deposits in Transit − Outstanding Checks
+
+BALANCE PER BOOKS:
+  4. gl_balances for CASH_IN_BANK account for the period
+
+RECONCILING ITEMS — BOOK SIDE:
+  5. Bank Charges not yet booked = bank_statement_lines for service charges with no matching JE
+  6. Interest earned not yet booked = bank_statement_lines for interest credits with no matching JE
+
+ADJUSTED BOOK BALANCE = Book Balance − Unbooked Bank Charges + Unbooked Interest
+
+RECONCILIATION:
+  Adjusted Bank Balance = Adjusted Book Balance (if not equal → reconciling items missing)
+```
+
+**Matching logic:**
+- `bank_statement_lines.is_reconciled = true` when a bank statement line is matched to a book entry
+- Matching is performed by the accountant via the Bank Reconciliation UI (match by amount + date + reference)
+- After matching: `bank_statement_lines.matched_journal_line_id` = journal_line.id
+- Unmatched bank lines → trigger bank_adjustment creation by accountant
+- Unmatched book lines → outstanding items listed in reconciliation report
+
+---
+
+## 21. Business Process Workflows (v3.8)
+
+> **Purpose:** Complete step-by-step process flows for workflows not covered by the posting engine. A developer must be able to build the UI and backend for each process without asking a single question.
+
+### Bank Reconciliation Workflow
+
+```
+SETUP:
+  - Company has one or more company_bank_accounts linked to a chart_of_accounts GL account
+  - Each month: import bank statement as bank_statement_lines via CSV import
+    (bank_statement_lines: date, reference, description, debit_amount, credit_amount, running_balance)
+
+STEP 1 — Import Bank Statement
+  User uploads CSV → import_batches (import_type='bank_statement')
+  Each CSV row → bank_statement_lines with is_reconciled=false, matched_journal_line_id=NULL
+
+STEP 2 — Auto-Match
+  System performs automatic matching:
+    For each bank_statement_line:
+      FIND journal_lines WHERE:
+        account_id = company_bank_accounts.gl_account_id
+        AND amount = bank_statement_line.amount
+        AND ABS(journal_entries.document_date - bank_statement_line.transaction_date) <= 5 days
+        AND is_reconciled_flag = false
+      If exactly one match found → auto-match: bank_statement_lines.matched_journal_line_id = journal_line.id
+        UPDATE bank_statement_lines SET is_reconciled=true, matched_journal_line_id=?, matched_at=now()
+      If multiple or zero matches → leave for manual matching
+
+STEP 3 — Manual Match
+  Accountant reviews unmatched items in the UI:
+    Left panel: unmatched bank_statement_lines
+    Right panel: unmatched journal_lines for the bank account
+  Accountant selects one bank line + one (or more) JE lines → clicks "Match"
+  System: UPDATE bank_statement_lines SET is_reconciled=true, matched_journal_line_id=?
+
+STEP 4 — Investigate Unmatched Bank Items
+  For each unmatched bank_statement_line (is_reconciled=false after Step 3):
+    Accountant creates bank_adjustments record:
+      - debit_account_id / credit_account_id (e.g., Bank Charges / Cash, Interest Income / Cash)
+      - description, amount
+    bank_adjustments are posted → creates JE → marks bank_statement_line as reconciled
+
+STEP 5 — Generate Reconciliation Report
+  System queries:
+    Unreconciled book-side JE lines (potential outstanding checks / deposits in transit)
+    Unreconciled bank-side items
+    Produces: Adjusted Bank Balance = Adjusted Book Balance
+
+STEP 6 — Certify Reconciliation
+  Accountant clicks "Certify Bank Reconciliation"
+  System INSERTs bank_reconciliation_certifications (bank_account_id, period, certified_by, certified_at)
+  This satisfies Period Close Checklist Task 1 ("Bank reconciliation certified")
+```
+
+---
+
+### Physical Count Workflow
+
+```
+SETUP:
+  Physical Count applies when company_feature_settings.inventory_enabled=true
+
+STEP 1 — Create Count Sheet
+  User creates physical_count_headers record:
+    count_date, warehouse_id, count_type ('full'|'cycle'), status='draft', created_by
+  System auto-populates physical_count_lines (one per item in warehouse):
+    item_id, warehouse_id, book_quantity (from inventory_balances.quantity_on_hand), counted_quantity=NULL
+
+STEP 2 — Conduct Count
+  Count team enters counted_quantity on each physical_count_lines row
+  Status: physical_count_headers.status = 'counting'
+  Counters may be assigned via physical_count_lines.counted_by (user_id)
+
+STEP 3 — Review Variances
+  System computes variance:
+    variance_quantity = counted_quantity - book_quantity
+    variance_value = variance_quantity × inventory_balances.average_unit_cost
+  UI shows items with non-zero variance for accountant review
+  physical_count_lines.variance_quantity and variance_value are stored
+
+STEP 4 — Approve Adjustments
+  User with INVENTORY_MANAGER or CONTROLLER role reviews variances
+  For approved variances: physical_count_headers.status = 'approved', approved_by, approved_at
+
+STEP 5 — Post Inventory Adjustments
+  System creates stock_adjustment records for each line with non-zero variance:
+    For positive variance (surplus): adjustment_type='adjustment_in'
+    For negative variance (shortage): adjustment_type='adjustment_out'
+    adjustment_account_id = company's Inventory Variance Expense account
+  Each stock_adjustment is posted via the posting engine (transaction_type='stock_adjustment')
+  This writes inventory_movements AND updates inventory_balances AND creates JE
+
+STEP 6 — Complete
+  After all adjustments posted: physical_count_headers.status = 'completed'
+  INSERT audit_logs (event_type='PHYSICAL_COUNT_COMPLETED')
+  Satisfies Period Close Checklist Task 4 ("Inventory count reconciled")
+```
+
+**Tables used:** `physical_count_headers`, `physical_count_lines`, `stock_adjustments`, `inventory_movements`, `inventory_balances` — all in Doc02.
+
+---
+
+## 22. Depreciation Calculation Algorithms (v3.8)
+
+> **Purpose:** Complete formula specification. The depreciation run must calculate the exact depreciation amount for each period per asset without developer interpretation.
+
+### Straight-Line Method
+
+```
+Annual Depreciation = (Acquisition Cost − Salvage Value) / Useful Life (years)
+Monthly Depreciation = Annual Depreciation / 12
+
+OR equivalently:
+Monthly Depreciation = (Acquisition Cost − Salvage Value) / Useful Life in Months
+
+Implementation in asset_depreciation_schedule_lines.period_amount:
+  period_amount = (fixed_assets.acquisition_cost - fixed_assets.salvage_value)
+                  / fixed_assets.useful_life_months
+
+Special rule — first and last partial periods:
+  If acquisition_date is not the 1st of the month:
+    First period depreciation = period_amount × (days remaining in month / days in month)
+    Last period depreciation = period_amount × (days used in final month / days in month)
+  (Phase 1 simplification: begin depreciating from 1st of the month following acquisition date
+   to avoid partial-month proration complexity. Set asset_depreciation_schedules.start_date
+   = first day of month following acquisition_date.)
+```
+
+### Declining Balance Method
+
+```
+Annual Depreciation Rate = depreciation_rate_percent / 100
+  (stored on fixed_assets.depreciation_rate_percent)
+
+Period 1 depreciation = Acquisition Cost × (Annual Rate / 12)
+Period N depreciation = Net Book Value at start of period × (Annual Rate / 12)
+
+Where:
+  Net Book Value at start of period N = Acquisition Cost − SUM(all prior period depreciation amounts)
+
+Constraint: Depreciation in any period cannot reduce NBV below Salvage Value.
+  IF (current NBV − period_depreciation) < salvage_value THEN
+    period_depreciation = current NBV − salvage_value
+
+Final period: When NBV = Salvage Value, depreciation stops (asset fully depreciated to salvage).
+```
+
+### Units of Production (UOP) Method
+
+```
+Depreciation per Unit = (Acquisition Cost − Salvage Value) / Total Estimated Units
+
+Period Depreciation = Actual Units Produced in Period × Depreciation per Unit
+
+Where:
+  Total Estimated Units = fixed_assets.useful_life_units (stored on fixed_assets for UOP assets)
+  Actual Units = fixed_assets.actual_units_this_period (entered by user per period before run)
+
+Constraint: Same salvage floor — depreciation cannot reduce NBV below salvage_value.
+
+Phase 1 implementation: UOP assets require manual entry of actual_units_per_period before
+each depreciation run. The system does NOT pull units from a production system.
+```
+
+### Schedule Generation (at Asset Acquisition)
+
+When an asset is created/activated, the system auto-generates the full depreciation schedule:
+```
+INSERT asset_depreciation_schedules (fixed_asset_id, method, start_date, end_date, total_depreciation)
+INSERT asset_depreciation_schedule_lines (one per month from start_date to end_date):
+  period_number = 1 to useful_life_months
+  scheduled_date = start_date + (period_number - 1) months
+  period_amount = computed per method above
+  status = 'pending'
+```
+
+The schedule is informational until the depreciation run posts it. The run marks each line `status='processed'` after posting.
+
+---
+
+## 23. Form Auto-Population Reference (v3.8)
+
+> **Purpose:** Every dropdown and auto-fill field in every transaction form must have a documented source table and column. A developer must be able to wire up any form field without guessing.
+
+### Standard Dropdown Sources
+
+| Field | Source Table | Filter | Display Label | Value Stored |
+|---|---|---|---|---|
+| Customer | `customers` | `company_id=? AND deleted_at IS NULL AND is_active=true` | `registered_name` (or `trade_name`) | `customers.id` |
+| Supplier | `suppliers` | same | `registered_name` | `suppliers.id` |
+| Item | `items` | `company_id=? AND item_type IN ('product','consumable') AND is_active=true` | `item_code + ' — ' + item_name` | `items.id` |
+| Service | `items` | `company_id=? AND item_type='service' AND is_active=true` | `item_code + ' — ' + item_name` | `items.id` |
+| Tax Code (VAT) | `tax_codes` | `company_id=? AND tax_type='vat' AND is_active=true` | `code + ' ' + description` | `tax_codes.id` |
+| EWT ATC Code | `atc_codes` | `company_id=? AND atc_type='ewt' AND is_active=true` | `atc_code + ' — ' + description + ' (' + rate + '%)'` | `atc_codes.id` |
+| FWT ATC Code | `atc_codes` | `company_id=? AND atc_type='fwt' AND is_active=true` | same | `atc_codes.id` |
+| Branch | `branches` | `company_id=? AND deleted_at IS NULL AND is_active=true` | `branch_name` | `branches.id` |
+| Department | `departments` | `company_id=? AND branch_id=? AND is_active=true` | `department_name` | `departments.id` |
+| Cost Center | `cost_centers` | `company_id=? AND department_id=? AND is_active=true` | `cost_center_name` | `cost_centers.id` |
+| Currency | `currencies` | `is_active=true` | `currency_code + ' — ' + currency_name` | `currencies.id` (Phase 1: PHP only, pre-filtered) |
+| Payment Terms | `payment_terms` | `company_id=? AND is_active=true` | `terms_name` | `payment_terms.id` |
+| Revenue Account | `chart_of_accounts` | `company_id=? AND account_type='revenue' AND is_active=true` | `account_code + ' — ' + account_name` | `chart_of_accounts.id` |
+| Expense Account | `chart_of_accounts` | `company_id=? AND account_type='expense' AND is_active=true` | same | `chart_of_accounts.id` |
+| Inventory Account | `chart_of_accounts` | `company_id=? AND control_account_type='INVENTORY_CONTROL' AND is_active=true` | same | `chart_of_accounts.id` |
+| COGS Account | `chart_of_accounts` | `company_id=? AND account_name ILIKE '%cost of goods%' AND is_active=true` | same | `chart_of_accounts.id` |
+| Bank Account | `company_bank_accounts` | `company_id=? AND is_active=true` | `bank_name + ' — ' + account_number` | `company_bank_accounts.id` |
+| Warehouse | `warehouses` | `company_id=? AND is_active=true` | `warehouse_name` | `warehouses.id` |
+
+### Auto-Fill Rules
+
+| Form | Trigger | Auto-Filled Field | Source |
+|---|---|---|---|
+| Sales Invoice | Customer selected | `customer_tin` snapshot | `customers.tin` |
+| Sales Invoice | Customer selected | `payment_terms_id` | `customers.default_payment_terms_id` |
+| Sales Invoice | Customer selected | `due_date` | `document_date + payment_terms.due_days` |
+| Sales Invoice | Item selected (per line) | `revenue_account_id` | `items.revenue_account_id` |
+| Sales Invoice | Item selected (per line) | `unit_price` | `item_prices WHERE item_id=? AND effective_from<=document_date ORDER BY effective_from DESC LIMIT 1` |
+| Sales Invoice | Item selected (per line) | `tax_code_id` | `items.default_tax_code_id` |
+| Vendor Bill | Supplier selected | `supplier_tin` snapshot | `suppliers.tin` |
+| Vendor Bill | Supplier selected | `payment_terms_id` | `suppliers.default_payment_terms_id` |
+| Vendor Bill | Supplier selected | `due_date` | `document_date + payment_terms.due_days` |
+| Vendor Bill | Item selected (per line) | `expense_account_id` | `items.expense_account_id` |
+| Vendor Bill | Item selected (per line) | `ewt_atc_id` | `items.default_ewt_atc_id` (if item is EWT-subject) |
+| Receipt | Customer selected | AR balance summary | `SUM(subsidiary_ledger_entries WHERE ledger_type='ar' AND customer_id=? AND is_open=true)` |
+| Payment Voucher | Supplier selected | AP balance summary | `SUM(subsidiary_ledger_entries WHERE ledger_type='ap' AND supplier_id=? AND is_open=true)` |
+
+### Due Date Computation
+
+```
+due_date = document_date + payment_terms.due_days
+
+Where:
+  payment_terms.due_days is an integer (e.g., 30 for Net 30, 0 for COD)
+  document_date is the invoice/bill date
+
+If payment_terms.due_days = 0: due_date = document_date (Cash On Delivery)
+If payment_terms has day_of_month (e.g., "end of month"): due_date = last day of month of (document_date + due_days)
+  Phase 1 simplification: use only due_days for all payment terms. Day-of-month terms are Phase 2.
 ```

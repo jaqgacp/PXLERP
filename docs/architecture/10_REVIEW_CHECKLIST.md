@@ -1055,3 +1055,58 @@ All open decisions must be resolved before SQL migrations begin.
 | 52.16 | All Section 52 items marked [x] — Implementation Readiness Fix Pass complete | All | [ ] |
 
 **DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 AND 51.1–51.10 AND 52.1–52.16 are [x].**
+
+
+---
+
+## SECTION 53: Implementation Contract Completion Pass Sign-Off (v3.8)
+
+> Business Scenario Validation (Task D) returned IMPLEMENTATION NOT READY (72/100) with 22 gaps across 3 criticality levels. This section tracks all v3.8 fixes applied in the Contract Completion Pass.
+
+### Fixes Applied (v3.8)
+
+| Fix # | Gap | Resolution | Doc(s) |
+|---|---|---|---|
+| CC-01 | GAP-03/17: `vat_period_summaries` population mechanism missing from posting engine | Added to Doc06 §7 Step 11e: UPSERT vat_period_summaries per posting transaction | Doc 06 |
+| CC-02 | GAP-19: `percentage_tax_period_summaries` population mechanism missing | Added to Doc06 §7 Step 11g: UPSERT percentage_tax_period_summaries | Doc 06 |
+| CC-03 | GAP-05: `ewt_period_summaries` population mechanism missing | Added to Doc06 §7 Step 11f: UPSERT ewt_period_summaries | Doc 06 |
+| CC-04 | GAP-12: `inventory_movements` write step missing from posting engine | Added to Doc06 §7 Step 10: explicit inventory_movements INSERT + inventory_balances UPSERT | Doc 06 |
+| CC-05 | GAP-15: Year-end closing JE process undocumented; je_type='closing' missing | Added Doc06 §13: complete 3-step closing JE sequence with all rules, idempotency, je_type='closing'. Added 'closing' to Doc03 journal_entries.je_type CHECK constraint | Doc 03, Doc 06 |
+| CC-06 | GAP-04: `cash_sales.payment_amount` vs `total_amount` naming inconsistency | Fixed Doc06 §8 Cash Sale posting rule: `payment_amount` → `total_amount` | Doc 06 |
+| CC-07 | GAP-06: EWT pre-booking detection logic for Payment Voucher absent | Added explicit detection algorithm to Doc06 §8b Payment Voucher rule: COUNT ewt_entries for linked vendor_bill to determine PATH A vs PATH B | Doc 06 |
+| CC-08 | GAP-18: TRAIN Law individual income tax graduated rate table missing | Added complete rate table + implementation formula to Doc01 §19 | Doc 01 |
+| CC-09 | GAP-08: Bank reconciliation workflow absent | Added complete 6-step workflow to Doc01 §21 (new section) | Doc 01 |
+| CC-10 | GAP-10: Physical inventory count workflow absent | Added complete 6-step workflow to Doc01 §21 | Doc 01 |
+| CC-11 | GAP-11: Inventory Valuation Report algorithm missing | Added to Doc01 §20: FIFO/weighted average cost algorithm, reconciliation formula | Doc 01 |
+| CC-12 | GAP-11: Inventory Movement Report algorithm missing | Added to Doc01 §20: inventory_movements source query, running balance, movement types | Doc 01 |
+| CC-13 | GAP-22: Branch P&L not documented as filter variant | Added to Doc01 §20: Branch P&L = Income Statement with WHERE journal_lines.branch_id=? | Doc 01 |
+| CC-14 | GAP-13: Depreciation formulas absent | Added Doc01 §22 (new section): Straight-Line, Declining Balance, UOP formulas with partial-period rules, schedule generation algorithm | Doc 01 |
+| CC-15 | GAP-02: due_date computation formula undocumented | Added to Doc01 §23 Form Auto-Population: due_date = document_date + payment_terms.due_days | Doc 01 |
+| CC-16 | GAP-21: Doc04 OD-09 and OD-10 formally unresolved | Resolved in Doc04: OD-09 = no, use notifications.entity_type/entity_id; OD-10 = yes, add export_job_id FK to generated_documents | Doc 03, Doc 04 |
+| CC-17 | GAP-01: Company onboarding Edge Function spec — seeding posting rules undocumented | Documented in Doc06 §2 OD-PE-01 resolution: system-seeded rules with is_system=true; setup wizard seeds all standard transaction types | Doc 06 (existing OD-PE-01 resolution — confirmed sufficient) |
+| CC-18 | Background jobs undocumented | Added Doc06 §14: all scheduled processes with trigger, frequency, inputs, idempotency, failure handling | Doc 06 |
+| CC-19 | Form auto-population undocumented | Added Doc01 §23: all dropdowns with source table/filter/value, all auto-fill rules with trigger and source | Doc 01 |
+| CC-20 | Depreciation Schedule Report and Asset Register Report missing from Doc01 §20 | Added both to Doc01 §20 | Doc 01 |
+| CC-21 | Bank Reconciliation Report algorithm missing | Added to Doc01 §20 | Doc 01 |
+| CC-22 | `je_type` CHECK constraint note in Doc03 not updated to reflect 'closing' addition | Updated v3.8 note in Doc03 journal_entries section | Doc 03 |
+
+### Section 53 Sign-Off Items
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 53.1 | CC-01/02/03/04: Posting engine Steps 10 and 11 now cover ALL side-writes: inventory_movements, inventory_balances, vat_period_summaries, ewt_period_summaries, percentage_tax_period_summaries — confirmed by Dev Lead | Dev Lead | [ ] |
+| 53.2 | CC-05: Year-end closing 3-step JE sequence reviewed by CPA — closes Revenue/Expense to Income Summary then to Retained Earnings, amounts correct | CPA Lead | [ ] |
+| 53.3 | CC-05: `je_type='closing'` confirmed in Doc03 CHECK constraint — matches Doc06 §13 | DB Architect | [ ] |
+| 53.4 | CC-07: EWT detection (COUNT ewt_entries by source_document_id) reviewed by Dev Lead — correctly distinguishes pre-booked vs first-time EWT | Dev Lead | [ ] |
+| 53.5 | CC-08: TRAIN Law rate table confirmed by CPA Lead as current rates per RR implementing RA 10963 (2023 onwards) | CPA Lead | [ ] |
+| 53.6 | CC-09/10: Bank Reconciliation and Physical Count workflows reviewed by Dev Lead — tables exist in Doc02, process steps buildable without additional design decisions | Dev Lead | [ ] |
+| 53.7 | CC-11/12: Inventory Valuation + Movement Report algorithms reviewed — source tables inventory_balances and inventory_movements confirmed | Dev Lead + CPA Lead | [ ] |
+| 53.8 | CC-14: Depreciation formulas (Straight-Line, Declining Balance, UOP) reviewed by CPA — formulas, salvage floor, partial-period rule correct | CPA Lead | [ ] |
+| 53.9 | CC-16: Doc04 OD-09/OD-10 resolutions reviewed — notifications.entity_id approach confirmed; export_job_id FK added to generated_documents in Doc03 | DB Architect | [ ] |
+| 53.10 | CC-18: Background jobs table reviewed — all 8 jobs have trigger, schedule, idempotency guard confirmed | Dev Lead | [ ] |
+| 53.11 | CC-19: Form auto-population table reviewed by Dev Lead — all dropdown source tables exist in Doc02/Doc03; auto-fill rules implementable | Dev Lead | [ ] |
+| 53.12 | All 22 gaps from Business Scenario Validation (Task D) are closed: 8 Critical (CC-01 to CC-07, CC-17), 9 Significant (CC-08, CC-09, CC-10, CC-11/12/13, CC-14, CC-18, CC-19), 5 Moderate (CC-02, CC-15, CC-16, CC-20, CC-21) | All | [ ] |
+| 53.13 | Senior Developer Simulation: a developer reading Docs 00–10 can implement the complete Phase 1 PXL ERP without asking a single architectural, accounting, posting, tax, report, or compliance question — confirmed by Dev Lead | Dev Lead | [ ] |
+| 53.14 | All Section 53 items marked [x] — Implementation Contract Completion Pass complete | All | [ ] |
+
+**DATABASE FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 AND 50.1–50.10 AND 51.1–51.10 AND 52.1–52.16 AND 53.1–53.14 are [x].**
