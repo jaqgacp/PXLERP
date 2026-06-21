@@ -1,6 +1,6 @@
 # PXL ERP — Architecture Principles
-**Version:** 2.0 — Constitutional Foundation
-**Status:** Active — All decisions must reference this document before implementation
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 

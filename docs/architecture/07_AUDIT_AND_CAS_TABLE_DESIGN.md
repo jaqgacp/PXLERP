@@ -1,54 +1,24 @@
 # PXL ERP — Audit and CAS Table Design
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 4.0 — Canonical Release
+**Status:** v4.0 — DATABASE FREEZE CANDIDATE. Pending human sign-off (see Doc10 Sections 47–53).
 
 ---
 
-## v3 Architecture Review Changes Applied
+## Resolved Architectural Decisions
 
-- **New audit event types added**: `COA_FS_MAPPING_CHANGED`, `ITR_COMPUTATION_RUN_CREATED`, `NOLCO_UPDATED`, `BOOK_TAX_RECONCILIATION_COMPLETED`, `PARTY_SPECIAL_CLASS_CHANGED`, `POSTING_RULE_VERSIONED` — see Event Type table below.
-- **`itr_working_papers` audit events**: Events referencing `itr_working_papers` updated to `itr_computation_runs`. `MCIT_COMPUTED` and `NOLCO_SCHEDULE_UPDATED` event types superseded by new events.
-- **COA changes**: `COA_FS_MAPPING_CHANGED` covers updates to `fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category` fields — these are compliance-impacting changes and must be audit-logged with old/new values.
-- **Party classification change**: `PARTY_SPECIAL_CLASS_CHANGED` fires when `customers.party_special_class` or `suppliers.party_special_class` is changed — this affects VAT classification routing in the posting engine.
-
-## v3 Open Decisions
-
-| OD# | Decision | Status |
-|---|---|---|
-| OD-07-V3-01 | Should `COA_FS_MAPPING_CHANGED` store old/new values in `metadata` jsonb or in `field_change_history`? | Recommended: `field_change_history` (consistent with all master data field-level changes) |
-| OD-07-V3-02 | Should `ITR_COMPUTATION_RUN_CREATED` include `computation_run_id` in `entity_id` or the parent `itr_filing_id`? | Recommended: `entity_id` = `itr_computation_runs.id`; `metadata.itr_filing_id` for cross-reference |
-
----
-
-## Changes Applied (v1 → v2)
-
-- Added `PERIOD_CLOSE_STARTED`, `PERIOD_CLOSE_TASK_COMPLETED`, `PERIOD_CLOSE_CERTIFIED` to event type list in `audit_logs`
-- Added `NOTIFICATION_SENT`, `NOTIFICATION_FAILED` to event type list
-- Added `DOCUMENT_TEMPLATE_PUBLISHED`, `GENERATED_DOCUMENT_CREATED` to event type list
-- Added `PARTY_MERGED`, `DUPLICATE_TIN_FLAGGED` to event type list
-- Added `system_alerts` full table specification (was referenced in v1 but not defined)
-- Updated `document_void_register.document_number` → `document_no`
-- Updated `subsidiary_ledger_entries.document_number` → `document_no` (in doc 06, consistent here)
-- Added `CASH_SALE_POSTED`, `CASH_PURCHASE_POSTED` to event types (cash transaction audit events)
-- Removed duplicate `number_series` table definition — canonical spec for `number_series`, `number_series_atp`, `atp_usage_logs` stays in this document (doc 07)
-- Confirmed `atp_usage_logs` is immutable (no update, no delete)
-- Added `IMPORT_ROLLED_BACK` to event type list
-
----
-
-## Open Decisions Remaining
-
-| OD # | Question | Status |
-|---|---|---|
-| OD-15 | Should `system_alerts` be promoted to Supabase Realtime so admins receive live ATP gap alerts? | Recommended: Yes — add to Realtime list alongside approval tables. Confirm before RLS design. |
-| OD-16 | Should `user_activity_logs` be partitioned by month for performance on high-volume companies? | Phase 2 consideration — Phase 1: single table with `company_id` + `occurred_at` index. |
+| Decision | Resolution |
+|---|---|
+| `COA_FS_MAPPING_CHANGED` — `metadata` jsonb or `field_change_history`? | Use `field_change_history`. When `chart_of_accounts` FS mapping columns change (`fs_section`, `fs_group`, `fs_sort_order`, `cash_flow_category`), the standard field_change_history trigger fires and captures old/new per-field. `audit_logs` receives a single event `COA_FS_MAPPING_CHANGED` with `entity_type='chart_of_accounts'` and `entity_id=coa.id`. No duplication in `metadata` jsonb. |
+| `ITR_COMPUTATION_RUN_CREATED` — `entity_id` = run or filing? | `entity_id = itr_computation_runs.id`. The run is the primary audit entity. `metadata` jsonb includes `{ "itr_filing_id": "uuid" }` for cross-reference to the parent `income_tax_return_filings` record. Consistent with `AMORTIZATION_RUN_COMPLETED` pattern. |
+| `system_alerts` on Supabase Realtime? | Yes. `system_alerts` is added to the Supabase Realtime publication list (confirmed in Doc09 Section 6). Admins and controllers subscribed to `system_alerts` receive live ATP gap alerts and low-stock alerts without polling. RLS ensures only company_admin and controller roles see their company's alerts. |
+| `user_activity_logs` partitioned by month? | Phase 1: single table with composite index `(company_id, occurred_at DESC)`. No partitioning in Phase 1. Phase 2: if table exceeds 10M rows per company per year, add monthly range partitioning by `occurred_at`. Partitioning can be added with `ATTACH PARTITION` without recreating the table. |
 
 ---
 
 ## Implementation Notes
 
 - `audit_logs`, `field_change_history`, `atp_usage_logs`, `document_void_register` are insert-only. The application role must have INSERT but NOT UPDATE or DELETE on these tables.
-- `number_series.current_number` is updated via `SELECT FOR UPDATE` to prevent race conditions in concurrent document creation.
+- `number_series.next_sequence` is updated via `SELECT FOR UPDATE` to prevent race conditions in concurrent document creation.
 - `system_alerts` is the output table for the nightly pg_cron ATP gap detection job. It is readable by company admins and controllers.
 - The field_change_history trigger must skip `gl_balances`, `audit_logs`, `field_change_history` itself, and notification delivery tables to prevent trigger loops.
 - Approval audit tables (`approval_requests`, `approval_actions`) have Supabase Realtime enabled.
@@ -69,28 +39,7 @@ BIR CAS (Computerized Accounting System) accreditation mandates a complete, tamp
 ## 2. Event Audit Log
 
 ### `audit_logs`
-Immutable log of every system event. No soft delete. No update allowed.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `event_type` | text | NOT NULL | See event type table below |
-| `entity_type` | text | NOT NULL | Table name of affected record |
-| `entity_id` | uuid | NOT NULL | ID of affected record |
-| `entity_number` | text | NULL | Human-readable doc number (denormalized for readability) |
-| `description` | text | NOT NULL | Human-readable description |
-| `old_status` | text | NULL | Previous status (for status changes) |
-| `new_status` | text | NULL | New status |
-| `performed_by` | uuid | FK auth.users, NOT NULL | |
-| `performed_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `ip_address` | inet | NULL | Client IP (captured by Edge Function) |
-| `user_agent` | text | NULL | Browser/client user agent |
-| `session_id` | text | NULL | Auth session ID |
-| `branch_id` | uuid | FK branches, NULL | |
-| `metadata` | jsonb | NULL | Additional context (e.g., filter params for exports) |
-
-**No RLS update or delete policies on this table. Insert-only.**
+> Column spec: See Doc03 Section 41 (`audit_logs`). This document retains the authoritative event type list below. **No RLS update or delete policies. Insert-only.**
 
 ### Event Type Values
 
@@ -169,10 +118,11 @@ Captures before/after values for every field modified on audited tables. Immutab
 | `field_name` | text | NOT NULL | Column name that changed |
 | `old_value` | text | NULL | Serialized old value (NULL if new record) |
 | `new_value` | text | NULL | Serialized new value (NULL if deleted) |
-| `change_type` | text | CHECK IN ('INSERT','UPDATE','DELETE'), NOT NULL | |
+| `change_type` | text | CHECK IN ('insert','update','delete'), NOT NULL | **[v3.6 fix: lowercase per architecture convention]** |
 | `changed_by` | uuid | FK auth.users, NOT NULL | |
 | `changed_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `operation_id` | uuid | NULL | Groups all field changes from a single save operation |
+| `audit_log_id` | uuid | FK audit_logs, NULL | Links to the audit_logs event that triggered this change |
 
 **Implementation:** PostgreSQL trigger on every audited table. Trigger fires AFTER UPDATE/INSERT/DELETE, iterates over NEW vs OLD columns, inserts one row per changed field.
 
@@ -185,121 +135,113 @@ Captures before/after values for every field modified on audited tables. Immutab
 ## 4. User Activity Log
 
 ### `user_activity_logs`
-Records every user session event and sensitive action.
+Records every user session event and sensitive action. Canonical column spec: Doc03 §41.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
-| `user_id` | uuid | FK auth.users, NOT NULL | |
 | `company_id` | uuid | FK companies, NULL | NULL for login events before company selection |
+| `user_id` | uuid | FK profiles, NOT NULL | |
 | `activity_type` | text | NOT NULL | See below |
-| `description` | text | NOT NULL | |
+| `description` | text | NULL | Human-readable summary of the action |
+| `entity_type` | text | NULL | Table name of document viewed/opened |
+| `entity_id` | uuid | NULL | PK of document |
 | `ip_address` | inet | NULL | |
 | `user_agent` | text | NULL | |
 | `session_id` | text | NULL | |
-| `occurred_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `metadata` | jsonb | NULL | e.g., report name, filter params, export row count |
+| `occurred_at` | timestamptz | NOT NULL DEFAULT now() | |
 
 ### Activity Types
 
 | Type | Description |
 |---|---|
-| `LOGIN_SUCCESS` | Successful login |
-| `LOGIN_FAILED` | Failed login attempt |
-| `LOGOUT` | User logged out |
-| `SESSION_EXPIRED` | Session timed out |
-| `COMPANY_SWITCHED` | User switched active company |
-| `BRANCH_SWITCHED` | User switched active branch |
-| `REPORT_VIEWED` | Financial report accessed |
-| `REPORT_EXPORTED` | Report exported (PDF, Excel, CSV) |
-| `DOCUMENT_PRINTED` | Document printed |
-| `DATA_EXPORTED` | Bulk data export |
-| `COMPLIANCE_REPORT_EXPORTED` | BIR compliance form exported |
-| `DAT_FILE_DOWNLOADED` | CAS DAT file downloaded |
-| `SETTINGS_CHANGED` | User changed own settings |
-| `PASSWORD_CHANGED` | Password changed |
-| `MFA_ENABLED` | MFA configured |
-| `MFA_DISABLED` | MFA removed |
+| `login_success` | Successful login |
+| `login_failed` | Failed login attempt |
+| `logout` | User logged out |
+| `session_expired` | Session timed out |
+| `company_switched` | User switched active company |
+| `branch_switched` | User switched active branch |
+| `report_viewed` | Financial report accessed |
+| `report_exported` | Report exported (PDF, Excel, CSV) |
+| `document_printed` | Document printed |
+| `data_exported` | Bulk data export |
+| `compliance_report_exported` | BIR compliance form exported |
+| `dat_file_downloaded` | CAS DAT file downloaded |
+| `settings_changed` | User changed own settings |
+| `password_changed` | Password changed |
+| `mfa_enabled` | MFA configured |
+| `mfa_disabled` | MFA removed |
 
 ---
 
 ## 5. Document Void Register
 
 ### `document_void_register`
-Permanent record of every voided document. Cannot be deleted or updated.
+Permanent record of every voided document. Canonical column spec: Doc03 §11.
 
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `document_type` | text | NOT NULL | |
-| `document_id` | uuid | NOT NULL | FK to source document |
-| `document_no` | text | NOT NULL | Denormalized |
-| `original_amount` | numeric(18,4) | NOT NULL | Total amount of voided document |
-| `original_date` | date | NOT NULL | Original document date |
-| `void_date` | date | NOT NULL | Date of void |
-| `void_reason` | text | NOT NULL | Required |
-| `voided_by` | uuid | FK auth.users, NOT NULL | |
-| `voided_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `reversal_journal_entry_id` | uuid | FK journal_entries, NULL | JE created to reverse |
-| `approved_by` | uuid | FK auth.users, NULL | If void requires approval |
-| `approved_at` | timestamptz | NULL | |
+> Column spec: See Doc03 Section 11 (`document_void_register`). Canonical spec uses `document_date` (not `original_date`), `reversal_je_id` (not `reversal_journal_entry_id`), and includes `document_date`, `reversal_je_id`, `approved_by`, `approved_at`.
 
 ---
 
 ## 6. Document Number Series Tables
 
 ### `number_series`
-Tracks ATP-compliant document series. Canonical definition is here in doc 07.
+Tracks ATP-compliant document series. Canonical column spec: Doc03 §25. This section retains ATP context and document_type values.
+
+Canonical column spec: Doc03 §25. Columns listed here for reference:
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `branch_id` | uuid | FK branches, NULL | NULL = company-wide |
-| `document_type` | text | NOT NULL | 'sales_invoice' \| 'official_receipt' \| 'purchase_order' \| 'delivery_order' \| 'journal_entry' \| 'cash_sale' \| 'cash_purchase' \| 'credit_memo' \| 'debit_memo' \| 'payment_voucher' \| 'petty_cash_voucher' |
-| `series_prefix` | text | NOT NULL | e.g., 'SI-2025-' |
+| `series_type` | text | NOT NULL | CHECK IN ('sales_invoice','cash_sale','receipt','vendor_bill','cash_purchase','payment_voucher','journal_entry','delivery_receipt','purchase_order','receiving_report','petty_cash_voucher','stock_adjustment','stock_transfer','asset_acquisition','asset_disposal','sales_credit_memo','sales_debit_memo','supplier_debit_memo') |
+| `prefix` | text | NOT NULL | e.g., 'SI-', 'OR-', 'PV-' |
 | `padding_length` | integer | NOT NULL DEFAULT 6 | Zero-padding for sequential number |
-| `current_number` | bigint | NOT NULL DEFAULT 0 | Last used number |
-| `max_number` | bigint | NOT NULL | ATP series limit |
+| `next_sequence` | bigint | NOT NULL DEFAULT 1 | Next number to assign |
+| `min_value` | bigint | NOT NULL DEFAULT 1 | |
+| `max_value` | bigint | NOT NULL DEFAULT 999999999 | ATP series limit |
+| `reset_frequency` | text | NULL | CHECK IN ('never','monthly','annually') |
+| `last_reset_at` | timestamptz | NULL | |
 | `is_active` | boolean | NOT NULL DEFAULT true | |
-| `atp_reference_no` | text | NULL | BIR ATP reference |
-| `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `created_by` | uuid | FK auth.users | |
+| *+ standard audit columns* | | | |
+
+**Constraints:** `UNIQUE(company_id, branch_id, series_type)` where `is_active = true`
 
 ### `number_series_atp`
-One record per ATP grant per series.
+One record per ATP grant per series. Canonical column spec: Doc03 §25.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `number_series_id` | uuid | FK number_series, NOT NULL | |
-| `atp_reference_no` | text | NOT NULL | BIR-issued ATP reference |
-| `series_start` | bigint | NOT NULL | |
-| `series_end` | bigint | NOT NULL | |
-| `valid_from` | date | NOT NULL | |
-| `valid_until` | date | NULL | |
-| `printer_name` | text | NULL | BIR-accredited printer |
-| `print_date` | date | NULL | Date of printing |
+| `atp_no` | text | NOT NULL | BIR-issued ATP authority number |
+| `series_from` | bigint | NOT NULL | Starting number in ATP range |
+| `series_to` | bigint | NOT NULL | Ending number in ATP range |
+| `valid_until` | date | NULL | Expiry date if BIR specified |
+| `approved_at` | date | NOT NULL | BIR approval date |
 | `is_active` | boolean | NOT NULL DEFAULT true | |
+| *+ standard audit columns* | | | |
+
+> Immutable once created. `is_active = false` when all numbers exhausted.
 
 ### `atp_usage_logs`
-Every document number allocated from a series. Immutable.
+Every document number allocated from a series. Immutable. Canonical column spec: Doc03 §25.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `number_series_id` | uuid | FK number_series, NOT NULL | |
-| `atp_id` | uuid | FK number_series_atp, NOT NULL | |
-| `allocated_number` | bigint | NOT NULL | Raw number allocated |
-| `formatted_number` | text | NOT NULL | e.g., 'SI-2025-000123' |
-| `document_type` | text | NOT NULL | |
-| `document_id` | uuid | NOT NULL | FK to the document |
-| `allocated_by` | uuid | FK auth.users, NOT NULL | |
-| `allocated_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `is_voided` | boolean | NOT NULL DEFAULT false | True if document was voided — number is consumed, NOT reused |
+| `number_series_atp_id` | uuid | FK number_series_atp, NOT NULL | |
+| `allocated_number` | bigint | NOT NULL | Raw sequence number — used for gap detection |
+| `document_no` | text | NOT NULL | Formatted document number e.g., 'SI-2025-000123' |
+| `entity_type` | text | NOT NULL | Table name of the document |
+| `entity_id` | uuid | NOT NULL | PK of the document |
+| `used_by` | uuid | FK auth.users, NOT NULL | |
+| `used_at` | timestamptz | NOT NULL DEFAULT now() | |
+| `is_voided` | boolean | NOT NULL DEFAULT false | Voided numbers are never reused |
 
 **Immutable. No update, no delete.**
 
@@ -308,32 +250,22 @@ Every document number allocated from a series. Immutable.
 ## 7. CAS-Specific Tables
 
 ### `cas_registrations`
-Tracks CAS accreditation per company.
+> Column spec: See Doc03 Section 1 (`cas_registrations`). Tracks BIR CAS accreditation per company — cas_number, accreditation_date, valid_until, covered_modules, bir_rdo_code.
 
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `cas_number` | text | NOT NULL | BIR-issued CAS accreditation number |
-| `accreditation_date` | date | NOT NULL | |
-| `valid_until` | date | NULL | |
-| `covered_modules` | text[] | NOT NULL | e.g., ['GL','AR','AP','INV'] |
-| `bir_rdo_code` | text | NOT NULL | Revenue District Office code |
-| `bir_form_submitted` | text | NULL | BIR form used for CAS (e.g., '1900') |
-| `is_active` | boolean | NOT NULL DEFAULT true | |
-| `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `created_by` | uuid | FK auth.users | |
+> Note: `field_change_history.audit_log_id` is a direct FK to `audit_logs.id`. The `operation_id` column groups all field changes from a single save operation using the same UUID (used when multiple fields change in one transaction).
 
 ---
 
-### `dat_file_generation_logs`
+### `dat_generation_logs`
+> **v3.2 Canonical Name Fix:** Previously called `dat_file_generation_logs` in this doc. Canonical name is `dat_generation_logs` per Doc 02 registry. All references updated.
+
 CAS requirement: every DAT file export must be logged permanently.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `dat_type` | text | NOT NULL | 'GL' \| 'SL' \| 'SLS' \| 'PUR' \| 'INV' |
+| `dat_type` | text | CHECK IN ('gl','sl','sls','pur','inv'), NOT NULL | BIR CAS DAT file type — lowercase internal value **[v3.6 fix: was uppercase; CHECK constraint uses lowercase per architecture convention]** |
 | `period_from` | date | NOT NULL | |
 | `period_to` | date | NOT NULL | |
 | `fiscal_year_id` | uuid | FK fiscal_years, NULL | |
@@ -358,8 +290,8 @@ Stores automated system alerts generated by scheduled jobs.
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `alert_type` | text | NOT NULL | 'ATP_SERIES_NEAR_LIMIT' \| 'ATP_GAP_DETECTED' \| 'PERIOD_CLOSE_OVERDUE' \| 'IMPORT_FAILED' \| 'EXPORT_FAILED' \| 'RECURRING_JE_FAILED' |
-| `severity` | text | CHECK IN ('INFO','WARNING','ERROR','CRITICAL'), NOT NULL | |
+| `alert_type` | text | NOT NULL | CHECK IN ('atp_series_near_limit','atp_gap_detected','period_close_overdue','import_failed','export_failed','recurring_je_failed') |
+| `severity` | text | CHECK IN ('info','warning','error','critical'), NOT NULL | |
 | `title` | text | NOT NULL | Short alert title |
 | `message` | text | NOT NULL | Full alert details |
 | `entity_type` | text | NULL | Affected entity table (e.g., 'number_series') |
@@ -388,7 +320,7 @@ Supabase Realtime enabled.
 | `approval_matrix_id` | uuid | FK approval_matrix, NOT NULL | |
 | `requested_by` | uuid | FK auth.users, NOT NULL | |
 | `requested_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `status` | text | CHECK IN ('PENDING','APPROVED','REJECTED','CANCELLED') | |
+| `status` | text | CHECK IN ('pending','approved','rejected','cancelled') | |
 | `completed_at` | timestamptz | NULL | |
 | `current_step` | integer | NOT NULL DEFAULT 1 | |
 
@@ -401,7 +333,7 @@ Immutable. Supabase Realtime enabled.
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `approval_request_id` | uuid | FK approval_requests, NOT NULL | |
 | `step_number` | integer | NOT NULL | |
-| `action` | text | CHECK IN ('APPROVED','REJECTED','RETURNED','ESCALATED') | |
+| `action` | text | CHECK IN ('approved','rejected','returned','escalated') | |
 | `acted_by` | uuid | FK auth.users, NOT NULL | |
 | `acted_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `comments` | text | NULL | |
@@ -416,14 +348,14 @@ Immutable. Supabase Realtime enabled.
 ### Trigger Design
 Every audited table gets two triggers:
 1. **`{table}_audit_trigger`** — fires AFTER INSERT/UPDATE/DELETE, writes to `field_change_history`
-2. **`{table}_immutability_trigger`** — fires BEFORE UPDATE/DELETE, raises exception if `status = 'POSTED'`
+2. **`{table}_immutability_trigger`** — fires BEFORE UPDATE/DELETE, raises exception if `status IN ('posted','voided','reversed')` **[v3.6 fix: was 'POSTED' uppercase; see trigger function below for canonical lowercase values]**
 
 ### Immutability Enforcement
 ```sql
 CREATE OR REPLACE FUNCTION enforce_posted_immutability()
 RETURNS trigger AS $$
 BEGIN
-  IF OLD.status IN ('POSTED', 'VOIDED', 'REVERSED') THEN
+  IF OLD.status IN ('posted', 'voided', 'reversed') THEN
     RAISE EXCEPTION 'Cannot modify a posted/voided/reversed document: %', OLD.id;
   END IF;
   RETURN NEW;
@@ -434,6 +366,6 @@ $$ LANGUAGE plpgsql;
 ### Sequence Gap Detection
 A scheduled Supabase pg_cron job runs nightly:
 - Checks `atp_usage_logs` for gaps in `allocated_number` per `number_series_id`
-- Inserts a row into `system_alerts` (alert_type='ATP_GAP_DETECTED', severity='CRITICAL') if gap found
+- Inserts a row into `system_alerts` (alert_type='atp_gap_detected', severity='critical') if gap found **[v3.6 fix: lowercase per system_alerts CHECK constraints]**
 - Required for CAS audit compliance
-- Also checks when `number_series.current_number` exceeds 80% of `max_number` → inserts `system_alerts` (alert_type='ATP_SERIES_NEAR_LIMIT', severity='WARNING')
+- Also checks when `number_series.current_number` exceeds 80% of `max_number` → inserts `system_alerts` (alert_type='atp_series_near_limit', severity='warning') **[v3.6 fix: lowercase]**
