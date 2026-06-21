@@ -1,0 +1,229 @@
+-- =============================================================================
+-- PXL ERP — Migration 003: Shared Functions
+-- =============================================================================
+-- Release        : v4.0-database-freeze
+-- Architecture   : docs/architecture/ (frozen — DO NOT MODIFY)
+-- PostgreSQL     : 16
+-- Supabase       : Compatible
+-- Idempotent     : Yes — CREATE OR REPLACE FUNCTION
+-- Depends On     : 001_extensions.sql (unaccent extension in extensions schema)
+-- Must Run Before: 004_core_setup.sql, and specifically 011_indexes.sql
+--                  (GIN expression indexes depend on public.f_unaccent)
+-- =============================================================================
+--
+-- OVERVIEW
+-- --------
+-- Defines shared PostgreSQL utility functions that:
+--   (a) Have no dependency on application tables, AND
+--   (b) Are required by later migrations (indexes, triggers, or table DDL), OR
+--   (c) Are core utility wrappers for installed extensions
+--
+-- This migration contains ONE function. That is correct and intentional.
+-- All other functions (RLS helpers, trigger functions, posting functions)
+-- depend on application tables and are deferred to later migrations.
+--
+-- FUNCTION CREATED
+-- ─────────────────
+--   public.f_unaccent(text)
+--     Immutable wrapper for extensions.unaccent().
+--     Required by Migration 011 (indexes) for GIN expression indexes on:
+--       · customers.customer_name
+--       · suppliers.supplier_name
+--       · chart_of_accounts.account_name
+--     An IMMUTABLE function is required to be used in an index expression.
+--     extensions.unaccent() itself is STABLE (not IMMUTABLE) because it
+--     looks up its dictionary at call time. The wrapper is declared IMMUTABLE
+--     by fixing the dictionary name ('extensions.unaccent') at definition time,
+--     which makes the output deterministic for any given input.
+--
+-- FUNCTIONS INTENTIONALLY DEFERRED (with rationale)
+-- ──────────────────────────────────────────────────
+--
+--   auth.user_company_ids()        → Migration 017_rls_functions.sql
+--     Depends on: user_company_access table. Cannot exist before tables.
+--
+--   auth.user_branch_ids()         → Migration 017_rls_functions.sql
+--     Depends on: user_branch_access table. Cannot exist before tables.
+--
+--   auth.has_permission()          → Migration 017_rls_functions.sql
+--     Depends on: user_roles, role_permissions, permissions tables.
+--
+--   enforce_posted_immutability()  → Migration 019_triggers.sql
+--     Trigger function. Conventionally defined alongside the triggers that
+--     reference it. No table dependency but belongs with the trigger layer.
+--
+--   set_updated_at()               → Migration 019_triggers.sql
+--     BEFORE UPDATE trigger function that stamps updated_at = NOW().
+--     No table dependency but belongs with the trigger layer.
+--
+--   sync_companies_tax_type()      → Migration 019_triggers.sql
+--     AFTER INSERT OR UPDATE trigger on company_compliance_profiles.
+--     Depends on: companies and company_compliance_profiles tables.
+--
+--   Series allocation function     → Supabase Edge Function (not a DB function)
+--     Doc06 §6.11: number series allocation uses row-level locking
+--     (SELECT FOR UPDATE on number_series) implemented in Edge Functions,
+--     not as a PostgreSQL stored procedure.
+--
+--   ATP gap detection              → Migration 021_cron_jobs.sql
+--     Implemented as a pg_cron scheduled SQL job, not a named function.
+--
+-- SOURCE DOCUMENTS
+-- ────────────────
+--   001_extensions.sql header — explicit reference:
+--     "Migration 003 (shared_functions) creates the immutable wrapper:
+--      CREATE OR REPLACE FUNCTION f_unaccent(text) ..."
+--   docs/architecture/03_TABLE_COLUMN_SPECIFICATIONS.md §4, §5
+--     (customer_name, supplier_name, account_name GIN index specs)
+--   docs/architecture/09_SECURITY_RLS_DESIGN.md §3
+--     (RLS helper functions — deferred to Migration 017)
+--   docs/architecture/07_AUDIT_AND_CAS_TABLE_DESIGN.md §9
+--     (trigger functions — deferred to Migration 019)
+--
+-- =============================================================================
+
+-- =============================================================================
+-- FUNCTION 1: public.f_unaccent(text)
+-- =============================================================================
+--
+-- PURPOSE
+-- ───────
+-- Strip diacritical marks (accents) from text in an IMMUTABLE context so
+-- the function can be used in PostgreSQL index expressions.
+--
+-- WHY AN IMMUTABLE WRAPPER IS REQUIRED
+-- ──────────────────────────────────────
+-- PostgreSQL requires index expression functions to be IMMUTABLE. The base
+-- function extensions.unaccent(text) is STABLE because it performs a catalog
+-- lookup of the dictionary name at call time. By hardcoding the dictionary
+-- reference 'extensions.unaccent' in the wrapper body, the output is fully
+-- determined by the input text alone, making the IMMUTABLE declaration valid.
+--
+-- This is the standard Supabase/PostgreSQL pattern for unaccent-based indexes.
+-- See: https://www.postgresql.org/docs/16/unaccent.html#UNACCENT-FUNCTIONS
+--
+-- SCHEMA-QUALIFIED CALL
+-- ──────────────────────
+-- extensions.unaccent('extensions.unaccent', $1) uses the fully-qualified
+-- schema for both the function and the dictionary. This is required because:
+--   · The unaccent extension is installed in the `extensions` schema (not public)
+--   · The dictionary name must match the schema-qualified installation path
+--   · Supabase Cloud search_path: "$user", public, extensions — but explicit
+--     qualification avoids any dependency on search_path configuration
+--
+-- USAGE (Migration 011 index examples)
+-- ──────────────────────────────────────
+--   CREATE INDEX ON customers
+--       USING GIN (public.f_unaccent(customer_name) gin_trgm_ops);
+--
+--   CREATE INDEX ON suppliers
+--       USING GIN (public.f_unaccent(supplier_name) gin_trgm_ops);
+--
+-- SECURITY
+-- ─────────
+-- SECURITY INVOKER (default). No elevated privileges needed.
+-- SET search_path = '' prevents search_path injection; all references
+-- are schema-qualified within the function body.
+--
+-- PARALLEL SAFE: Yes — pure function, no side effects, no catalog mutation.
+-- STRICT: Returns NULL for NULL input (standard safe behavior).
+--
+CREATE OR REPLACE FUNCTION public.f_unaccent(p_text text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+STRICT
+SET search_path = ''
+AS $$
+    SELECT extensions.unaccent('extensions.unaccent', p_text);
+$$;
+
+COMMENT ON FUNCTION public.f_unaccent(text) IS
+    'Immutable wrapper for extensions.unaccent(). Strips diacritical marks from text (e.g. José → Jose, Peña → Pena). Required by Migration 011 GIN expression indexes on customer_name, supplier_name, account_name. IMMUTABLE declared because dictionary name is fixed at definition time. Doc03 §4, §5; 001_extensions.sql §7';
+
+-- =============================================================================
+-- VERIFICATION QUERIES
+-- Run after applying this migration.
+-- =============================================================================
+--
+-- 1. Confirm the function exists with correct signature and volatility:
+--
+--    SELECT proname,
+--           pg_catalog.pg_get_function_result(oid)    AS return_type,
+--           pg_catalog.pg_get_function_arguments(oid) AS arguments,
+--           CASE provolatile
+--               WHEN 'i' THEN 'IMMUTABLE'
+--               WHEN 's' THEN 'STABLE'
+--               WHEN 'v' THEN 'VOLATILE'
+--           END                                        AS volatility,
+--           proisstrict                                AS is_strict,
+--           proparallel                                AS parallel_safety,
+--           obj_description(oid, 'pg_proc')           AS comment
+--    FROM   pg_proc
+--    WHERE  proname = 'f_unaccent'
+--      AND  pronamespace = 'public'::regnamespace;
+--    -- Expected: 1 row, return_type=text, volatility=IMMUTABLE,
+--    --           is_strict=true, parallel_safety='s' (PARALLEL SAFE)
+--
+-- 2. Functional smoke tests:
+--
+--    SELECT public.f_unaccent('José');        -- Expected: 'Jose'
+--    SELECT public.f_unaccent('Peña');        -- Expected: 'Pena'
+--    SELECT public.f_unaccent('Señor');       -- Expected: 'Senor'
+--    SELECT public.f_unaccent('Juan');        -- Expected: 'Juan' (unchanged)
+--    SELECT public.f_unaccent(NULL);          -- Expected: NULL (STRICT)
+--
+-- 3. Confirm it can be used in an expression index (will fail if not IMMUTABLE):
+--
+--    -- Dry-run index creation on a temp table:
+--    CREATE TEMP TABLE _test_f_unaccent (name text);
+--    CREATE INDEX ON _test_f_unaccent USING GIN (public.f_unaccent(name) gin_trgm_ops);
+--    DROP TABLE _test_f_unaccent;
+--    -- Expected: no error
+--
+-- 4. Confirm comment is set:
+--
+--    SELECT obj_description(
+--        'public.f_unaccent(text)'::regprocedure,
+--        'pg_proc'
+--    );
+--    -- Expected: non-null comment string
+--
+-- =============================================================================
+
+-- =============================================================================
+-- ROLLBACK NOTES
+-- =============================================================================
+-- DROP FUNCTION IF EXISTS public.f_unaccent(text);
+--
+-- WARNING: If Migration 011 (indexes) has already been applied, dropping
+-- this function will cascade-fail because GIN expression indexes reference it.
+-- The correct rollback sequence when rolling back past Migration 011:
+--   1. DROP the GIN expression indexes in Migration 011 (rollback that migration)
+--   2. Then DROP FUNCTION IF EXISTS public.f_unaccent(text)
+--
+-- For local dev: supabase db reset (re-applies all migrations from scratch)
+-- For production: this function is safe to replace via CREATE OR REPLACE.
+-- =============================================================================
+
+-- =============================================================================
+-- EXPECTED OBJECTS CREATED
+-- =============================================================================
+--   Schema modified : public (existing)
+--   Functions       : 1
+--
+--     public.f_unaccent(text)
+--       Returns      : text
+--       Language     : sql
+--       Volatility   : IMMUTABLE
+--       Parallel     : SAFE
+--       Strict       : YES (returns NULL for NULL input)
+--       search_path  : '' (empty — all calls schema-qualified)
+--       Used by      : Migration 011 GIN expression indexes
+--
+--   Tables   : 0
+--   Triggers : 0
+--   Indexes  : 0
+--   Types    : 0
+-- =============================================================================
