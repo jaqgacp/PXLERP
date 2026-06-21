@@ -311,7 +311,7 @@ UNIQUE: `(company_id, fiscal_period_id)`
 
 - `posting_batches.idempotency_key` (text, UNIQUE) — set by Edge Function caller using `source_document_type + ':' + source_document_id + ':' + attempt_token`
 - On Edge Function retry: same idempotency_key → returns existing batch result, no re-processing
-- `journal_entries` duplicate guard: UNIQUE(company_id, source_document_type, source_document_id) WHERE entry_type = 'auto' — prevents double-posting even without idempotency_key
+- `journal_entries` duplicate guard: UNIQUE(company_id, source_document_type, source_document_id) WHERE je_type = 'auto' — prevents double-posting even without idempotency_key
 - Compliance entry deduplication: posting engine checks existence before INSERT; abort if found for same source document and status = 'posted'
 
 ---

@@ -89,8 +89,8 @@ This document maps every Philippine BIR compliance output to the specific databa
 | Zero-rated sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='zero_rated'` | |
 | VAT-exempt sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='exempt'` | |
 | Government sales | `vat_entries` | `net_amount WHERE vat_direction='output' AND vat_classification='government'` | Derived at posting from customers.party_special_class='government' |
-| Output VAT | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='OUTPUT'` | |
-| Input VAT from purchases | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='INPUT'` | |
+| Output VAT | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='output'` | |
+| Input VAT from purchases | `vat_entries` | `SUM(vat_amount) WHERE vat_direction='input'` | |
 | Input VAT carried over | `vat_period_summaries` | `input_vat_carryover` | From prior period |
 | VAT payable / creditable | computed | OUTPUT VAT - INPUT VAT | Per BIR formula |
 

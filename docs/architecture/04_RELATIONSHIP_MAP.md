@@ -403,7 +403,7 @@ fixed_assets (1)
   │  sales_invoices | vendor_bills | receipts | payment_vouchers
   │  cash_sales | cash_purchases | journal_entries (manual)
   │  petty_cash_vouchers | bank_fund_transfers | asset_acquisitions
-  │  inventory_adjustments | depreciation_runs
+  │  stock_adjustments | depreciation_runs
   │
   ▼
 posting_rule_sets (1)
