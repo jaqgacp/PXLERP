@@ -97,7 +97,7 @@ This document maps every Philippine BIR compliance output to the specific databa
 ### Required Fields on Source Documents
 
 **`sales_invoices`**
-- `customer_id` → join to `customers.tin`, `customer_tax_profiles.is_vat_registered`
+- `customer_id` → join to `customers.tin`, `customers.vat_registration_status` CHECK IN ('vat','non_vat') — **[E-3 fix: customer_tax_profiles.is_vat_registered was removed; use customers.vat_registration_status directly]**
 - `document_date` → determines period
 - `is_vat_inclusive` → affects net amount computation
 
@@ -122,7 +122,7 @@ This document maps every Philippine BIR compliance output to the specific databa
 - `vat_direction` — 'input'
 - `vat_classification` — 'vatable' | 'capital_goods' | 'services'
 - `net_amount`, `vat_amount`
-- `supplier_id` → join to `suppliers.tin`, `supplier_tax_profiles.is_vat_registered`
+- `supplier_id` → join to `suppliers.tin`, `suppliers.vat_registration_status` CHECK IN ('vat','non_vat') — **[E-3 fix: supplier_tax_profiles.is_vat_registered removed]**
 
 **`cash_purchase_lines`** (contributes to Input VAT identically to vendor_bill_lines)
 - `vat_direction` — 'input'
@@ -357,10 +357,10 @@ Source: `cash_sales` + `cash_sale_lines` + `vat_entries`
 | Date | `cash_sales.document_date` |
 | OR Number | `cash_sales.document_no` |
 | Customer TIN | `cash_sales.customer_tin` (snapshot) or `customers.tin` |
-| Taxable Sales | `SUM(cash_sale_lines.net_amount WHERE vat_classification='VATABLE')` |
+| Taxable Sales | `SUM(cash_sale_lines.net_amount WHERE vat_classification='vatable')` |
 | VAT | `SUM(vat_entries.vat_amount)` |
-| Zero-rated | `SUM(cash_sale_lines.net_amount WHERE vat_classification='ZERO_RATED')` |
-| Exempt | `SUM(cash_sale_lines.net_amount WHERE vat_classification='EXEMPT')` |
+| Zero-rated | `SUM(cash_sale_lines.net_amount WHERE vat_classification='zero_rated')` |
+| Exempt | `SUM(cash_sale_lines.net_amount WHERE vat_classification='exempt')` |
 | Total | computed |
 
 ### Cash Purchases Book
@@ -371,8 +371,8 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | Date | `cash_purchases.document_date` |
 | Reference No. | `cash_purchases.document_no` |
 | Supplier TIN | `cash_purchases.supplier_tin` (snapshot) or `suppliers.tin` |
-| Taxable Purchases | `SUM(cash_purchase_lines.net_amount WHERE vat_classification='VATABLE')` |
-| Input VAT | `SUM(vat_entries.vat_amount WHERE vat_direction='INPUT')` |
+| Taxable Purchases | `SUM(cash_purchase_lines.net_amount WHERE vat_classification='vatable')` |
+| Input VAT | `SUM(vat_entries.vat_amount WHERE vat_direction='input')` |
 | EWT | `SUM(ewt_entries.ewt_amount)` |
 | Total | computed |
 
@@ -513,40 +513,10 @@ Amortization and revenue recognition JEs post to GL like any other journal entry
 
 ## 13. Compliance Output Generation Tables
 
-### `compliance_report_runs`
-Tracks every BIR compliance report generation request.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `report_type` | text | NOT NULL | '2550M' \| '2550Q' \| '2551Q' \| '1601EQ' \| '1601FQ' \| 'SLSP' \| 'RELIEF' \| 'QAP' \| 'SAWT' \| '1604E' \| 'ITR_1701Q' \| 'ITR_1701' \| 'ITR_1702Q' \| 'ITR_1702RT' |
-| `fiscal_period_id` | uuid | FK fiscal_periods, NULL | |
-| `fiscal_year_id` | uuid | FK fiscal_years, NULL | |
-| `period_from` | date | NOT NULL | |
-| `period_to` | date | NOT NULL | |
-| `parameters` | jsonb | NULL | Additional filter params |
-| `status` | text | CHECK IN ('QUEUED','PROCESSING','COMPLETED','FAILED') | |
-| `requested_by` | uuid | FK auth.users, NOT NULL | |
-| `requested_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `completed_at` | timestamptz | NULL | |
-| `record_count` | integer | NULL | |
-| `error_message` | text | NULL | |
-
-### `compliance_export_files`
-One record per file generated from a compliance report run.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `report_run_id` | uuid | FK compliance_report_runs, NOT NULL | |
-| `file_format` | text | CHECK IN ('PDF','XLSX','CSV','DAT') | |
-| `storage_path` | text | NOT NULL | Supabase Storage path |
-| `file_size_bytes` | bigint | NULL | |
-| `file_hash_sha256` | text | NULL | Integrity verification |
-| `generated_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `expires_at` | timestamptz | NULL | Auto-cleanup after 90 days |
-| `download_count` | integer | NOT NULL DEFAULT 0 | |
-| `last_downloaded_at` | timestamptz | NULL | |
-| `last_downloaded_by` | uuid | FK auth.users, NULL | |
+> **E-1 fix (v3.3):** `compliance_report_runs` and `compliance_export_files` are NOT canonical table names. They were removed from Doc02 in favor of the unified async job architecture. Canonical tables:
+>
+> - **`export_jobs`** (#189 in Doc02) — tracks every async compliance report generation request. Column spec: See Doc03 Section 44 and Doc08 Section 4. Compliance reports are requested via `export_jobs.export_type` values such as `'vat_2550m'`, `'ewt_1601eq'`, `'pt_2551q'`, `'slsp_sales'`, etc.
+>
+> - **`generated_report_files`** (#190 in Doc02) — stores metadata for generated report files persisted beyond the export job lifetime. Column spec: See Doc03 Section 44. Field `is_compliance_filing = true` marks BIR submission files.
+>
+> The link between an `export_jobs` record and its output file(s) is via `generated_report_files.export_job_id → export_jobs.id`. No direct FK to a `compliance_report_runs` table exists — that table has been removed.
