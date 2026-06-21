@@ -172,121 +172,22 @@ UNIQUE: `(company_id, config_key, branch_id, effective_from)`
 ## 3. Journal Entry Tables
 
 ### `journal_entries`
-Header record for every set of balanced DR/CR lines.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `branch_id` | uuid | FK branches, NULL | |
-| `document_date` | date | NOT NULL | Accounting date |
-| `document_no` | text | NOT NULL | System-assigned JE number |
-| `je_type` | text | NOT NULL | 'auto' \| 'manual' \| 'reversal' \| 'opening' \| 'recurring' \| 'adjustment' \| 'amortization' \| 'revenue_recognition' \| 'auto_reversal' |
-| `fiscal_year_id` | uuid | FK fiscal_years, NOT NULL | |
-| `fiscal_period_id` | uuid | FK fiscal_periods, NOT NULL | |
-| `source_document_type` | text | NULL | 'sales_invoice' \| 'vendor_bill' \| 'receipt' \| 'payment_voucher' \| 'cash_sale' \| 'cash_purchase' \| 'petty_cash_voucher' \| 'stock_adjustment' \| 'asset_depreciation' \| 'bank_fund_transfer' \| 'asset_disposal' \| 'journal_entry' |
-| `source_document_id` | uuid | NULL | FK to the source document |
-| `rule_set_id` | uuid | FK posting_rule_sets, NULL | NULL for manual JEs |
-| `posting_batch_id` | uuid | FK posting_batches, NULL | Idempotency batch link |
-| `auto_reversal_flag` | boolean | NOT NULL DEFAULT false | Set true to auto-reverse on next period open |
-| `auto_reversal_date` | date | NULL | Target reversal date |
-| `auto_reversal_run_id` | uuid | FK auto_reversal_runs, NULL | Set when auto-reversed |
-| `is_auto_reversal` | boolean | NOT NULL DEFAULT false | True if this JE is itself an auto-reversal |
-| `amortization_run_detail_id` | uuid | FK amortization_run_details, NULL | Source amortization schedule line |
-| `revenue_recognition_run_detail_id` | uuid | FK revenue_recognition_run_details, NULL | Source rev-rec schedule line |
-| `description` | text | NOT NULL | |
-| `reference` | text | NULL | External reference |
-| `currency_code` | text | NOT NULL DEFAULT 'PHP' | |
-| `exchange_rate` | numeric(10,6) | NOT NULL DEFAULT 1 | |
-| `status` | text | CHECK IN ('draft','posted','reversed') | |
-| `posted_at` | timestamptz | NULL | When POSTED |
-| `posted_by` | uuid | FK auth.users, NULL | |
-| `reversed_by_entry_id` | uuid | FK journal_entries, NULL | |
-| `reversal_of_entry_id` | uuid | FK journal_entries, NULL | |
-| `recurring_template_id` | uuid | FK recurring_journal_templates, NULL | |
-| `notes` | text | NULL | |
-| `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `created_by` | uuid | FK auth.users, NOT NULL | |
-| `updated_at` | timestamptz | NULL | |
-| `updated_by` | uuid | FK auth.users | |
-
-CONSTRAINT: Cannot update any column if `status = 'posted'` — enforced by `enforce_posted_immutability()` trigger.
+> Column spec: See Doc03 Section 9 (`journal_entries`). This document retains the posting context notes and process flow; the authoritative column list lives in Doc03.
 
 ---
 
 ### `journal_lines`
-Individual debit/credit lines within a journal entry.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `journal_entry_id` | uuid | FK journal_entries, NOT NULL | |
-| `line_number` | integer | NOT NULL | Order within entry |
-| `account_id` | uuid | FK chart_of_accounts, NOT NULL | |
-| `branch_id` | uuid | FK branches, NULL | |
-| `department_id` | uuid | FK departments, NULL | |
-| `cost_center_id` | uuid | FK cost_centers, NULL | |
-| `debit_amount` | numeric(18,4) | NOT NULL DEFAULT 0 | |
-| `credit_amount` | numeric(18,4) | NOT NULL DEFAULT 0 | |
-| `base_currency_debit` | numeric(18,4) | NOT NULL DEFAULT 0 | PHP equivalent |
-| `base_currency_credit` | numeric(18,4) | NOT NULL DEFAULT 0 | PHP equivalent |
-| `description` | text | NOT NULL | |
-| `subsidiary_ledger_type` | text | NULL | 'ar' \| 'ap' \| 'inventory' \| 'fixed_asset' |
-| `subsidiary_entity_type` | text | NULL | 'customer' \| 'supplier' \| 'item' \| 'fixed_asset' |
-| `subsidiary_entity_id` | uuid | NULL | FK to respective entity |
-| `source_line_type` | text | NULL | 'invoice_line' \| 'vat_entry' \| 'ewt_entry' \| 'header' |
-| `source_line_id` | uuid | NULL | FK to source line |
-
-CONSTRAINT: `CHECK (debit_amount = 0 OR credit_amount = 0)` — a line is either DR or CR, not both.
-CONSTRAINT per entry: `SUM(debit_amount) = SUM(credit_amount)` — enforced by posting engine before commit.
+> Column spec: See Doc03 Section 9 (`journal_lines`). See Doc03 Section 9.
 
 ---
 
 ### `gl_balances`
-Materialized running balances per account per period.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `account_id` | uuid | FK chart_of_accounts, NOT NULL | |
-| `branch_id` | uuid | FK branches, NULL | NULL = company-wide |
-| `fiscal_year_id` | uuid | FK fiscal_years, NOT NULL | |
-| `fiscal_period_id` | uuid | FK fiscal_periods, NOT NULL | |
-| `opening_balance` | numeric(18,4) | NOT NULL DEFAULT 0 | |
-| `period_debit` | numeric(18,4) | NOT NULL DEFAULT 0 | Sum of DR this period |
-| `period_credit` | numeric(18,4) | NOT NULL DEFAULT 0 | Sum of CR this period |
-| `closing_balance` | numeric(18,4) | NOT NULL DEFAULT 0 | opening + DR - CR (or reverse for credit-normal) |
-| `ytd_debit` | numeric(18,4) | NOT NULL DEFAULT 0 | Year-to-date DR |
-| `ytd_credit` | numeric(18,4) | NOT NULL DEFAULT 0 | Year-to-date CR |
-| `last_updated_at` | timestamptz | NOT NULL | |
-
-UNIQUE: `(company_id, account_id, branch_id, fiscal_period_id)`
+> Column spec: See Doc03 Section 9 (`gl_balances`). UNIQUE: `(company_id, account_id, branch_id, fiscal_period_id)`.
 
 ---
 
 ### `subsidiary_ledger_entries`
-Detailed ledger per customer (AR), supplier (AP), item (inventory), asset. Not created for Cash Sales or Cash Purchases.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `ledger_type` | text | CHECK IN ('ar','ap','inventory','fixed_asset'), NOT NULL | |
-| `entity_id` | uuid | NOT NULL | FK to customer/supplier/item/fixed_asset |
-| `journal_entry_id` | uuid | FK journal_entries, NOT NULL | |
-| `journal_line_id` | uuid | FK journal_lines, NOT NULL | |
-| `transaction_date` | date | NOT NULL | |
-| `document_type` | text | NOT NULL | |
-| `document_no` | text | NOT NULL | |
-| `debit_amount` | numeric(18,4) | NOT NULL DEFAULT 0 | |
-| `credit_amount` | numeric(18,4) | NOT NULL DEFAULT 0 | |
-| `running_balance` | numeric(18,4) | NOT NULL | AR/AP outstanding balance |
-| `fiscal_period_id` | uuid | FK fiscal_periods | |
-| `due_date` | date | NULL | For AR/AP aging |
-| `is_open` | boolean | NOT NULL DEFAULT true | False when fully applied/paid |
-| `applied_amount` | numeric(18,4) | NOT NULL DEFAULT 0 | Amount applied/paid |
+> Column spec: See Doc03 Section 9 (`subsidiary_ledger_entries`). Not created for Cash Sales or Cash Purchases (no AR/AP impact).
 
 ---
 
@@ -362,38 +263,10 @@ UNIQUE: `(company_id, fiscal_period_id)`
 ## 6. Recurring Journal Tables
 
 ### `recurring_journal_templates`
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `template_name` | text | NOT NULL | |
-| `description` | text | NULL | |
-| `frequency` | text | CHECK IN ('monthly','quarterly','annually') | |
-| `day_of_month` | integer | NULL | Day to generate (1–28) |
-| `start_date` | date | NOT NULL | |
-| `end_date` | date | NULL | NULL = no end |
-| `last_generated_date` | date | NULL | |
-| `next_generation_date` | date | NULL | |
-| `is_active` | boolean | NOT NULL DEFAULT true | |
-| `auto_post` | boolean | NOT NULL DEFAULT false | If true, post immediately on generation |
-| `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `created_by` | uuid | FK auth.users | |
+> Column spec: See Doc03 Section 9 (`recurring_journal_templates`).
 
 ### `recurring_journal_template_lines`
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `template_id` | uuid | FK recurring_journal_templates, NOT NULL | |
-| `line_number` | integer | NOT NULL | |
-| `account_id` | uuid | FK chart_of_accounts, NOT NULL | |
-| `branch_id` | uuid | FK branches, NULL | |
-| `department_id` | uuid | FK departments, NULL | |
-| `cost_center_id` | uuid | FK cost_centers, NULL | |
-| `entry_side` | text | CHECK IN ('debit','credit'), NOT NULL | |
-| `amount` | numeric(18,4) | NOT NULL | Fixed amount (Phase 1 only) |
-| `description` | text | NOT NULL | |
+> Column spec: See Doc03 Section 9 (`recurring_journal_template_lines`). Phase 1 supports fixed amounts only (no dynamic amount formulas — see OD-14).
 
 ---
 
@@ -471,6 +344,96 @@ Cash paid = `total_amount - ewt_amount` (or `total_amount - fwt_amount` for FWT 
 - No `subsidiary_ledger_entries` with ledger_type='AP'
 - EWT is captured at purchase time; no deferred payment step required
 
+---
+
+### Petty Cash Voucher Posting
+
+```
+DR: Expense Account (petty_cash_voucher_lines.account_id)    FROM_LINE
+CR: Petty Cash Fund (petty_cash_funds.account_id)            FROM_SYSTEM_CONFIG 'CASH_ON_HAND'
+CR: EWT Payable (ewt_entries.ewt_amount)  [if EWT-subject]  FROM_SYSTEM_CONFIG 'EWT_PAYABLE'
+```
+- No AR/AP subsidiary ledger entries
+- EWT captured at voucher line level
+
+---
+
+### Stock Adjustment Posting
+
+```
+DR: Inventory Control (adjustment qty > 0 — increase)  FROM_SYSTEM_CONFIG 'INVENTORY_CONTROL'  amount: qty × unit_cost
+CR: Inventory Adjustment Offset (contra account)        FROM_LINE (adjustment_account_id)
+```
+For negative adjustments (decrease):
+```
+DR: Inventory Adjustment Offset                          FROM_LINE (adjustment_account_id)
+CR: Inventory Control                                    FROM_SYSTEM_CONFIG 'INVENTORY_CONTROL'
+```
+- Writes `inventory_movements` record (IN or OUT)
+- transaction_type = `'stock_adjustment'` on posting_rule_sets
+
+---
+
+### Asset Depreciation Posting
+
+```
+DR: Depreciation Expense (asset_categories.depreciation_expense_account_id)    FROM_ITEM (asset category)
+CR: Accumulated Depreciation (fixed_assets.accumulated_depreciation_account_id) FROM_ITEM (fixed asset)
+```
+- Generated per active asset per depreciation run (see Section 6 — depreciation_runs)
+- je_type = `'amortization'` on journal_entries (reuses amortization pattern)
+- transaction_type = `'asset_depreciation'` on posting_rule_sets
+
+---
+
+### Asset Disposal Posting
+
+```
+DR: Accumulated Depreciation   (full accumulated to date)   FROM_ITEM
+DR: Loss on Disposal            [if book value > proceeds]  FROM_SYSTEM_CONFIG or FROM_LINE
+CR: Asset at Cost               (original acquisition cost)  FROM_ITEM
+CR: Cash / Proceeds Receivable  [if any proceeds]           FROM_LINE
+CR: Gain on Disposal            [if proceeds > book value]  FROM_LINE
+```
+- transaction_type = `'asset_disposal'` on posting_rule_sets
+- Writes `asset_disposals` record; updates `fixed_assets.status = 'disposed'`
+
+---
+
+### Bank Fund Transfer Posting
+
+```
+DR: Destination Bank Account (bank_fund_transfers.destination_account_id → company_bank_accounts → chart_of_accounts)
+CR: Source Bank Account (bank_fund_transfers.source_account_id → company_bank_accounts → chart_of_accounts)
+```
+- transaction_type = `'bank_fund_transfer'` on posting_rule_sets
+- No VAT, no EWT, no subsidiary ledger entries
+
+---
+
+### Sales Credit Memo Posting
+
+```
+DR: Sales Returns / Revenue Account   (reverse original revenue)   FROM_ITEM or FROM_LINE
+DR: Output VAT Payable (reversed VAT amount)                       FROM_SYSTEM_CONFIG 'OUTPUT_VAT'
+CR: Accounts Receivable (AR_TRADE)                                 FROM_SYSTEM_CONFIG 'AR_TRADE'
+```
+- Writes negative `vat_entries` record (reversal)
+- Updates `subsidiary_ledger_entries` (AR credit)
+- transaction_type = `'sales_credit_memo'` — **[B-8 addition]**
+
+---
+
+### Vendor Credit Memo Posting
+
+```
+DR: Accounts Payable (AP_TRADE)                                    FROM_SYSTEM_CONFIG 'AP_TRADE'
+CR: Purchase Returns / Expense Account  (reverse original cost)    FROM_ITEM or FROM_LINE
+CR: Input VAT (reversed input VAT amount)                          FROM_SYSTEM_CONFIG 'INPUT_VAT'
+```
+- Writes negative `vat_entries` record (reversal of input VAT)
+- Updates `subsidiary_ledger_entries` (AP debit)
+- transaction_type = `'vendor_credit'` — **[B-8 addition]**
 
 ---
 
@@ -594,7 +557,7 @@ CR [revenue_account_id]          period_amount
 
 ---
 
-## 11. Auto Reversal Run Process (Enhancement Round)
+## 12. Auto Reversal Run Process (Enhancement Round)
 
 Executed at the start of each fiscal period. Processes all `journal_entries` where:
 - `auto_reversal_flag = true`
