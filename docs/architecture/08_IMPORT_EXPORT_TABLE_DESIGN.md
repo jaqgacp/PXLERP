@@ -41,13 +41,13 @@ Header record for every import operation.
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `batch_name` | text | NOT NULL | User-provided label |
 | `import_type` | text | NOT NULL | See import types below |
-| `source_filename` | text | NULL | Original uploaded filename |
-| `storage_path` | text | NULL | Supabase Storage path of uploaded file |
-| `file_format` | text | CHECK IN ('csv','xlsx','json') | **[v3.6 fix: lowercase per architecture convention; matches Doc03 §15]** |
+| `file_name` | text | NOT NULL | Original uploaded filename |
+| `storage_path` | text | NOT NULL | Supabase Storage path of uploaded file |
+| `file_format` | text | CHECK IN ('csv','xlsx','json') | |
 | `total_rows` | integer | NOT NULL DEFAULT 0 | Rows in file |
-| `processed_rows` | integer | NOT NULL DEFAULT 0 | Rows attempted |
-| `success_rows` | integer | NOT NULL DEFAULT 0 | Rows successfully imported |
+| `valid_rows` | integer | NOT NULL DEFAULT 0 | Rows passing validation |
 | `error_rows` | integer | NOT NULL DEFAULT 0 | Rows with errors |
+| `imported_rows` | integer | NOT NULL DEFAULT 0 | Rows successfully imported |
 | `skipped_rows` | integer | NOT NULL DEFAULT 0 | Rows skipped (duplicates, etc.) |
 | `status` | text | CHECK IN ('pending','validating','validated','importing','completed','failed','rolled_back') | |
 | `validation_completed_at` | timestamptz | NULL | |
@@ -77,14 +77,14 @@ Header record for every import operation.
 | `approval_matrix` | Setup | `approval_matrix`, `approval_matrix_steps` |
 | `customers` | Master Data | `customers`, `customer_tax_profiles`, `customer_addresses` |
 | `suppliers` | Master Data | `suppliers`, `supplier_tax_profiles`, `supplier_addresses` |
-| `items` | Master Data | `items`, `uom_conversions` (UOM conversion ratios via `units_of_measure`) **[v3.6 fix: `item_units_of_measure` was ghost name; canonical bridge table is `uom_conversions` #53]** |
-| `item_prices` | Master Data | `item_prices` (#46) — **[F-2 fix: was `price_lists`→`item_price_lists`, both were ghost names]** |
+| `items` | Master Data | `items`, `uom_conversions` (UOM conversion ratios via `units_of_measure`) |
+| `item_prices` | Master Data | `item_prices` (#46) |
 | `bank_accounts` | Master Data | `company_bank_accounts` |
 | `opening_balances` | Opening | `opening_balance_entries` → `journal_entries` |
 | `ar_opening` | Opening | `subsidiary_ledger_entries` (AR), customer outstanding invoices |
 | `ap_opening` | Opening | `subsidiary_ledger_entries` (AP), supplier outstanding bills |
 | `inventory_opening` | Opening | `inventory_cost_layers`, `inventory_movements` |
-| `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedules` **[v3.6 fix: `asset_depreciation_schedule` was ghost name (missing plural 's'); canonical: `asset_depreciation_schedules` #122]** |
+| `fixed_assets_opening` | Opening | `fixed_assets`, `asset_depreciation_schedules` |
 | `coa_fs_mapping` | Setup (v3) | `chart_of_accounts` — bulk update fs_section, fs_group, fs_sort_order, cash_flow_category fields |
 | `income_tax_mappings` | Setup (v3) | `chart_of_accounts` — bulk update is_mcit_gross_income, is_osd_gross_revenue, tax_deductibility fields |
 | `party_special_class` | Master Data (v3) | `customers`, `suppliers` — bulk set party_special_class (government/peza/boi/foreign_entity) |
@@ -100,11 +100,11 @@ One record per row in the import file.
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `batch_id` | uuid | FK import_batches, NOT NULL | |
+| `import_batch_id` | uuid | FK import_batches, NOT NULL | |
 | `row_number` | integer | NOT NULL | Row number in source file (1-based) |
 | `raw_data` | jsonb | NOT NULL | Original row data as key-value |
 | `mapped_data` | jsonb | NULL | After column mapping applied |
-| `status` | text | CHECK IN ('pending','valid','invalid','imported','skipped','rolled_back') | — **['error' corrected to 'invalid' to match Doc03 §15 canonical spec]** |
+| `status` | text | CHECK IN ('pending','valid','invalid','imported','skipped','rolled_back') | |
 | `created_record_id` | uuid | NULL | UUID of the record created by this row |
 | `created_record_type` | text | NULL | Table name of created record |
 | `error_count` | integer | NOT NULL DEFAULT 0 | |
@@ -119,14 +119,14 @@ All validation errors per import row.
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `batch_id` | uuid | FK import_batches, NOT NULL | |
-| `row_id` | uuid | FK import_rows, NOT NULL | |
+| `import_batch_id` | uuid | FK import_batches, NOT NULL | |
+| `import_row_id` | uuid | FK import_rows, NOT NULL | |
 | `row_number` | integer | NOT NULL | Denormalized for quick display |
 | `field_name` | text | NOT NULL | Column with the error |
 | `raw_value` | text | NULL | Value that caused the error |
 | `error_code` | text | NOT NULL | Machine-readable error code |
 | `error_message` | text | NOT NULL | Human-readable description |
-| `severity` | text | CHECK IN ('error','warning'), NOT NULL DEFAULT 'error' | 'warning' rows can still import **[v3.6 fix: lowercase per architecture convention; matches Doc03 §15]** |
+| `severity` | text | CHECK IN ('error','warning'), NOT NULL DEFAULT 'error' | 'warning' rows can still import |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() | |
 
 ### Common Error Codes

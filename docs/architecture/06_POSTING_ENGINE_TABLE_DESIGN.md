@@ -36,7 +36,7 @@ The posting engine converts source documents (invoices, receipts, vouchers, cash
 ## 2. Posting Rules Tables
 
 ### `posting_rule_sets`
-Defines the top-level rule set for each transaction type.
+Defines the top-level rule set for each transaction type. Full column spec: Doc03 §9. This section retains transaction_type context and posting notes.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
@@ -47,20 +47,16 @@ Defines the top-level rule set for each transaction type.
 | `description` | text | NULL | |
 | `is_active` | boolean | NOT NULL DEFAULT true | |
 | `is_system` | boolean | NOT NULL DEFAULT false | System rules cannot be deleted |
-| `effective_from` | date | NOT NULL | Date this rule set takes effect — **[v3 addition: Principle 11 versioning]** |
-| `effective_to` | date | NULL | NULL = currently active — **[v3 addition: Principle 11]** |
-| `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `created_by` | uuid | FK auth.users | |
-| `updated_at` | timestamptz | NULL | |
-| `updated_by` | uuid | FK auth.users | |
+| `effective_from` | date | NOT NULL | Date this rule set takes effect |
+| `effective_to` | date | NULL | NULL = currently active |
+| *+ standard audit columns* | | | |
 
 **Constraints:** `UNIQUE(company_id, rule_set_code, effective_from)`. Partial unique index `WHERE effective_to IS NULL` ensures one active rule per code per company.
-**v3 Principle 11 Note:** If BIR changes VAT rate or EWT rates, a new `posting_rule_set` with updated `effective_from` is inserted. Historical transactions use the rule set active on their `document_date`. Do NOT update existing active rule sets — insert new versions.
+
+**Principle 11:** If BIR changes VAT rate or EWT rates, a new `posting_rule_set` with updated `effective_from` is inserted. Historical transactions use the rule set active on their `document_date`. Do NOT update existing active rule sets — insert new versions.
 
 **Valid `transaction_type` values:**
-`sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `petty_cash_replenishment` | `stock_adjustment` | `stock_transfer` | `customer_return` | `purchase_return` | `sales_debit_memo` | `supplier_debit_memo` | `asset_acquisition` | `asset_depreciation` | `asset_disposal` | `bank_fund_transfer` | `bank_adjustment` | `inter_branch_transfer` | `journal_entry`
-
-**[v3.7: added 8 previously missing transaction types — petty_cash_replenishment, stock_transfer, customer_return, purchase_return, sales_debit_memo, supplier_debit_memo, asset_acquisition, bank_adjustment, inter_branch_transfer. Each has a documented posting rule in Section 8.]**
+`sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `petty_cash_replenishment` | `stock_adjustment` | `stock_transfer` | `customer_return` | `purchase_return` | `sales_credit_memo` | `vendor_credit` | `sales_debit_memo` | `supplier_debit_memo` | `asset_acquisition` | `asset_depreciation` | `asset_disposal` | `bank_fund_transfer` | `bank_adjustment` | `inter_branch_transfer` | `journal_entry`
 
 > **Percentage Tax Note (Principle 3 Driver 1):** `sales_invoice` and `cash_sale` posting rules check `company_compliance_profiles.taxpayer_type` at post time. If `taxpayer_type = 'non_vat'`, the posting engine creates `percentage_tax_entries` instead of `vat_entries`. No separate `transaction_type` is needed — the same source documents drive different compliance entries depending on the company's taxpayer type.
 
@@ -69,23 +65,23 @@ Defines the top-level rule set for each transaction type.
 ---
 
 ### `posting_rule_lines`
-Each line in a rule set defines one DR or CR entry.
+Each line in a rule set defines one DR or CR entry. Full column spec: Doc03 §9.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `rule_set_id` | uuid | FK posting_rule_sets, NOT NULL | |
-| `line_order` | integer | NOT NULL | Execution order |
+| `posting_rule_set_id` | uuid | FK posting_rule_sets, NOT NULL | |
+| `line_no` | integer | NOT NULL | Execution order |
 | `entry_side` | text | CHECK IN ('debit','credit'), NOT NULL | |
-| `account_source` | text | NOT NULL | 'fixed' \| 'from_item' \| 'from_customer' \| 'from_supplier' \| 'from_rule_param' \| 'from_system_config' |
+| `account_source` | text | NOT NULL | CHECK IN ('fixed','from_system_config','from_item','from_customer','from_supplier','from_line') |
 | `fixed_account_id` | uuid | FK chart_of_accounts, NULL | Used if account_source='fixed' |
 | `account_config_key` | text | NULL | Used if account_source='from_system_config'; e.g., 'AR_TRADE', 'OUTPUT_VAT', 'AP_TRADE', 'CASH_ON_HAND' |
-| `amount_source` | text | NOT NULL | 'line_subtotal' \| 'line_vat' \| 'line_ewt' \| 'header_total' \| 'computed' |
+| `amount_source` | text | NOT NULL | CHECK IN ('line_subtotal','line_vat','line_ewt','header_total','computed') |
 | `amount_formula` | text | NULL | SQL expression for computed amounts |
-| `applies_to` | text | NOT NULL DEFAULT 'all' | 'all' \| 'vat_lines_only' \| 'ewt_lines_only' \| 'zero_vat_lines' |
+| `applies_to` | text | NOT NULL DEFAULT 'all' | CHECK IN ('all','vat_lines_only','ewt_lines_only','zero_vat_lines','capital_goods_lines_only','pt_lines_only') |
 | `creates_subsidiary_ledger` | boolean | NOT NULL DEFAULT false | Whether this line creates a subsidiary_ledger_entry |
-| `subsidiary_ledger_type` | text | NULL | 'ar' \| 'ap' \| 'inventory' \| 'fixed_asset' — NULL for cash_sale/cash_purchase lines |
+| `subsidiary_ledger_type` | text | NULL | CHECK IN ('ar','ap','inventory','fixed_asset') |
 | `use_branch_dimension` | boolean | NOT NULL DEFAULT true | |
 | `use_department_dimension` | boolean | NOT NULL DEFAULT false | |
 | `use_cost_center_dimension` | boolean | NOT NULL DEFAULT false | |
@@ -94,7 +90,7 @@ Each line in a rule set defines one DR or CR entry.
 ---
 
 ### `system_account_config`
-Maps semantic account keys to actual GL accounts per company.
+Maps semantic account keys to actual GL accounts per company. Full column spec: Doc03 §29.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
@@ -119,9 +115,9 @@ UNIQUE: `(company_id, config_key, branch_id, effective_from)`
 | `INPUT_VAT_DEFERRED` | Input VAT — Deferred (pending validation) | INPUT_VAT_CONTROL |
 | `INPUT_VAT_CAPITAL_GOODS` | Input VAT — Capital Goods (amortized) | INPUT_VAT_CONTROL |
 | `EWT_PAYABLE` | Expanded Withholding Tax Payable (1601EQ) | EWT_PAYABLE_CONTROL |
-| `FWT_PAYABLE` | Final Withholding Tax Payable (1601FQ) — **[v3 addition]** | FWT_PAYABLE_CONTROL |
-| `PERCENTAGE_TAX_PAYABLE` | Percentage Tax Payable (2551Q, non-VAT) — **[v3 addition]** | PT_PAYABLE_CONTROL |
-| `INCOME_TAX_PAYABLE` | Income Tax Payable (1702Q/1701Q quarterly) — **[v3 addition]** | INCOME_TAX_PAYABLE_CONTROL |
+| `FWT_PAYABLE` | Final Withholding Tax Payable (1601FQ) | FWT_PAYABLE_CONTROL |
+| `PERCENTAGE_TAX_PAYABLE` | Percentage Tax Payable (2551Q, non-VAT) | PT_PAYABLE_CONTROL |
+| `INCOME_TAX_PAYABLE` | Income Tax Payable (1702Q/1701Q quarterly) | INCOME_TAX_PAYABLE_CONTROL |
 | `CASH_ON_HAND` | Cash on Hand (petty cash, over-the-counter) | — |
 | `CASH_IN_BANK` | Cash in Bank (default checking account) | — |
 | `INVENTORY_CONTROL` | Inventory — Trading Goods / Raw Materials | INVENTORY_CONTROL |
@@ -129,7 +125,7 @@ UNIQUE: `(company_id, config_key, branch_id, effective_from)`
 | `RETAINED_EARNINGS` | Retained Earnings (year-end closing) | — |
 | `INCOME_SUMMARY` | Income Summary (closing account) | — |
 
-**v3 Note:** `PERCENTAGE_TAX_PAYABLE`, `FWT_PAYABLE`, and `INCOME_TAX_PAYABLE` were missing in v2.1. Their absence would cause posting engine abort for non-VAT companies (PT posting) and companies with FWT/income tax obligations. These keys are now required at company setup — the setup wizard must prompt for account assignment when the corresponding compliance obligation is enabled in `company_compliance_profiles.filing_obligations`.
+**Setup requirement:** `PERCENTAGE_TAX_PAYABLE`, `FWT_PAYABLE`, and `INCOME_TAX_PAYABLE` are required at company setup when the corresponding compliance obligation is enabled in `company_compliance_profiles.filing_obligations`. Missing config keys cause posting engine abort.
 
 ---
 
@@ -297,7 +293,7 @@ UNIQUE: `(company_id, fiscal_period_id)`
 
 - `posting_batches.idempotency_key` (text, UNIQUE) — set by Edge Function caller using `source_document_type + ':' + source_document_id + ':' + attempt_token`
 - On Edge Function retry: same idempotency_key → returns existing batch result, no re-processing
-- `journal_entries` duplicate guard: UNIQUE(company_id, source_document_type, source_document_id) WHERE je_type = 'system' — prevents double-posting even without idempotency_key **[v3.6 fix: 'auto' is not a canonical je_type value; Doc03 canonical list is CHECK IN ('manual','system','reversal','opening','recurring','adjustment','amortization','revenue_recognition','auto_reversal'); posting-engine-generated JEs use je_type = 'system']**
+- `journal_entries` duplicate guard: UNIQUE(company_id, source_document_type, source_document_id) WHERE je_type = 'system' — prevents double-posting even without idempotency_key. Posting-engine-generated JEs use je_type = 'system' (see Doc03 §9 for canonical je_type CHECK values).
 - Compliance entry deduplication: posting engine checks existence before INSERT; abort if found for same source document and status = 'posted'
 
 ---
@@ -406,8 +402,7 @@ CR: Accounts Receivable (AR_TRADE)                                 FROM_SYSTEM_C
 ```
 - Writes negative `vat_entries` record (reversal)
 - Updates `subsidiary_ledger_entries` (AR credit)
-- transaction_type = `'sales_credit_memo'` — **[B-8 addition]**
-
+- transaction_type = `'sales_credit_memo'`
 ---
 
 ### Vendor Credit Memo Posting
@@ -419,13 +414,12 @@ CR: Input VAT (reversed input VAT amount)                          FROM_SYSTEM_C
 ```
 - Writes negative `vat_entries` record (reversal of input VAT)
 - Updates `subsidiary_ledger_entries` (AP debit)
-- transaction_type = `'vendor_credit'` — **[B-8 addition]**
-
+- transaction_type = `'vendor_credit'`
 ---
 
 ## 8b. Complete Posting Rules — All Remaining Transaction Types (v3.7)
 
-> **v3.7 note:** These rules complete the posting engine. Every transaction type listed in `posting_rule_sets.transaction_type` now has a documented rule. No transaction type may be posted without a rule in this section or Section 8.
+> Every transaction type listed in `posting_rule_sets.transaction_type` has a documented posting rule in Section 8 or Section 8b. No transaction type may be posted without a rule in these sections.
 
 ---
 

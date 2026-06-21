@@ -53,7 +53,7 @@
 
 | OD # | Question | Decision | Resolved |
 |---|---|---|---|
-| OD-11 | Should `slsp_records` and `relief_exports` be materialized tables or computed views? | **Computed at export time** via Edge Function. `slsp_records` and `relief_exports` store per-record data for the export batch; no separate summary tables. Ghost names `slsp_entries`, `slsp_summary`, `relief_entries`, `relief_summary` removed from all docs. | v3.2 ✅ |
+| OD-11 | Should SLSP and RELIEF data be materialized tables or computed at export? | **Computed at export time** via Edge Function. `slsp_exports` (#143) and `relief_exports` (#144) store per-batch export records. No persistent per-line tables. Ghost names `slsp_entries`, `slsp_records`, `slsp_summary`, `relief_entries`, `relief_summary` are not canonical and do not exist. | v3.2 ✅ |
 | OD-12 | Should `compliance_report_runs` track BIR submission status (submitted, accepted, rejected)? | **Phase 2 only** — Phase 1 is generation only. No blocking impact on freeze. | v3.2 ✅ |
 | **OD-13** | **Does posting engine write `vat_entries` and `ewt_entries`, or does the document save step?** | **POSTING ENGINE writes all immutable compliance entries.** Document save step computes and stores draft preview fields on the source document only (e.g., `total_vat_amount`, `total_ewt_amount`). The posting engine (Doc 06 Section 7, Step 11) writes final, immutable `vat_entries`, `ewt_entries`, `fwt_entries`, `percentage_tax_entries` within the same transaction as journal_entries. Draft/preview entries are deleted before INSERT on first post. Voids and reversals write reversal entries (negative amounts) — never silent UPDATE or DELETE. | v3.2 ✅ |
 

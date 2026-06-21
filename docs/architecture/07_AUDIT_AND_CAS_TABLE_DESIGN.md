@@ -18,7 +18,7 @@
 ## Implementation Notes
 
 - `audit_logs`, `field_change_history`, `atp_usage_logs`, `document_void_register` are insert-only. The application role must have INSERT but NOT UPDATE or DELETE on these tables.
-- `number_series.current_number` is updated via `SELECT FOR UPDATE` to prevent race conditions in concurrent document creation.
+- `number_series.next_sequence` is updated via `SELECT FOR UPDATE` to prevent race conditions in concurrent document creation.
 - `system_alerts` is the output table for the nightly pg_cron ATP gap detection job. It is readable by company admins and controllers.
 - The field_change_history trigger must skip `gl_balances`, `audit_logs`, `field_change_history` itself, and notification delivery tables to prevent trigger loops.
 - Approval audit tables (`approval_requests`, `approval_actions`) have Supabase Realtime enabled.
@@ -122,6 +122,7 @@ Captures before/after values for every field modified on audited tables. Immutab
 | `changed_by` | uuid | FK auth.users, NOT NULL | |
 | `changed_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `operation_id` | uuid | NULL | Groups all field changes from a single save operation |
+| `audit_log_id` | uuid | FK audit_logs, NULL | Links to the audit_logs event that triggered this change |
 
 **Implementation:** PostgreSQL trigger on every audited table. Trigger fires AFTER UPDATE/INSERT/DELETE, iterates over NEW vs OLD columns, inserts one row per changed field.
 
@@ -134,121 +135,113 @@ Captures before/after values for every field modified on audited tables. Immutab
 ## 4. User Activity Log
 
 ### `user_activity_logs`
-Records every user session event and sensitive action.
+Records every user session event and sensitive action. Canonical column spec: Doc03 §41.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
-| `user_id` | uuid | FK auth.users, NOT NULL | |
 | `company_id` | uuid | FK companies, NULL | NULL for login events before company selection |
+| `user_id` | uuid | FK profiles, NOT NULL | |
 | `activity_type` | text | NOT NULL | See below |
-| `description` | text | NOT NULL | |
+| `description` | text | NULL | Human-readable summary of the action |
+| `entity_type` | text | NULL | Table name of document viewed/opened |
+| `entity_id` | uuid | NULL | PK of document |
 | `ip_address` | inet | NULL | |
 | `user_agent` | text | NULL | |
 | `session_id` | text | NULL | |
-| `occurred_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `metadata` | jsonb | NULL | e.g., report name, filter params, export row count |
+| `occurred_at` | timestamptz | NOT NULL DEFAULT now() | |
 
 ### Activity Types
 
 | Type | Description |
 |---|---|
-| `LOGIN_SUCCESS` | Successful login |
-| `LOGIN_FAILED` | Failed login attempt |
-| `LOGOUT` | User logged out |
-| `SESSION_EXPIRED` | Session timed out |
-| `COMPANY_SWITCHED` | User switched active company |
-| `BRANCH_SWITCHED` | User switched active branch |
-| `REPORT_VIEWED` | Financial report accessed |
-| `REPORT_EXPORTED` | Report exported (PDF, Excel, CSV) |
-| `DOCUMENT_PRINTED` | Document printed |
-| `DATA_EXPORTED` | Bulk data export |
-| `COMPLIANCE_REPORT_EXPORTED` | BIR compliance form exported |
-| `DAT_FILE_DOWNLOADED` | CAS DAT file downloaded |
-| `SETTINGS_CHANGED` | User changed own settings |
-| `PASSWORD_CHANGED` | Password changed |
-| `MFA_ENABLED` | MFA configured |
-| `MFA_DISABLED` | MFA removed |
+| `login_success` | Successful login |
+| `login_failed` | Failed login attempt |
+| `logout` | User logged out |
+| `session_expired` | Session timed out |
+| `company_switched` | User switched active company |
+| `branch_switched` | User switched active branch |
+| `report_viewed` | Financial report accessed |
+| `report_exported` | Report exported (PDF, Excel, CSV) |
+| `document_printed` | Document printed |
+| `data_exported` | Bulk data export |
+| `compliance_report_exported` | BIR compliance form exported |
+| `dat_file_downloaded` | CAS DAT file downloaded |
+| `settings_changed` | User changed own settings |
+| `password_changed` | Password changed |
+| `mfa_enabled` | MFA configured |
+| `mfa_disabled` | MFA removed |
 
 ---
 
 ## 5. Document Void Register
 
 ### `document_void_register`
-Permanent record of every voided document. Cannot be deleted or updated.
+Permanent record of every voided document. Canonical column spec: Doc03 §11.
 
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `document_type` | text | NOT NULL | |
-| `document_id` | uuid | NOT NULL | FK to source document |
-| `document_no` | text | NOT NULL | Denormalized |
-| `original_amount` | numeric(18,4) | NOT NULL | Total amount of voided document |
-| `original_date` | date | NOT NULL | Original document date |
-| `void_date` | date | NOT NULL | Date of void |
-| `void_reason` | text | NOT NULL | Required |
-| `voided_by` | uuid | FK auth.users, NOT NULL | |
-| `voided_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `reversal_journal_entry_id` | uuid | FK journal_entries, NULL | JE created to reverse |
-| `approved_by` | uuid | FK auth.users, NULL | If void requires approval |
-| `approved_at` | timestamptz | NULL | |
+> Column spec: See Doc03 Section 11 (`document_void_register`). Canonical spec uses `document_date` (not `original_date`), `reversal_je_id` (not `reversal_journal_entry_id`), and includes `document_date`, `reversal_je_id`, `approved_by`, `approved_at`.
 
 ---
 
 ## 6. Document Number Series Tables
 
 ### `number_series`
-Tracks ATP-compliant document series. Canonical definition is here in doc 07.
+Tracks ATP-compliant document series. Canonical column spec: Doc03 §25. This section retains ATP context and document_type values.
+
+Canonical column spec: Doc03 §25. Columns listed here for reference:
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `branch_id` | uuid | FK branches, NULL | NULL = company-wide |
-| `document_type` | text | NOT NULL | 'sales_invoice' \| 'official_receipt' \| 'purchase_order' \| 'delivery_order' \| 'journal_entry' \| 'cash_sale' \| 'cash_purchase' \| 'credit_memo' \| 'debit_memo' \| 'payment_voucher' \| 'petty_cash_voucher' |
-| `series_prefix` | text | NOT NULL | e.g., 'SI-2025-' |
+| `series_type` | text | NOT NULL | CHECK IN ('sales_invoice','cash_sale','receipt','vendor_bill','cash_purchase','payment_voucher','journal_entry','delivery_receipt','purchase_order','receiving_report','petty_cash_voucher','stock_adjustment','stock_transfer','asset_acquisition','asset_disposal','sales_credit_memo','sales_debit_memo','supplier_debit_memo') |
+| `prefix` | text | NOT NULL | e.g., 'SI-', 'OR-', 'PV-' |
 | `padding_length` | integer | NOT NULL DEFAULT 6 | Zero-padding for sequential number |
-| `current_number` | bigint | NOT NULL DEFAULT 0 | Last used number |
-| `max_number` | bigint | NOT NULL | ATP series limit |
+| `next_sequence` | bigint | NOT NULL DEFAULT 1 | Next number to assign |
+| `min_value` | bigint | NOT NULL DEFAULT 1 | |
+| `max_value` | bigint | NOT NULL DEFAULT 999999999 | ATP series limit |
+| `reset_frequency` | text | NULL | CHECK IN ('never','monthly','annually') |
+| `last_reset_at` | timestamptz | NULL | |
 | `is_active` | boolean | NOT NULL DEFAULT true | |
-| `atp_reference_no` | text | NULL | BIR ATP reference |
-| `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `created_by` | uuid | FK auth.users | |
+| *+ standard audit columns* | | | |
+
+**Constraints:** `UNIQUE(company_id, branch_id, series_type)` where `is_active = true`
 
 ### `number_series_atp`
-One record per ATP grant per series.
+One record per ATP grant per series. Canonical column spec: Doc03 §25.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `number_series_id` | uuid | FK number_series, NOT NULL | |
-| `atp_reference_no` | text | NOT NULL | BIR-issued ATP reference |
-| `series_start` | bigint | NOT NULL | |
-| `series_end` | bigint | NOT NULL | |
-| `valid_from` | date | NOT NULL | |
-| `valid_until` | date | NULL | |
-| `printer_name` | text | NULL | BIR-accredited printer |
-| `print_date` | date | NULL | Date of printing |
+| `atp_no` | text | NOT NULL | BIR-issued ATP authority number |
+| `series_from` | bigint | NOT NULL | Starting number in ATP range |
+| `series_to` | bigint | NOT NULL | Ending number in ATP range |
+| `valid_until` | date | NULL | Expiry date if BIR specified |
+| `approved_at` | date | NOT NULL | BIR approval date |
 | `is_active` | boolean | NOT NULL DEFAULT true | |
+| *+ standard audit columns* | | | |
+
+> Immutable once created. `is_active = false` when all numbers exhausted.
 
 ### `atp_usage_logs`
-Every document number allocated from a series. Immutable.
+Every document number allocated from a series. Immutable. Canonical column spec: Doc03 §25.
 
 | Column | Type | Constraint | Description |
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `number_series_id` | uuid | FK number_series, NOT NULL | |
-| `atp_id` | uuid | FK number_series_atp, NOT NULL | |
-| `allocated_number` | bigint | NOT NULL | Raw number allocated |
-| `formatted_number` | text | NOT NULL | e.g., 'SI-2025-000123' |
-| `document_type` | text | NOT NULL | |
-| `document_id` | uuid | NOT NULL | FK to the document |
-| `allocated_by` | uuid | FK auth.users, NOT NULL | |
-| `allocated_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `is_voided` | boolean | NOT NULL DEFAULT false | True if document was voided — number is consumed, NOT reused |
+| `number_series_atp_id` | uuid | FK number_series_atp, NOT NULL | |
+| `allocated_number` | bigint | NOT NULL | Raw sequence number — used for gap detection |
+| `document_no` | text | NOT NULL | Formatted document number e.g., 'SI-2025-000123' |
+| `entity_type` | text | NOT NULL | Table name of the document |
+| `entity_id` | uuid | NOT NULL | PK of the document |
+| `used_by` | uuid | FK auth.users, NOT NULL | |
+| `used_at` | timestamptz | NOT NULL DEFAULT now() | |
+| `is_voided` | boolean | NOT NULL DEFAULT false | Voided numbers are never reused |
 
 **Immutable. No update, no delete.**
 
@@ -259,7 +252,7 @@ Every document number allocated from a series. Immutable.
 ### `cas_registrations`
 > Column spec: See Doc03 Section 1 (`cas_registrations`). Tracks BIR CAS accreditation per company — cas_number, accreditation_date, valid_until, covered_modules, bir_rdo_code.
 
-> Note: `field_change_history` records reference `audit_logs` via the `operation_id` column — they are linked by the same UUID grouping all field changes from a single save operation, not by a direct FK.
+> Note: `field_change_history.audit_log_id` is a direct FK to `audit_logs.id`. The `operation_id` column groups all field changes from a single save operation using the same UUID (used when multiple fields change in one transaction).
 
 ---
 
