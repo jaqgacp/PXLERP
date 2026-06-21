@@ -191,7 +191,7 @@ Stores opening balances before they are converted to journal entries.
 | `branch_id` | uuid | FK branches, NULL | |
 | `account_id` | uuid | FK chart_of_accounts, NOT NULL | |
 | `fiscal_year_id` | uuid | FK fiscal_years, NOT NULL | First fiscal year |
-| `balance_type` | text | CHECK IN ('DEBIT','CREDIT'), NOT NULL | Normal balance side |
+| `balance_type` | text | CHECK IN ('debit','credit'), NOT NULL | Normal balance side |
 | `amount` | numeric(18,4) | NOT NULL | |
 | `notes` | text | NULL | |
 | `import_batch_id` | uuid | FK import_batches, NULL | |
@@ -295,7 +295,7 @@ Metadata for all uploaded files. Supabase Storage holds the actual files.
 | `deleted_by` | uuid | FK auth.users, NULL | |
 
 **Supported entity types:**
-`sales_invoices` | `vendor_bills` | `receipts` | `payment_vouchers` | `cash_sales` | `cash_purchases` | `journal_entries` | `petty_cash_vouchers` | `purchase_orders` | `goods_receipts` | `bank_reconciliations` | `fixed_assets` | `customers` | `suppliers`
+`sales_invoices` | `vendor_bills` | `official_receipts` | `disbursement_vouchers` | `cash_sales` | `cash_purchases` | `journal_entries` | `petty_cash_vouchers` | `purchase_orders` | `receiving_reports` | `bank_reconciliations` | `fixed_assets` | `customers` | `suppliers`
 
 ---
 

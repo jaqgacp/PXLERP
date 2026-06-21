@@ -1,6 +1,6 @@
 # PXL ERP — Compliance Data Capture Map
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 3.3 — Brutal Audit Fix Pass
+**Status:** v3.3 — Brutal Audit Fix Pass Applied. Freeze pending Section 47 sign-off.
 
 ---
 
@@ -49,12 +49,13 @@
 
 ---
 
-## Open Decisions Remaining
+## Open Decisions — Resolved (v3.2)
 
-| OD # | Question | Status |
-|---|---|---|
-| OD-11 | Should `slsp_entries` and `relief_entries` be materialized tables or computed views? | Recommended: computed at export time via Edge Function; no persistent table needed for Phase 1 |
-| OD-12 | Should `compliance_report_runs` track BIR submission status (submitted, accepted, rejected)? | For Phase 2 — Phase 1 is generation only |
+| OD # | Question | Decision | Resolved |
+|---|---|---|---|
+| OD-11 | Should `slsp_records` and `relief_exports` be materialized tables or computed views? | **Computed at export time** via Edge Function. `slsp_records` and `relief_exports` store per-record data for the export batch; no separate summary tables. Ghost names `slsp_entries`, `slsp_summary`, `relief_entries`, `relief_summary` removed from all docs. | v3.2 ✅ |
+| OD-12 | Should `compliance_report_runs` track BIR submission status (submitted, accepted, rejected)? | **Phase 2 only** — Phase 1 is generation only. No blocking impact on freeze. | v3.2 ✅ |
+| **OD-13** | **Does posting engine write `vat_entries` and `ewt_entries`, or does the document save step?** | **POSTING ENGINE writes all immutable compliance entries.** Document save step computes and stores draft preview fields on the source document only (e.g., `total_vat_amount`, `total_ewt_amount`). The posting engine (Doc 06 Section 7, Step 11) writes final, immutable `vat_entries`, `ewt_entries`, `fwt_entries`, `percentage_tax_entries` within the same transaction as journal_entries. Draft/preview entries are deleted before INSERT on first post. Voids and reversals write reversal entries (negative amounts) — never silent UPDATE or DELETE. | v3.2 ✅ |
 
 ---
 
@@ -397,7 +398,7 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | No modification after posting | RLS immutability policy + `enforce_posted_immutability()` trigger |
 | Complete audit trail | `audit_logs` + `field_change_history` |
 | ATP tracking | `number_series_atp` + `atp_usage_logs` |
-| DAT file log | `dat_file_generation_logs` records every export with SHA-256 hash |
+| DAT file log | `dat_generation_logs` records every export with SHA-256 hash |
 | User action log | `user_activity_logs` records every login, export, print |
 
 ---
@@ -472,7 +473,7 @@ Applies to transactions with WF-series ATC codes (dividends, royalties, final in
 | Withholding Agent Name | `companies` | `name` |
 | Quarter Covered | `fwt_remittances_1601fq` | `quarter`, dates |
 | Total FWT | `fwt_remittances_1601fq` | `fwt_amount_total` |
-| Per-Payee Breakdown | `fwt_entries` → `certificates_2306` | payee_tin (snapshot), fwt_amount |
+| Per-Payee Breakdown | `fwt_entries` → `certificates_2306_issued` | payee_tin (snapshot), fwt_amount |
 
 Key difference from EWT: FWT is final — payees cannot claim these as creditable taxes. EWT (1601EQ) is creditable by the payee.
 

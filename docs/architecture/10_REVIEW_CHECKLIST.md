@@ -1,6 +1,6 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.2 — Schema Completion Phase
-**Status:** v3.2 — DATABASE FREEZE APPROVED. SQL migration authoring may begin.
+**Version:** 3.3 — Brutal Audit Fix Pass (Codex Review)
+**Status:** v3.3 — DATABASE FREEZE NOT APPROVED. Codex audit found 9 blockers. Fixes applied in this pass. Freeze pending final verification of all Section 47 items.
 **Sign-off Required Before:** SQL migration authoring begins
 
 ---
@@ -211,7 +211,7 @@ Each item requires explicit sign-off from the responsible party before proceedin
 | 10.1 | `audit_logs` insert-only (no update, no delete) confirmed | DB Architect | [ ] | |
 | 10.2 | `field_change_history` trigger design reviewed — excludes `gl_balances`, `audit_logs`, delivery logs | DB Architect | [ ] | |
 | 10.3 | `document_void_register` immutable confirmed | CPA Lead | [ ] | |
-| 10.4 | `dat_file_generation_logs` immutable with SHA-256 file hash confirmed | DB Architect | [ ] | |
+| 10.4 | `dat_generation_logs` immutable with SHA-256 file hash confirmed (canonical name fixed v3.2 — was `dat_file_generation_logs`) | DB Architect | [x] | |
 | 10.5 | `cas_registrations` stores CAS accreditation per company confirmed | CPA Lead | [ ] | |
 | 10.6 | Posted document immutability trigger reviewed (`status IN ('POSTED','VOIDED','REVERSED')`) | DB Architect | [ ] | |
 | 10.7 | User activity log events enumerated and complete | Business Lead | [ ] | |
@@ -272,9 +272,9 @@ All open decisions must be resolved before SQL migrations begin.
 | OD-08 | Cash Sales / Cash Purchases: separate headers or shortcuts? | **Separate transaction headers** — no AR/AP created | CPA Lead | [x] Resolved |
 | OD-09 | `document_relationships` link notification events to source docs? | Phase 2 consideration | DB Architect | [ ] |
 | OD-10 | `generated_documents` link to `export_jobs` when PDF produced via export? | Decide before Edge Function implementation | DB Architect | [ ] |
-| OD-11 | `slsp_entries` and `relief_entries`: materialized tables or computed at export? | **Computed at export time** via Edge Function; no table for Phase 1 | CPA Lead | [ ] |
+| OD-11 | `slsp_records` and `relief_exports`: materialized tables or computed at export? | **RESOLVED v3.3: Computed at export time. `slsp_records` and `relief_exports` store per-record export data. Ghost names `slsp_entries`/`relief_entries` removed from all docs.** | CPA Lead | [x] |
 | OD-12 | `compliance_report_runs` track BIR submission status? | Phase 2 — Phase 1 is generation only | CPA Lead | [ ] |
-| OD-13 | Does posting engine write `vat_entries` and `ewt_entries`, or does the document save step? | **Document save step** writes them; posting engine reads them | DB Architect | [ ] |
+| OD-13 | Does posting engine write `vat_entries` and `ewt_entries`, or does the document save step? | **RESOLVED v3.3: Posting engine writes all immutable compliance entries within the same transaction as journal_entries (Doc 06 §7 Step 11). Document save computes draft preview fields only.** | DB Architect | [x] |
 | OD-14 | Recurring journal template lines: fixed amounts only or percentage of account balance? | **Fixed amounts only** for Phase 1 | CPA Lead | [ ] |
 | OD-15 | `system_alerts` on Supabase Realtime? | **Yes** — add to Realtime list | DB Architect | [ ] |
 | OD-16 | Partition `user_activity_logs` by month? | **Phase 2** — single table with index for Phase 1 | DB Architect | [ ] |
@@ -574,8 +574,8 @@ All open decisions must be resolved before SQL migrations begin.
 | 33.1 | Section 21 Cross-Reference Index added to doc 03 — maps all ~200 inventory tables to spec location | DB Architect | [!] | v3 Round 2 resolved |
 | 33.2 | Tables marked SPEC REQUIRED in Section 22 cross-reference (~14 tables) — must be specced before migration | DB Architect | [ ] | Blocked: Phase 2 sprint required |
 | 33.3 | Abbreviated specs added to doc 03 § 21 for critical reference tables: currencies, payment_terms, payment_term_lines, vat_codes, atc_codes, items | DB Architect | [!] | v3 Round 2 resolved |
-| 33.4 | `exchange_rates` table — currently SPEC REQUIRED; needed before multi-currency transactions can be specced | DB Architect | [ ] | Open |
-| 33.5 | `debit_memos` / `debit_memo_lines` — currently SPEC REQUIRED; needed for purchase return flows | CPA Lead | [ ] | Open |
+| 33.4 | `exchange_rates` table — specced in Doc 03 § 26 | DB Architect | [x] | Resolved v3.2 |
+| 33.5 | `sales_debit_memos` / `sales_debit_memo_lines` + `supplier_debit_memos` / `supplier_debit_memo_lines` — specced in Doc 03 § 32/33 | CPA Lead | [x] | Resolved v3.2 — canonical names use direction prefix |
 
 ---
 
@@ -717,7 +717,7 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 44.1 | All 207 active tables have full column specifications in doc 03 — no SPEC REQUIRED entries | DB Architect | [ ] | Pending doc 03 agent completion |
+| 44.1 | All 207 active tables have full column specifications in doc 03 — no SPEC REQUIRED entries | DB Architect | [x] | Resolved v3.2 — SPEC REQUIRED = 0 confirmed |
 | 44.2 | Sections 24–44 added to doc 03 covering ~114 previously unspecced tables | DB Architect | [ ] | Pending doc 03 agent completion |
 | 44.3 | All specs follow standard format: column name, type, null/not null, default, description | DB Architect | [ ] | Pending doc 03 agent completion |
 | 44.4 | Standard audit columns documented once in doc 03 Standard Column Sets and referenced by all applicable tables | DB Architect | [!] | Already in doc 03 |
@@ -734,7 +734,7 @@ All open decisions must be resolved before SQL migrations begin.
 | 45.1 | All 10 architecture documents updated to version 3.1 | DB Architect | [!] | v3.1 normalization resolved |
 | 45.2 | All 10 documents show consistent status: "v3.1 — Normalization In Progress — Not Yet Migration-Approved" | DB Architect | [!] | v3.1 normalization resolved |
 | 45.3 | No document states "Gaps Resolved" or "v3 In Review" as current status | DB Architect | [!] | v3.1 normalization resolved — all statuses corrected |
-| 45.4 | Migration authoring gate confirmed: ALL sign-off items in this checklist must be `[x]` or `[N/A]` before SQL migrations begin | DB Architect / Project Lead | [x] | DATABASE FREEZE APPROVED — v3.2 |
+| 45.4 | Migration authoring gate confirmed: ALL sign-off items in this checklist must be `[x]` or `[N/A]` before SQL migrations begin | DB Architect / Project Lead | [ ] | NOT YET — v3.3 brutal audit fixes applied; Section 47 must be fully [x] before approval |
 
 ---
 
@@ -751,11 +751,49 @@ All open decisions must be resolved before SQL migrations begin.
 | 46.7 | Doc 02 ↔ Doc 03 full reconciliation: 207 active / 3 removed — zero gaps | DB Architect | [x] | All FK relationships spot-checked |
 | 46.8 | All posting paths verified (Sales, Purchasing, Cash, JE, Depreciation, Amortization, RevRec) | DB Architect | [x] | Including EWT Payable CR correction from v3.1 |
 | 46.9 | All docs updated to version 3.2 | DB Architect | [x] | Doc 03, Doc 10 updated; remaining docs retain 3.1 |
-| 46.10 | DATABASE FREEZE: SPEC REQUIRED = 0, 0 open blocking decisions, 0 unresolved architecture errors | DB Architect | [x] | **FREEZE APPROVED** |
+| 46.10 | DATABASE FREEZE: SPEC REQUIRED = 0 — scope at v3.2 | DB Architect | [x] | v3.2 scope only; Codex audit found additional issues resolved in v3.3 |
 
 ---
 
-**DATABASE FREEZE APPROVED — v3.2**
-**SQL migration authoring may begin.**
+## SECTION 47: Brutal Audit Fix Pass Sign-Off (v3.3 — Codex Review Response)
 
-*Next step: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*
+> Codex independently reviewed v3.2 and scored 61/100, verdict: DATABASE FREEZE NOT APPROVED. The following blockers were found and fixed in this pass.
+
+| # | Blocker / High Risk | Fix Applied | Doc(s) Changed | Status |
+|---|---|---|---|---|
+| B1 | SPEC REQUIRED entries in S22 cross-reference — stale markers and wrong table names | All 17 stale entries corrected; 8 table names updated to canonical; SPEC REQUIRED = 0 confirmed | Doc 03 | [x] |
+| B2 | Ghost table names in Doc 04: delivery_orders, goods_receipts, bank_deposits, slsp_entries, relief_entries, qap_entries, certificates_2306 | All replaced with canonical names; Ghost Table Name Cleanup section added to Doc 04 header | Doc 04 | [x] |
+| B3 | DAT table name conflict: `dat_generation_logs` vs `dat_file_generation_logs` | Canonical: `dat_generation_logs`. Doc 07 section header updated; Docs 05, 10 references updated | Doc 07, 05, 10 | [x] |
+| B4 | VAT/EWT/FWT/PT write ownership unresolved (OD-13) | RESOLVED: Posting engine writes all immutable compliance entries at step 11 of posting flow. Doc 05 OD-13 closed. Doc 06 §7 updated with explicit compliance write step. | Doc 05, 06, 10 | [x] |
+| B5 | Status casing inconsistency — POSTED/DRAFT/REVERSED uppercase in Doc 06 | All status and enum values normalized to lowercase across Doc 06 (entry_side, entry_type, status, applies_to, amount_source, account_source, ledger_type, frequency, relationship_type) | Doc 06 | [x] |
+| B6 | FWT/2306 as ITR credit — `fwt_2306` in tax_credits_schedules credit_type enum | REMOVED `fwt_2306` from CHECK constraint. FWT is final tax, not creditable. Explanatory note added. | Doc 03 | [x] |
+| B7 | Effective-date overlap: no explicit non-overlapping range rule | Non-overlap validation rule added to `company_compliance_profiles` spec with application-layer validation query. Applies to all versioned tables. | Doc 03 | [x] |
+| B8 | Branch RLS honestly resolved | Option A (company-level RLS only; branch = UI filter) confirmed and documented. Phase 2 upgrade path to Option B exists. Honest for MSME Phase 1. | Doc 09 (existing) | [x] confirmed |
+| B9 | Checklist claiming DATABASE FREEZE APPROVED prematurely | Status reverted to NOT APPROVED. This section added as the real freeze gate. | Doc 10 | [x] |
+| HR1 | COA seed mapping — MCIT/OSD untrustworthy without CPA-reviewed seed | COA Seed Mapping Requirement added to Doc 03 chart_of_accounts spec. Pre-go-live CPA review required. | Doc 03 | [x] |
+| HR2 | Posting idempotency — no idempotency key on posting_batches | `idempotency_key` (UNIQUE) added to `posting_batches` spec. Duplicate posting guard added to Doc 06 §7 flow (step 0 + step 3). | Doc 03, 06 | [x] |
+| HR3 | company_income_tax_profiles drift — non-existent table referenced | Confirmed: no such table exists. Single source of truth note added to `company_compliance_profiles` spec. | Doc 03 | [x] |
+| HR4 | Period-end ordering undefined | CPA-correct 13-step period-end sequence added to Doc 06 §9. | Doc 06 | [x] |
+
+### Remaining items before DATABASE FREEZE APPROVED:
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 47.1 | All Section 47 blocker fixes reviewed by DB Architect and CPA Lead | DB Architect + CPA Lead | [ ] |
+| 47.2 | Ghost table names: verify 0 remaining in all docs (spot check docs 01, 04, 05, 06, 07) | DB Architect | [ ] |
+| 47.3 | Canonical table names: doc 02 registry ↔ doc 03 specs ↔ doc 04 relationship map — 0 discrepancies | DB Architect | [ ] |
+| 47.4 | Status casing: all CHECK constraints in all docs use lowercase — 0 uppercase status values | DB Architect | [ ] |
+| 47.5 | VAT/EWT/FWT/PT write ownership: dev team reads Doc 06 §7 Step 11 and confirms implementation path | Dev Lead | [ ] |
+| 47.6 | FWT/2306 treatment: CPA confirms `tax_credits_schedules` should NOT include fwt_2306 | CPA Lead | [ ] |
+| 47.7 | Effective-date overlap: app-layer validation query reviewed and agreed by dev team | Dev Lead | [ ] |
+| 47.8 | Posting idempotency: dev team confirms idempotency_key strategy covers all Edge Function retry scenarios | Dev Lead | [ ] |
+| 47.9 | COA seed template: CPA-approved seed COA document exists and reviewed | CPA Lead | [ ] |
+| 47.10 | Period-end sequence: CPA confirms 13-step sequence in Doc 06 §9 is correct for PH MSME | CPA Lead | [ ] |
+| 47.11 | Overengineering review: Phase 2 deferral candidates confirmed (budgets, period_close_checklists, 1604E/F annual) | Project Lead | [ ] |
+| 47.12 | All Section 47 items marked [x] | All | [ ] |
+
+**DATABASE FREEZE APPROVED only when items 47.1–47.12 are all [x].**
+
+---
+
+*Next step after Section 47 is fully signed off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*

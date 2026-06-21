@@ -1,6 +1,6 @@
 # PXL ERP — Posting Engine Table Design
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 3.3 — Brutal Audit Fix Pass
+**Status:** v3.3 — Brutal Audit Fix Pass Applied. Freeze pending Section 47 sign-off.
 
 ---
 
@@ -49,7 +49,7 @@
 
 | OD # | Question | Status |
 |---|---|---|
-| OD-13 | Should the posting engine write `vat_entries` and `ewt_entries` directly, or should those be written by the source document save step before posting? | Recommended: written at document SAVE (before posting), read by posting engine at post time. Confirm before Edge Function implementation. |
+| OD-13 | Should the posting engine write `vat_entries` and `ewt_entries` directly, or should those be written by the source document save step before posting? | **RESOLVED v3.3:** Posting engine writes all immutable compliance entries (§7 Step 11). Document save writes draft preview fields only. See Doc 05 OD-13. |
 | OD-14 | Should `recurring_journal_template_lines` support dynamic amounts (e.g., percentage of another account balance)? | Phase 2 — Phase 1 supports fixed amounts only. |
 
 ---
@@ -96,7 +96,7 @@ Defines the top-level rule set for each transaction type.
 **v3 Principle 11 Note:** If BIR changes VAT rate or EWT rates, a new `posting_rule_set` with updated `effective_from` is inserted. Historical transactions use the rule set active on their `document_date`. Do NOT update existing active rule sets — insert new versions.
 
 **Valid `transaction_type` values:**
-`sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `inventory_adjustment` | `asset_depreciation` | `bank_deposit` | `bank_withdrawal` | `bank_transfer` | `journal_entry` | `stock_transfer` | `asset_disposal`
+`sales_invoice` | `vendor_bill` | `official_receipt` | `disbursement_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `inventory_adjustment` | `asset_depreciation` | `bank_fund_transfer` | `journal_entry` | `stock_transfer` | `asset_disposal`
 
 > **Percentage Tax Note (Principle 3 Driver 1):** `sales_invoice` and `cash_sale` posting rules check `company_compliance_profiles.taxpayer_type` at post time. If `taxpayer_type = 'non_vat'`, the posting engine creates `percentage_tax_entries` instead of `vat_entries`. No separate `transaction_type` is needed — the same source documents drive different compliance entries depending on the company's taxpayer type.
 
@@ -113,15 +113,15 @@ Each line in a rule set defines one DR or CR entry.
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `rule_set_id` | uuid | FK posting_rule_sets, NOT NULL | |
 | `line_order` | integer | NOT NULL | Execution order |
-| `entry_side` | text | CHECK IN ('DEBIT','CREDIT'), NOT NULL | |
-| `account_source` | text | NOT NULL | 'FIXED' \| 'FROM_ITEM' \| 'FROM_CUSTOMER' \| 'FROM_SUPPLIER' \| 'FROM_RULE_PARAM' \| 'FROM_SYSTEM_CONFIG' |
-| `fixed_account_id` | uuid | FK chart_of_accounts, NULL | Used if account_source='FIXED' |
-| `account_config_key` | text | NULL | Used if account_source='FROM_SYSTEM_CONFIG'; e.g., 'AR_TRADE', 'OUTPUT_VAT', 'AP_TRADE', 'CASH_ON_HAND' |
-| `amount_source` | text | NOT NULL | 'LINE_SUBTOTAL' \| 'LINE_VAT' \| 'LINE_EWT' \| 'HEADER_TOTAL' \| 'COMPUTED' |
+| `entry_side` | text | CHECK IN ('debit','credit'), NOT NULL | |
+| `account_source` | text | NOT NULL | 'fixed' \| 'from_item' \| 'from_customer' \| 'from_supplier' \| 'from_rule_param' \| 'from_system_config' |
+| `fixed_account_id` | uuid | FK chart_of_accounts, NULL | Used if account_source='fixed' |
+| `account_config_key` | text | NULL | Used if account_source='from_system_config'; e.g., 'AR_TRADE', 'OUTPUT_VAT', 'AP_TRADE', 'CASH_ON_HAND' |
+| `amount_source` | text | NOT NULL | 'line_subtotal' \| 'line_vat' \| 'line_ewt' \| 'header_total' \| 'computed' |
 | `amount_formula` | text | NULL | SQL expression for computed amounts |
-| `applies_to` | text | NOT NULL DEFAULT 'ALL' | 'ALL' \| 'VAT_LINES_ONLY' \| 'EWT_LINES_ONLY' \| 'ZERO_VAT_LINES' |
+| `applies_to` | text | NOT NULL DEFAULT 'all' | 'all' \| 'vat_lines_only' \| 'ewt_lines_only' \| 'zero_vat_lines' |
 | `creates_subsidiary_ledger` | boolean | NOT NULL DEFAULT false | Whether this line creates a subsidiary_ledger_entry |
-| `subsidiary_ledger_type` | text | NULL | 'AR' \| 'AP' \| 'INVENTORY' \| 'FIXED_ASSET' — NULL for cash_sale/cash_purchase lines |
+| `subsidiary_ledger_type` | text | NULL | 'ar' \| 'ap' \| 'inventory' \| 'fixed_asset' — NULL for cash_sale/cash_purchase lines |
 | `use_branch_dimension` | boolean | NOT NULL DEFAULT true | |
 | `use_department_dimension` | boolean | NOT NULL DEFAULT false | |
 | `use_cost_center_dimension` | boolean | NOT NULL DEFAULT false | |
@@ -181,17 +181,17 @@ Header record for every set of balanced DR/CR lines.
 | `branch_id` | uuid | FK branches, NULL | |
 | `document_date` | date | NOT NULL | Accounting date |
 | `document_no` | text | NOT NULL | System-assigned JE number |
-| `entry_type` | text | NOT NULL | 'AUTO' \| 'MANUAL' \| 'REVERSAL' \| 'OPENING' \| 'RECURRING' \| 'ADJUSTMENT' |
+| `entry_type` | text | NOT NULL | 'auto' \| 'manual' \| 'reversal' \| 'opening' \| 'recurring' \| 'adjustment' |
 | `fiscal_year_id` | uuid | FK fiscal_years, NOT NULL | |
 | `fiscal_period_id` | uuid | FK fiscal_periods, NOT NULL | |
-| `source_document_type` | text | NULL | 'sales_invoice' \| 'vendor_bill' \| 'receipt' \| 'payment_voucher' \| 'cash_sale' \| 'cash_purchase' \| 'petty_cash_voucher' \| 'inventory_adjustment' \| 'asset_depreciation' \| 'bank_deposit' \| 'bank_withdrawal' \| 'bank_transfer' \| 'asset_disposal' |
+| `source_document_type` | text | NULL | 'sales_invoice' \| 'vendor_bill' \| 'official_receipt' \| 'disbursement_voucher' \| 'cash_sale' \| 'cash_purchase' \| 'petty_cash_voucher' \| 'inventory_adjustment' \| 'asset_depreciation' \| 'bank_fund_transfer' \| 'asset_disposal' \| 'journal_entry' |
 | `source_document_id` | uuid | NULL | FK to the source document |
 | `rule_set_id` | uuid | FK posting_rule_sets, NULL | NULL for manual JEs |
 | `description` | text | NOT NULL | |
 | `reference` | text | NULL | External reference |
 | `currency_code` | text | NOT NULL DEFAULT 'PHP' | |
 | `exchange_rate` | numeric(10,6) | NOT NULL DEFAULT 1 | |
-| `status` | text | CHECK IN ('DRAFT','POSTED','REVERSED') | |
+| `status` | text | CHECK IN ('draft','posted','reversed') | |
 | `posted_at` | timestamptz | NULL | When POSTED |
 | `posted_by` | uuid | FK auth.users, NULL | |
 | `reversed_by_entry_id` | uuid | FK journal_entries, NULL | |
@@ -203,7 +203,7 @@ Header record for every set of balanced DR/CR lines.
 | `updated_at` | timestamptz | NULL | |
 | `updated_by` | uuid | FK auth.users | |
 
-CONSTRAINT: Cannot update any column if `status = 'POSTED'` — enforced by `enforce_posted_immutability()` trigger.
+CONSTRAINT: Cannot update any column if `status = 'posted'` — enforced by `enforce_posted_immutability()` trigger.
 
 ---
 
@@ -225,7 +225,7 @@ Individual debit/credit lines within a journal entry.
 | `base_currency_debit` | numeric(18,4) | NOT NULL DEFAULT 0 | PHP equivalent |
 | `base_currency_credit` | numeric(18,4) | NOT NULL DEFAULT 0 | PHP equivalent |
 | `description` | text | NOT NULL | |
-| `subsidiary_ledger_type` | text | NULL | 'AR' \| 'AP' \| 'INVENTORY' \| 'FIXED_ASSET' |
+| `subsidiary_ledger_type` | text | NULL | 'ar' \| 'ap' \| 'inventory' \| 'fixed_asset' |
 | `subsidiary_entity_type` | text | NULL | 'customer' \| 'supplier' \| 'item' \| 'fixed_asset' |
 | `subsidiary_entity_id` | uuid | NULL | FK to respective entity |
 | `source_line_type` | text | NULL | 'invoice_line' \| 'vat_entry' \| 'ewt_entry' \| 'header' |
@@ -266,7 +266,7 @@ Detailed ledger per customer (AR), supplier (AP), item (inventory), asset. Not c
 |---|---|---|---|
 | `id` | uuid | PK | |
 | `company_id` | uuid | FK companies, NOT NULL | |
-| `ledger_type` | text | CHECK IN ('AR','AP','INVENTORY','FIXED_ASSET'), NOT NULL | |
+| `ledger_type` | text | CHECK IN ('ar','ap','inventory','fixed_asset'), NOT NULL | |
 | `entity_id` | uuid | NOT NULL | FK to customer/supplier/item/fixed_asset |
 | `journal_entry_id` | uuid | FK journal_entries, NOT NULL | |
 | `journal_line_id` | uuid | FK journal_lines, NOT NULL | |
@@ -296,7 +296,7 @@ Tracks all source-to-target relationships across document types.
 | `source_document_id` | uuid | NOT NULL | |
 | `target_document_type` | text | NOT NULL | |
 | `target_document_id` | uuid | NOT NULL | |
-| `relationship_type` | text | NOT NULL | 'BILLED_FROM' \| 'PAID_BY' \| 'REVERSED_BY' \| 'DELIVERED_FROM' \| 'RECEIVED_FROM' \| 'APPLIED_TO' \| 'REPLENISHED_BY' |
+| `relationship_type` | text | NOT NULL | 'billed_from' \| 'paid_by' \| 'reversed_by' \| 'delivered_from' \| 'received_from' \| 'applied_to' \| 'replenished_by' |
 | `amount_applied` | numeric(18,4) | NULL | For partial applications |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() | |
 | `created_by` | uuid | FK auth.users | |
@@ -314,7 +314,7 @@ Tracks all source-to-target relationships across document types.
 | `year_label` | text | NOT NULL | e.g., 'FY2025' |
 | `start_date` | date | NOT NULL | |
 | `end_date` | date | NOT NULL | |
-| `status` | text | CHECK IN ('OPEN','CLOSED','LOCKED') | |
+| `status` | text | CHECK IN ('open','closed','locked') | |
 | `closed_at` | timestamptz | NULL | |
 | `closed_by` | uuid | FK auth.users, NULL | |
 
@@ -330,7 +330,7 @@ Tracks all source-to-target relationships across document types.
 | `period_name` | text | NOT NULL | e.g., 'January 2025' |
 | `start_date` | date | NOT NULL | |
 | `end_date` | date | NOT NULL | |
-| `status` | text | CHECK IN ('OPEN','CLOSED','LOCKED') | |
+| `status` | text | CHECK IN ('open','closed','locked') | |
 | `closed_at` | timestamptz | NULL | |
 | `closed_by` | uuid | FK auth.users, NULL | |
 
@@ -362,7 +362,7 @@ UNIQUE: `(company_id, fiscal_period_id)`
 | `company_id` | uuid | FK companies, NOT NULL | |
 | `template_name` | text | NOT NULL | |
 | `description` | text | NULL | |
-| `frequency` | text | CHECK IN ('MONTHLY','QUARTERLY','ANNUALLY') | |
+| `frequency` | text | CHECK IN ('monthly','quarterly','annually') | |
 | `day_of_month` | integer | NULL | Day to generate (1–28) |
 | `start_date` | date | NOT NULL | |
 | `end_date` | date | NULL | NULL = no end |
@@ -384,7 +384,7 @@ UNIQUE: `(company_id, fiscal_period_id)`
 | `branch_id` | uuid | FK branches, NULL | |
 | `department_id` | uuid | FK departments, NULL | |
 | `cost_center_id` | uuid | FK cost_centers, NULL | |
-| `entry_side` | text | CHECK IN ('DEBIT','CREDIT'), NOT NULL | |
+| `entry_side` | text | CHECK IN ('debit','credit'), NOT NULL | |
 | `amount` | numeric(18,4) | NOT NULL | Fixed amount (Phase 1 only) |
 | `description` | text | NOT NULL | |
 
@@ -392,28 +392,47 @@ UNIQUE: `(company_id, fiscal_period_id)`
 
 ## 7. Posting Engine Process Flow
 
+> **v3.2 — Three additions:** (a) Idempotency check at step 0; (b) Compliance entry writes (vat_entries, ewt_entries, fwt_entries, percentage_tax_entries) made explicit at step 7 — **BLOCKER 4 RESOLVED**; (c) Status values normalized to lowercase.
+
 ```
-1.  VALIDATE source document (all required fields present, status = APPROVED or DRAFT if no approval required)
-2.  CHECK fiscal period is OPEN via fiscal_locks (abort if CLOSED or LOCKED)
-3.  LOAD posting_rule_set for transaction_type
-4.  FOR EACH posting_rule_line:
-    a. RESOLVE account (fixed | FROM_SYSTEM_CONFIG | FROM_LINE)
-    b. COMPUTE amount (subtotal | VAT | EWT | header_total)
+0.  CHECK idempotency: IF posting_batches.idempotency_key already processed → RETURN existing batch_id (ABORT, not error)
+1.  VALIDATE source document (all required fields present, status = 'approved' or 'draft' if no approval workflow)
+2.  CHECK fiscal period is 'open' via fiscal_locks (abort if 'closed' or 'locked')
+3.  CHECK posting not already done: IF journal_entries WHERE source_document_id = ? AND status = 'posted' exists → ABORT (duplicate posting guard)
+4.  LOAD posting_rule_set for transaction_type effective on document_date
+5.  FOR EACH posting_rule_line:
+    a. RESOLVE account (fixed | from_system_config | from_item | from_line)
+    b. COMPUTE amount (line_subtotal | line_vat | line_ewt | header_total | computed)
     c. BUILD journal_line record
-5.  VERIFY SUM(debit) = SUM(credit) → ABORT if unbalanced
-6.  INSERT journal_entries (status='POSTED', posted_at=now())
-7.  INSERT journal_lines (all lines)
-8.  UPSERT gl_balances (per account per period, INSERT ... ON CONFLICT DO UPDATE)
-9.  INSERT subsidiary_ledger_entries (AR / AP / inventory / FA)
+6.  VERIFY SUM(debit) = SUM(credit) → ABORT if unbalanced
+7.  INSERT journal_entries (status='posted', posted_at=now()) — links posting_batch_id + idempotency_key
+8.  INSERT journal_lines (all lines)
+9.  UPSERT gl_balances (per account per period, INSERT ... ON CONFLICT DO UPDATE)
+10. INSERT subsidiary_ledger_entries (ar / ap / inventory / fixed_asset)
     → SKIP for cash_sale and cash_purchase transaction types
-10. UPDATE source document status → 'POSTED', posting_date = now()
-11. INSERT document_relationships (source → JE)
-12. INSERT audit_logs (event_type='DOCUMENT_POSTED')
-13. DISPATCH notifications (async, fire-and-forget — does not participate in this transaction)
-    → notify document owner (POSTED), notify approvers if applicable
+11. WRITE compliance entries (within same transaction — immutable snapshots):
+    a. INSERT vat_entries (one per taxable line) — tax_period_id, vat_direction, vat_classification, amounts
+    b. INSERT ewt_entries (one per EWT-subject line per ATC) — payee snapshot fields, ewt_amount
+    c. INSERT fwt_entries (if FWT-subject transaction) — payee snapshot fields, fwt_amount
+    d. INSERT percentage_tax_entries (if non-VAT taxpayer_type) — pt_amount, atc_code
+    → If document was previously in draft and had preview/draft entries, DELETE them before INSERT
+    → Void/reversal: INSERT reversal entries (negative amounts), never silent DELETE or UPDATE
+12. UPDATE source document status → 'posted', posting_date = now()
+13. INSERT document_relationships (source → journal_entry)
+14. INSERT audit_logs (event_type='document_posted')
+15. UPDATE posting_batches.status → 'completed' (or 'partial_fail' if any entity failed)
+16. DISPATCH notifications (async, fire-and-forget — NOT part of this transaction)
+    → notify document owner (posted), notify approvers if applicable
 ```
 
-All steps 1–12 execute within a single database transaction. Step 13 is async.
+**All steps 1–15 execute within a single database transaction. Step 16 is async.**
+
+### Idempotency Design (v3.2)
+
+- `posting_batches.idempotency_key` (text, UNIQUE) — set by Edge Function caller using `source_document_type + ':' + source_document_id + ':' + attempt_token`
+- On Edge Function retry: same idempotency_key → returns existing batch result, no re-processing
+- `journal_entries` duplicate guard: UNIQUE(company_id, source_document_type, source_document_id) WHERE entry_type = 'auto' — prevents double-posting even without idempotency_key
+- Compliance entry deduplication: posting engine checks existence before INSERT; abort if found for same source document and status = 'posted'
 
 ---
 
@@ -445,7 +464,75 @@ CR: EWT Payable (ewt_entries.ewt_amount)     [if EWT-subject line]  account: FRO
 
 ---
 
-## 9. Amortization Run Posting Process (Enhancement Round)
+## 9. CPA-Correct Period-End Closing Sequence (v3.2)
+
+> Required before `fiscal_periods.status` can be set to `'locked'`. Steps must be executed in this order. Each step is idempotent and resumable.
+
+```
+PERIOD-END SEQUENCE — recommended order for Philippine MSME:
+
+1.  ENSURE all source documents for the period are finalized (invoices, bills, ORs, DVs)
+    → Check: no documents with status = 'draft' or 'approved' dated in the closing period
+
+2.  POST all pending approved documents
+    → Run bulk_post_batch for each document type in order: sales_invoices, vendor_bills,
+       official_receipts, disbursement_vouchers, cash_sales, cash_purchases, petty_cash_vouchers
+
+3.  RUN amortization (prepaid expenses / deferred charges)
+    → amortization_runs for all active amortization_schedules with lines due this period
+
+4.  RUN revenue recognition (deferred revenue schedules)
+    → revenue_recognition_runs for all active revenue_recognition_schedules due this period
+
+5.  POST accrual journal entries (manual or recurring templates)
+    → Process recurring_journal_templates with frequency matching current period
+    → Accountant reviews and approves manual accruals before posting
+
+6.  RUN depreciation
+    → depreciation_runs for all active fixed_assets (straight_line, declining_balance, UOP)
+
+7.  REVIEW and post adjusting journal entries
+    → Accountant inputs: reclassifications, corrections, additional accruals
+
+8.  REVIEW reversing entries scheduled for next period
+    → Confirm auto_reversal_flag entries from prior period will reverse on 1st of next period
+
+9.  GENERATE tax working papers
+    → VAT: vat_period_summaries → review output/input/net payable
+    → EWT: ewt_period_summaries → review withholding obligation
+    → PT: percentage_tax_period_summaries (if applicable)
+    → Income Tax: itr_computation_runs → taxable income preview
+
+10. RECONCILE subledgers
+    → AR: trial balance AR_CONTROL vs sum(subsidiary_ledger_entries WHERE ledger_type='ar' AND is_open=true)
+    → AP: trial balance AP_CONTROL vs sum(subsidiary_ledger_entries WHERE ledger_type='ap' AND is_open=true)
+    → Inventory: inventory_balances vs sum(inventory_movements) by item/warehouse
+    → Fixed Assets: fixed_assets.net_book_value vs depreciation_schedules
+
+11. REVIEW trial balance
+    → Generate trial balance from gl_balances (all accounts, current period)
+    → Verify total debits = total credits
+    → CPA reviews and signs off
+
+12. CERTIFY subledger close
+    → INSERT subledger_close_certifications (one per subledger type: AR, AP, INV, FA)
+    → certified_by must be a user with CONTROLLER or COMPANY_ADMIN role
+
+13. LOCK fiscal period
+    → INSERT fiscal_locks (company_id, fiscal_period_id, locked_by)
+    → fiscal_periods.status → 'locked'
+    → No further posting allowed; any correction requires fiscal_locks unlock (with reason)
+```
+
+**Period-end validation rules:**
+- Steps 3–6 (amortization, revenue recognition, depreciation) are non-blocking if no active schedules exist.
+- Steps 1–2 are blocking — do not close until all period documents are posted.
+- Step 12 (subledger certification) is a control gate — required for CAS compliance.
+- Step 13 (lock) is irreversible without explicit unlock (which requires `unlock_reason`).
+
+---
+
+## 10. Amortization Run Posting Process (Enhancement Round)
 
 The amortization run is an async batch operation (Principle 17). It processes all active `amortization_schedule_lines` where `fiscal_period_id` matches the target period and `status = 'pending'`.
 
@@ -481,7 +568,7 @@ The amortization run is an async batch operation (Principle 17). It processes al
 
 ---
 
-## 10. Revenue Recognition Run Posting Process (Enhancement Round)
+## 11. Revenue Recognition Run Posting Process (Enhancement Round)
 
 Same pattern as amortization. Processes all active `revenue_recognition_schedule_lines` for the target period.
 

@@ -231,9 +231,13 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 | notes | text | NULL | — | |
 | *+ standard audit columns* | | | | |
 
-**Constraints:** UNIQUE on `(company_id, effective_from)`. Only one record per company may have `effective_to IS NULL` (enforced by partial unique index).
+**Constraints:** UNIQUE on `(company_id, effective_from)`. Partial unique index: UNIQUE(`company_id`) WHERE `effective_to IS NULL` — enforces only one active profile per company.
+
+**Effective-Date Non-Overlap Rule (v3.2 — BLOCKER 7):** The UNIQUE + partial unique index prevents two simultaneous active records but does NOT prevent overlapping closed ranges (e.g., row 1: 2024-01-01→2025-06-30, row 2: 2025-01-01→NULL would overlap). Application layer MUST validate on INSERT/UPDATE: `SELECT count(*) = 0 FROM company_compliance_profiles WHERE company_id = $1 AND effective_from < $NEW.effective_to AND (effective_to IS NULL OR effective_to > $NEW.effective_from)`. This same pattern applies to all effective-date versioned tables: `customer_tax_profiles`, `supplier_tax_profiles`, `posting_rule_sets`, `system_account_config`. Enforce via Edge Function validation before INSERT — do NOT rely on CHECK constraint alone.
 
 **Principle 11 Note:** When taxpayer type changes (e.g., NON-VAT → VAT), do NOT update existing row. Set `effective_to` on the current row and INSERT a new row with the new `effective_from`. Historical transactions use the profile effective on their `document_date`.
+
+**Single Source of Truth (v3.2 — HIGH RISK FIX 3):** There is NO separate `company_income_tax_profiles` table. ALL income tax identity columns (`income_tax_regime`, `deduction_method`, `legal_type`) are stored here in `company_compliance_profiles`. The ITR computation engine reads ONLY from this table. `itr_computation_runs.regime_snapshot` and `itr_computation_runs.deduction_method_snapshot` capture point-in-time copies at run time. Any future feature that adds income tax schedule details must reference `company_compliance_profiles` as its FK parent — no new identity table should be created.
 
 ---
 
@@ -389,6 +393,8 @@ import_batch_id      uuid          NULL      FK → import_batches.id
 **Constraints:** `UNIQUE(company_id, account_code)`
 **Indexes:** `idx_coa_company_id`, `idx_coa_account_code`, `idx_coa_fs_section`, `idx_coa_parent_account_id`
 **v3 Note:** `fs_section` + `fs_group` + `fs_sort_order` are the structured replacement for the old bare-text `fs_line_mapping`. `fs_line_mapping` is retained as an optional display label. The combination enables programmatic FS generation without hardcoded account ranges.
+
+**COA Seed Mapping Requirement (v3.2 — HIGH RISK FIX 1):** The classification columns (`fs_section`, `fs_group`, `cash_flow_category`, `is_mcit_gross_income`, `is_osd_gross_revenue`, `tax_deductibility`, `control_account_type`) are only useful if seeded correctly at company setup. A CPA-reviewed seed COA template must be provided at onboarding covering: (1) FS classification for all standard PH account categories, (2) MCIT gross income accounts tagged (`is_mcit_gross_income = true`), (3) OSD gross revenue accounts tagged (`is_osd_gross_revenue = true`), (4) Tax deductibility classification for all expense categories, (5) Cash flow category for all balance sheet movement accounts, (6) Control account type for AR/AP/VAT/EWT/FWT/PT payable accounts. **MCIT and OSD computations cannot be trusted until seed COA has been reviewed and approved by a licensed CPA.** This is a pre-go-live requirement, not a schema requirement.
 
 ---
 
@@ -1806,15 +1812,17 @@ Reconciliation schedule (BIR Schedule) between book income and taxable income. O
 ---
 
 ### `tax_credits_schedules`
-Creditable taxes (2307, 2306) applied against income tax due in a filing period.
+Creditable withholding taxes (2307 only) and other credits applied against income tax due in a filing period.
+
+> **v3.2 BLOCKER 6 FIX:** `fwt_2306` removed from `credit_type` enum. **FWT (BIR Form 2306) is FINAL withholding tax — the income is final-taxed at source and excluded from the recipient's gross income for ITR purposes. It is NOT creditable against income tax (unlike EWT/2307 which IS creditable).** Adding 2306 to tax credits would double-deduct. Only EWT/2307 received certificates flow into this schedule. Source: Doc 05 Section 7 — "FWT is final — payees cannot claim these as creditable taxes."
 
 | Column | Type | Null | Default | Description |
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
 | itr_filing_id | uuid | NOT NULL | — | FK → income_tax_return_filings.id |
-| credit_type | text | NOT NULL | — | CHECK IN ('ewt_2307','fwt_2306','prior_quarter_overpayment','soa_payment') |
-| certificate_id | uuid | NULL | — | FK → certificates_2307_issued.id or certificates_2306_issued.id |
+| credit_type | text | NOT NULL | — | CHECK IN ('ewt_2307','prior_quarter_overpayment','soa_payment') — NOTE: fwt_2306 REMOVED; FWT is final, not creditable against ITR |
+| certificate_id | uuid | NULL | — | FK → certificates_2307_issued.id (only 2307; not 2306) |
 | credit_period_from | date | NOT NULL | — | |
 | credit_period_to | date | NOT NULL | — | |
 | credit_amount | numeric(18,4) | NOT NULL | 0 | |
@@ -3731,7 +3739,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
-| ledger_type | text | NOT NULL | — | CHECK IN ('AR','AP','INVENTORY','FIXED_ASSET') |
+| ledger_type | text | NOT NULL | — | CHECK IN ('ar','ap','inventory','fixed_asset') |
 | entity_type | text | NOT NULL | — | Source table name |
 | entity_id | uuid | NOT NULL | — | Source document PK |
 | entity_line_id | uuid | NULL | — | Source document line PK |
@@ -3806,7 +3814,8 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 |---|---|---|---|---|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
-| batch_type | text | NOT NULL | — | e.g., 'BULK_POST_INVOICES','PERIOD_CLOSE_BATCH' |
+| idempotency_key | text | NOT NULL | — | UNIQUE — set by Edge Function as `source_doc_type:source_doc_id:attempt_token`. On retry, same key returns existing batch — no reprocessing. |
+| batch_type | text | NOT NULL | — | e.g., 'bulk_post_invoices','period_close_batch' |
 | entity_ids | uuid[] | NOT NULL | — | Array of PKs to process |
 | processed_count | integer | NOT NULL | 0 | |
 | failed_count | integer | NOT NULL | 0 | |
@@ -3815,6 +3824,8 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 | completed_at | timestamptz | NULL | — | |
 | initiated_by | uuid | NOT NULL | — | FK → profiles.id |
 | *+ standard audit columns* | | | | |
+
+**Constraints:** UNIQUE(`idempotency_key`). Partial unique index: UNIQUE(`company_id`, `batch_type`, `entity_ids[1]`) WHERE `status = 'completed'` — prevents duplicate completed batches for the same single-document post.
 
 ---
 
@@ -4290,7 +4301,7 @@ The reversal JE mirrors all journal lines with DR and CR swapped.
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
 | company_id | uuid | NOT NULL | — | FK → companies.id |
 | fiscal_period_id | uuid | NOT NULL | — | FK → fiscal_periods.id |
-| ledger_type | text | NOT NULL | — | CHECK IN ('AR','AP','INVENTORY','FIXED_ASSET') |
+| ledger_type | text | NOT NULL | — | CHECK IN ('ar','ap','inventory','fixed_asset') |
 | certified_by | uuid | NOT NULL | — | FK → profiles.id |
 | certified_at | timestamptz | NOT NULL | now() | |
 | gl_balance | numeric(18,4) | NOT NULL | — | Control account GL balance |

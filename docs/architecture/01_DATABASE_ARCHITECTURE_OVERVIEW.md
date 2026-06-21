@@ -441,7 +441,7 @@ Sales Invoice / Vendor Bill / Payment (FWT-subject items)
         │
         ├── fwt_entries (per transaction, WF-series ATC)
         │
-        ├── certificates_2306 (per payee, per quarter)
+        ├── certificates_2306_issued (per payee, per quarter)
         │
         └── fwt_remittances_1601fq (1601FQ quarterly remittance filing)
 ```

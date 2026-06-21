@@ -1,6 +1,6 @@
 # PXL ERP — Audit and CAS Table Design
-**Version:** 3.1 — Normalization Pass
-**Status:** v3.1 — Normalization In Progress — Not Yet Migration-Approved
+**Version:** 3.3 — Brutal Audit Fix Pass
+**Status:** v3.3 — Brutal Audit Fix Pass Applied. Freeze pending Section 47 sign-off.
 
 ---
 
@@ -326,7 +326,9 @@ Tracks CAS accreditation per company.
 
 ---
 
-### `dat_file_generation_logs`
+### `dat_generation_logs`
+> **v3.2 Canonical Name Fix:** Previously called `dat_file_generation_logs` in this doc. Canonical name is `dat_generation_logs` per Doc 02 registry. All references updated.
+
 CAS requirement: every DAT file export must be logged permanently.
 
 | Column | Type | Constraint | Description |
