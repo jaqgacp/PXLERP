@@ -1,190 +1,258 @@
 -- =============================================================================
 -- PXL ERP — Migration 001: Extensions
 -- =============================================================================
--- Architecture Reference : v4.0 Database Freeze (commit ee93937 / tag v4.0-database-freeze)
--- PostgreSQL Version      : 16
--- Supabase Compatible     : Yes
--- Idempotent              : Yes (CREATE EXTENSION IF NOT EXISTS)
--- Depends On              : Nothing (first migration)
--- Must Run Before         : 002_enums.sql, and all subsequent migrations
+-- Release        : v4.0-database-freeze
+-- Architecture   : docs/architecture/ (frozen — DO NOT MODIFY)
+-- Commit         : ee93937 (sign-off) / 67f91cd (migration scaffold)
+-- PostgreSQL     : 16
+-- Supabase       : Compatible (see pg_cron note below)
+-- Idempotent     : Yes — CREATE EXTENSION IF NOT EXISTS
+-- Depends On     : Nothing (first migration)
+-- Must Run Before: 002_enums.sql and all subsequent migrations
 -- =============================================================================
 --
 -- OVERVIEW
 -- --------
--- This migration enables all PostgreSQL extensions required by PXL ERP.
--- No tables, functions, triggers, or RLS policies are created here.
--- Extensions are installed into the `extensions` schema (Supabase convention)
--- so that they do not pollute the public schema namespace.
+-- Enables all PostgreSQL extensions required by PXL ERP Phase 1.
+-- No tables, columns, functions, triggers, or RLS policies are created here.
 --
--- EXTENSION INVENTORY
--- -------------------
---  pgcrypto         — gen_random_uuid() for all PK defaults; crypt() functions
---  uuid-ossp        — uuid_generate_v4() compatibility alias used in some
---                     Supabase client libraries; also uuid_nil(), uuid_ns_dns()
---  citext           — Case-insensitive text; used for email columns on profiles
---                     and case-insensitive unique indexes (e.g. company code,
---                     customer code) without per-query LOWER() overhead
---  btree_gist       — Required for EXCLUDE USING GIST constraints on daterange
---                     columns; used to enforce effective-date non-overlap on
---                     company_compliance_profiles, customer_tax_profiles,
---                     supplier_tax_profiles, posting_rule_sets, system_account_config
---                     (Doc03 §1 Effective-Date Non-Overlap Rule; Doc03 §29)
---  pg_cron          — Supabase-managed scheduler for nightly background jobs:
---                       · recurring_journal_generator  (daily 00:05)
---                       · auto_reversal_processor      (daily 00:10)
---                       · atp_gap_detector             (nightly 02:00)
---                       · notification_cleanup         (nightly 03:00)
---                       · amortization_runner          (monthly)
---                       · revenue_recognition_runner   (monthly)
---                       · depreciation_runner          (monthly)
---                       · income_tax_computation       (on-demand)
---                     (Doc06 §14 — Background Jobs)
---  pg_trgm          — Trigram similarity indexes for customer/supplier name
---                     fuzzy search (used by the customer autocomplete on
---                     sales_invoice and vendor_bill entry forms)
---  unaccent         — Strip accents from text before trigram indexing;
---                     ensures "Jose" matches "José" in search
+-- All extensions are installed into the `extensions` schema following Supabase
+-- convention, EXCEPT pg_cron which manages its own schema (see item 4 below).
 --
--- SCHEMAS
--- -------
--- All extensions are created in the `extensions` schema (Supabase default).
--- The `public` search_path includes `extensions` via Supabase platform config.
--- No custom application schema is introduced in Phase 1; all tables live in
--- `public` following Supabase's recommended single-schema MSME deployment.
+-- EXTENSION SET (6 + 1 special)
+-- ──────────────────────────────
+--  1. pgcrypto    — crypt(), gen_salt(), digest(); NOT the source of gen_random_uuid()
+--                   on PG14+ (gen_random_uuid() is a built-in SQL function on PG14+).
+--                   Kept because Supabase internal tooling and some Edge Function
+--                   patterns use pgcrypto's crypt()/encode() for token generation.
+--
+--  2. uuid-ossp   — uuid_generate_v4(), uuid_nil(), uuid_generate_v1().
+--                   KEPT despite PG16 built-in gen_random_uuid() because:
+--                   (a) some PostgREST versions and ORMs reference uuid_generate_v4()
+--                       by name in generated SQL; (b) zero runtime cost if unused.
+--
+--  3. citext      — Case-insensitive text type.
+--                   Required columns: profiles.email (case-insensitive uniqueness).
+--                   Installed in `extensions` schema; Supabase Cloud search_path
+--                   is "$user", public, extensions — citext resolves unqualified.
+--                   Local dev: confirm search_path includes `extensions`.
+--
+--  4. btree_gist  — Extends GiST indexes to support B-tree-comparable types
+--                   (uuid, text, date). Required for EXCLUDE USING GIST constraints
+--                   that enforce effective-date non-overlap on:
+--                     · company_compliance_profiles  (Doc03 §1)
+--                     · customer_tax_profiles        (Doc03 §4)
+--                     · supplier_tax_profiles        (Doc03 §4)
+--                     · posting_rule_sets            (Doc03 §9 / Doc06 §2)
+--                     · system_account_config        (Doc03 §29)
+--
+--  5. pg_cron     — Supabase-managed scheduler. Required for all 8 Phase 1
+--                   background jobs (Doc06 §14):
+--                     · recurring_journal_generator  daily  00:05
+--                     · auto_reversal_processor      daily  00:10
+--                     · atp_gap_detector             nightly 02:00
+--                     · notification_cleanup         nightly 03:00
+--                     · amortization_runner          monthly
+--                     · revenue_recognition_runner   monthly
+--                     · depreciation_runner          monthly
+--                     · income_tax_computation       on-demand trigger
+--                   ⚠ SPECIAL: pg_cron ignores the SCHEMA parameter — it ALWAYS
+--                   installs into its own `pg_cron` schema regardless of what is
+--                   specified. The SCHEMA clause is therefore OMITTED here.
+--                   ⚠ CLOUD REQUIREMENT: pg_cron must be enabled in Supabase
+--                   Dashboard → Database → Extensions BEFORE this migration runs.
+--                   The migration will fail with "extension not available" if not
+--                   pre-enabled on Supabase Cloud. Local CLI enables it automatically.
+--
+--  6. pg_trgm     — Trigram similarity indexes for full-text-like search.
+--                   Required for GIN indexes on (Doc06 §11, Doc03 §4, Doc03 §5):
+--                     · customers.customer_name    (autocomplete on SI, cash_sale)
+--                     · suppliers.supplier_name    (autocomplete on VB, cash_purchase)
+--                     · chart_of_accounts.account_name (account picker)
+--                   Without this extension, `USING GIN (col gin_trgm_ops)` in
+--                   Migration 011 (indexes) is invalid SQL and will fail.
+--
+--  7. unaccent    — Strips diacritical marks from text before indexing.
+--                   Required partner to pg_trgm: ensures "Pena" matches "Peña",
+--                   "Jose" matches "José" — critical for Filipino business names.
+--                   Migration 003 (shared_functions) creates the immutable wrapper:
+--                     CREATE OR REPLACE FUNCTION f_unaccent(text) ...
+--                   which is required by expression-based GIN indexes in Migration 011.
+--
+-- SCHEMAS NOTE
+-- ────────────
+-- Application tables: public schema (Supabase default — single-schema Phase 1)
+-- Extensions: extensions schema (all except pg_cron which uses pg_cron schema)
+-- Auth tables: auth schema (Supabase managed — never modified by migrations)
 --
 -- =============================================================================
 
--- Supabase creates the `extensions` schema automatically; this is a safety guard.
+-- ---------------------------------------------------------------------------
+-- PRE-FLIGHT: pg_cron Cloud Enablement Check
+-- ---------------------------------------------------------------------------
+-- This RAISE NOTICE fires at migration run time and is visible in psql output,
+-- Supabase migration logs, and CI pipeline stdout.
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+    RAISE NOTICE '======================================================';
+    RAISE NOTICE 'PXL ERP Migration 001 — Extensions';
+    RAISE NOTICE '------------------------------------------------------';
+    RAISE NOTICE 'SUPABASE CLOUD ACTION REQUIRED:';
+    RAISE NOTICE '  pg_cron must be enabled BEFORE this migration runs.';
+    RAISE NOTICE '  Dashboard → Database → Extensions → pg_cron → Enable';
+    RAISE NOTICE '  Local Supabase CLI: enabled automatically.';
+    RAISE NOTICE '  If pg_cron is not enabled, this migration will fail';
+    RAISE NOTICE '  at the CREATE EXTENSION pg_cron statement below.';
+    RAISE NOTICE '======================================================';
+END
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Safety guard: Supabase Cloud creates this schema on provisioning.
+-- Required for local dev parity and CI pipelines that start from a blank DB.
+-- ---------------------------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS extensions;
 
 -- ---------------------------------------------------------------------------
 -- 1. pgcrypto
---    Provides gen_random_uuid() used as DEFAULT on every PK column.
---    Also provides crypt() / gen_salt() for any future password hashing needs
---    (though Supabase Auth handles authentication passwords — this covers
---    application-level PIN or token generation if needed).
+--    Provides: crypt(), gen_salt(), digest(), encode(), decode(), hmac()
+--    NOT the source of gen_random_uuid() on PG14+ — that is a built-in.
+--    Kept for: Edge Function token hashing, future PIN/OTP use cases.
 -- ---------------------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS pgcrypto
-    SCHEMA extensions;
-
--- Make gen_random_uuid() available in public schema without schema-qualifying.
--- Supabase does this by default but we make it explicit for local dev parity.
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
-    SCHEMA extensions;
+    WITH SCHEMA extensions;
 
 -- ---------------------------------------------------------------------------
--- 2. citext
---    Case-insensitive text domain. Used for:
---      · profiles.email         — uniqueness check must be case-insensitive
---      · atc_codes.atc_code     — BIR codes are case-insensitive in practice
---    IMPORTANT: citext columns still require explicit LOWER() in non-Postgres
---    drivers that do not recognise the type. Application layer must normalise
---    to lowercase on INSERT for portability.
+-- 2. uuid-ossp
+--    Provides: uuid_generate_v4() (alias for gen_random_uuid()),
+--              uuid_nil(), uuid_generate_v1(), uuid_generate_v3/v5()
+--    Kept for: compatibility with PostgREST generated SQL, JS client internals,
+--    and any seed/test scripts that reference uuid_generate_v4() by name.
+--    Zero runtime overhead if uuid_generate_v4() is never called directly.
+-- ---------------------------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+    WITH SCHEMA extensions;
+
+-- ---------------------------------------------------------------------------
+-- 3. citext
+--    Case-insensitive text type. Required for profiles.email uniqueness and
+--    any case-insensitive UNIQUE indexes created in later migrations.
+--    Supabase Cloud search_path: "$user", public, extensions
+--    → citext resolves as an unqualified type name in table DDL.
+--    Local dev: ensure search_path matches or qualify as extensions.citext.
 -- ---------------------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS citext
-    SCHEMA extensions;
+    WITH SCHEMA extensions;
 
 -- ---------------------------------------------------------------------------
--- 3. btree_gist
---    Extends GiST to support B-tree-comparable types (int, text, uuid, date).
---    Required for EXCLUDE USING GIST constraints that combine a uuid column
---    (company_id / customer_id / supplier_id) with a daterange column to
---    prevent overlapping effective-date rows.
---
---    Tables that will use this (created in later migrations):
---      · company_compliance_profiles  — EXCLUDE USING GIST (company_id WITH =, daterange(effective_from, effective_to, '[)') WITH &&)
---      · customer_tax_profiles        — same pattern
---      · supplier_tax_profiles        — same pattern
---      · posting_rule_sets            — same pattern (transaction_type + effective dates)
---      · system_account_config        — same pattern (company_id + config_key + effective dates)
+-- 4. btree_gist
+--    Extends GiST index operator classes to support B-tree-comparable types.
+--    Required for EXCLUDE USING GIST constraints on effective-date tables.
+--    Without this, creating those EXCLUDE constraints fails at Migration 004.
 -- ---------------------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS btree_gist
-    SCHEMA extensions;
+    WITH SCHEMA extensions;
 
 -- ---------------------------------------------------------------------------
--- 4. pg_cron
---    Supabase-managed extension for scheduled SQL jobs.
---    NOTE: On Supabase Cloud, pg_cron must be enabled in the project Dashboard
---    under Database → Extensions before this migration runs. On local Supabase
---    CLI dev stacks it is enabled by default in supabase/config.toml.
---    Actual cron job registrations are in a dedicated cron migration (future).
+-- 5. pg_cron  ⚠ SPECIAL — NO SCHEMA CLAUSE
+--    pg_cron unconditionally uses its own `pg_cron` schema for all objects
+--    (pg_cron.job, pg_cron.job_run_details). The SCHEMA parameter is ignored
+--    by this extension regardless of what is specified; it is therefore omitted
+--    to avoid misleading documentation in pg_extension catalog.
+--
+--    CLOUD: Must be pre-enabled in Dashboard. See NOTICE above.
+--    LOCAL: Enabled automatically by supabase start.
+--    JOBS:  Cron job INSERT statements are in Migration 021 (cron_jobs.sql),
+--           not here. This statement only makes the extension available.
 -- ---------------------------------------------------------------------------
-CREATE EXTENSION IF NOT EXISTS pg_cron
-    SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 -- ---------------------------------------------------------------------------
--- 5. pg_trgm
---    Trigram indexes for fast ILIKE / similarity search on text columns.
---    Used by:
---      · customers.customer_name      — autocomplete on transaction forms
---      · suppliers.supplier_name      — autocomplete on vendor bill entry
---      · chart_of_accounts.account_name — account picker search
---    GIN trigram indexes are created in the table migration files.
+-- 6. pg_trgm  (Doc03 §4, §5; Doc06 §11)
+--    GIN trigram operators for ILIKE-style fast search.
+--    Enables: USING GIN (column gin_trgm_ops) index syntax.
+--    Required by Migration 011 (indexes). Without it, index creation fails.
 -- ---------------------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS pg_trgm
-    SCHEMA extensions;
+    WITH SCHEMA extensions;
 
 -- ---------------------------------------------------------------------------
--- 6. unaccent
---    Text search dictionary that removes diacritical marks before indexing.
---    Used together with pg_trgm so that "Jose" finds "José".
---    An immutable wrapper function `f_unaccent(text)` will be created in
---    the table migrations to support expression indexes:
---      CREATE INDEX ... ON customers USING GIN (f_unaccent(customer_name) gin_trgm_ops);
+-- 7. unaccent  (Doc03 §4, §5)
+--    Accent-stripping text search dictionary.
+--    The immutable wrapper function created in Migration 003:
+--      CREATE OR REPLACE FUNCTION f_unaccent(text)
+--      RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT AS
+--      $$ SELECT extensions.unaccent('extensions.unaccent', $1) $$;
+--    is required by expression GIN indexes in Migration 011.
 -- ---------------------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS unaccent
-    SCHEMA extensions;
+    WITH SCHEMA extensions;
 
 -- =============================================================================
--- VERIFICATION
--- (Run these queries after applying this migration to confirm all extensions
---  are present and loaded into the correct schema.)
+-- VERIFICATION QUERIES
+-- Run after applying this migration.
 -- =============================================================================
 --
--- SELECT extname, nspname AS schema
--- FROM   pg_extension e
--- JOIN   pg_namespace n ON n.oid = e.extnamespace
--- WHERE  extname IN (
---            'pgcrypto','uuid-ossp','citext',
---            'btree_gist','pg_cron','pg_trgm','unaccent'
---        )
--- ORDER  BY extname;
+-- 1. Confirm all 7 extensions are registered:
 --
--- Expected rows: 7 rows, all with schema = 'extensions'
+--    SELECT extname,
+--           nspname        AS installed_schema,
+--           extversion     AS version
+--    FROM   pg_extension e
+--    JOIN   pg_namespace n ON n.oid = e.extnamespace
+--    WHERE  extname IN (
+--               'pgcrypto','uuid-ossp','citext',
+--               'btree_gist','pg_cron','pg_trgm','unaccent'
+--           )
+--    ORDER  BY extname;
 --
--- Quick function check:
--- SELECT gen_random_uuid();         -- should return a UUID
--- SELECT uuid_generate_v4();        -- should return a UUID
--- SELECT 'HELLO'::extensions.citext = 'hello';  -- should return true
+--    Expected: 7 rows
+--    Expected schema: extensions — for all EXCEPT pg_cron (schema = pg_cron)
+--
+-- 2. Function smoke tests:
+--
+--    SELECT gen_random_uuid();           -- built-in PG16, no extension needed
+--    SELECT extensions.uuid_generate_v4();      -- uuid-ossp
+--    SELECT 'HELLO'::extensions.citext = 'hello';      -- citext; must be true
+--    SELECT extensions.similarity('hello','helo');      -- pg_trgm
+--    SELECT extensions.unaccent('José');                -- unaccent; must return 'Jose'
+--
+-- 3. Verify pg_cron schema (not extensions):
+--
+--    SELECT nspname FROM pg_namespace WHERE nspname = 'pg_cron';
+--    -- Expected: 1 row 'pg_cron'
 --
 -- =============================================================================
 
 -- =============================================================================
 -- ROLLBACK NOTES
 -- =============================================================================
--- Extensions can be dropped with DROP EXTENSION IF EXISTS <name> CASCADE.
--- CASCADE will drop all dependent objects (indexes, columns typed citext, etc.)
--- Do NOT drop extensions in a live environment without first removing all
--- dependent columns and indexes. In practice, extensions are never rolled back
--- in production — this migration is a one-way gate.
+-- Extensions are a one-way gate in production.
+-- Dropping an extension with CASCADE removes all dependent columns, indexes,
+-- and functions. Never drop extensions on a live database.
 --
--- For local dev reset: supabase db reset  (rebuilds from scratch)
+-- Development reset: supabase db reset
+--   (re-applies all migrations from scratch on local stack)
+--
+-- If pg_cron was pre-enabled on Cloud and must be removed:
+--   Disable in Dashboard → Database → Extensions (GUI only — no SQL needed).
 -- =============================================================================
 
 -- =============================================================================
 -- EXPECTED OBJECTS CREATED
 -- =============================================================================
--- Schema  : extensions (1, if not already present)
--- Extensions installed : 7
---   1. pgcrypto
---   2. uuid-ossp
---   3. citext
---   4. btree_gist
---   5. pg_cron
---   6. pg_trgm
---   7. unaccent
--- Tables  : 0
--- Functions : 0
--- Triggers  : 0
--- Indexes   : 0
+--   Schema created   : extensions (idempotent — no-op if already exists)
+--   Extensions       : 7
+--       pgcrypto     → extensions schema
+--       uuid-ossp    → extensions schema
+--       citext       → extensions schema
+--       btree_gist   → extensions schema
+--       pg_cron      → pg_cron schema  (extension-managed, not configurable)
+--       pg_trgm      → extensions schema
+--       unaccent     → extensions schema
+--   Tables           : 0
+--   Functions        : 0
+--   Triggers         : 0
+--   Indexes          : 0
 -- =============================================================================
