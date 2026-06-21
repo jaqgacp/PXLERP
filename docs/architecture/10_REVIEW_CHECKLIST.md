@@ -572,7 +572,7 @@ All open decisions must be resolved before SQL migrations begin.
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
 | 33.1 | Section 21 Cross-Reference Index added to doc 03 — maps all ~200 inventory tables to spec location | DB Architect | [!] | v3 Round 2 resolved |
-| 33.2 | Tables marked SPEC REQUIRED in Section 22 cross-reference (~14 tables) — must be specced before migration | DB Architect | [ ] | Blocked: Phase 2 sprint required |
+| 33.2 | Tables marked SPEC REQUIRED in Section 22 cross-reference (~14 tables) — must be specced before migration | DB Architect | [x] | RESOLVED v3.4 — SPEC REQUIRED = 0 confirmed; all 207 tables specced in Sections 1–44 |
 | 33.3 | Abbreviated specs added to doc 03 § 21 for critical reference tables: currencies, payment_terms, payment_term_lines, vat_codes, atc_codes, items | DB Architect | [!] | v3 Round 2 resolved |
 | 33.4 | `exchange_rates` table — specced in Doc 03 § 26 | DB Architect | [x] | Resolved v3.2 |
 | 33.5 | `sales_debit_memos` / `sales_debit_memo_lines` + `supplier_debit_memos` / `supplier_debit_memo_lines` — specced in Doc 03 § 32/33 | CPA Lead | [x] | Resolved v3.2 — canonical names use direction prefix |
@@ -684,8 +684,8 @@ All open decisions must be resolved before SQL migrations begin.
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
 | 41.1 | Cross-reference index in doc 03 Section 22 rebuilt with exact counts — no approximations | DB Architect | [!] | v3.1 normalization task |
-| 41.2 | All 207 active tables account for full column specs in doc 03 (Sections 1–44) — no SPEC REQUIRED placeholders remaining | DB Architect | [ ] | Pending doc 03 agent completion |
-| 41.3 | Cross-reference index states exact table count: 207 active, 3 removed | DB Architect | [ ] | Pending doc 03 agent completion |
+| 41.2 | All 207 active tables account for full column specs in doc 03 (Sections 1–44) — no SPEC REQUIRED placeholders remaining | DB Architect | [x] | RESOLVED v3.4 — all 207 tables specced; SPEC REQUIRED = 0 |
+| 41.3 | Cross-reference index states exact table count: 207 active, 3 removed | DB Architect | [x] | RESOLVED v3.4 — 207 active, 3 removed confirmed |
 | 41.4 | Tables with specs in doc 09 Section 2 (security tables) cross-referenced from doc 03 | DB Architect | [!] | v3.1 normalization resolved |
 
 ---

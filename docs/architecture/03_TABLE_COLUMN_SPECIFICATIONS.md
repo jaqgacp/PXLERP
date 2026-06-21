@@ -23,7 +23,7 @@
 - **companies.tax_type**: CHECK corrected from ('vat','non_vat','exempt') to ('vat','non_vat'). 'exempt' is NOT a taxpayer type.
 - **customer_tax_profiles + supplier_tax_profiles**: Both versioned with effective_from/effective_to
 - **Income tax tables**: `itr_computation_runs` (renamed from itr_working_papers) added to Section 19; `nolco_tracking` and `income_tax_computation_lines` in Section 20; `itr_computation_runs.computation_run_id` references added
-- **Cross-reference index**: Section 21 added — maps all 200 inventory tables to their canonical spec location (doc 03 vs doc 06/07/08). Tables with NO spec in any document are flagged as SPEC REQUIRED.
+- **Cross-reference index**: Section 21 added — maps all 207 active tables to their canonical spec location (doc 03 vs doc 06/07/08). All 207 tables have specs. SPEC REQUIRED = 0.
 
 ## v3 Remaining Open Decisions
 
@@ -32,7 +32,19 @@
 | OD-V3-01 | `fs_line_mapping` text column — keep as display label alongside structured columns or drop? | Keep / Drop | Keep as optional display label for now |
 | OD-V3-02 | `is_osd_gross_revenue` flag on COA — compute OSD at filing time from account totals or line level? | Filing level / Line level | Filing level (simpler) |
 | OD-V3-03 | `control_account_type` enforcement — DB trigger or app-layer? | DB trigger / App layer | App layer Phase 1 |
-| OD-V3-04 | Doc 03 currently lacks full column specs for ~120 tables inventoried in doc 02. Tables with specs in docs 06/07/08 are cross-referenced. Tables with NO spec anywhere are listed in Section 21 as SPEC REQUIRED. Resolve before database freeze. | Full consolidation in doc 03 / Cross-reference + flag | Cross-reference + flag for Phase 1; consolidate in Phase 2 sprint |
+| OD-V3-04 | **RESOLVED (v3.4):** All 207 active tables now have full column specs in Doc 03 Sections 1–44. SPEC REQUIRED = 0. Cross-reference index in Section 22 reflects exact counts: 207 active, 3 removed. | — | Resolved |
+
+## Enum / CHECK Constraint Casing Rule
+
+**Lowercase rule (default):** All status values, workflow states, and user-facing tax classification values in CHECK constraints must use lowercase (e.g., `'posted'`, `'voided'`, `'draft'`, `'vatable'`, `'zero_rated'`, `'csv'`, `'error'`, `'insert'`).
+
+**UPPERCASE exception (system technical identifiers only):** Two columns are intentionally UPPERCASE because their values are application-level constants, not statuses:
+- `system_account_config.config_key` — e.g., `'CASH_ON_HAND'`, `'AR_TRADE'`, `'INPUT_VAT'`
+- `chart_of_accounts.control_account_type` — e.g., `'AR_CONTROL'`, `'AP_CONTROL'`, `'INVENTORY_CONTROL'`
+
+These follow application-constant naming convention. No other columns may use UPPERCASE in CHECK constraint values.
+
+---
 
 ## v3 Cross-Document Consistency Validation
 

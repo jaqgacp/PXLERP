@@ -439,7 +439,7 @@ Source: `cash_purchases` + `cash_purchase_lines` + `vat_entries` + `ewt_entries`
 | Cash Sales Book | `cash_sales`, `cash_sale_lines`, `vat_entries` | document_date, customer_tin, amounts |
 | Cash Purchases Book | `cash_purchases`, `cash_purchase_lines`, `vat_entries`, `ewt_entries` | document_date, supplier_tin, amounts |
 | CAS DAT Files | All transaction tables | Full data export |
-| 1604E | `ewt_entries` (annual) | Annual alphalist of payees |
+| 1604E *(Phase 2 — deferred)* | `ewt_entries` (annual aggregate from quarterly data) | Annual alphalist of payees — **filing table deferred to Phase 2; data derivable from Phase 1 `ewt_entries`** |
 
 ---
 

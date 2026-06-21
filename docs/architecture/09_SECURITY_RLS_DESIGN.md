@@ -131,8 +131,8 @@ CREATE UNIQUE INDEX idx_ctp_active ON customer_tax_profiles(company_id, customer
 
 | OD # | Question | Status |
 |---|---|---|
-| OD-19 | Should `system_alerts` have its own RLS policy scoped to COMPANY_ADMIN and CONTROLLER roles only? | Recommended: Yes. Regular users should not see ATP gap alerts. Confirm before RLS migration. |
-| OD-20 | Should `notifications` RLS allow users to only SELECT their own notifications (recipient = auth.uid())? | Recommended: Yes — user can only see their own notifications. Company admins can see all. |
+| OD-19 | Should `system_alerts` have its own RLS policy scoped to COMPANY_ADMIN and CONTROLLER roles only? | **RESOLVED** — `system_alerts_select` policy implemented (see Section below); scoped to role IN ('company_admin','controller'). |
+| OD-20 | Should `notifications` RLS allow users to only SELECT their own notifications (recipient = auth.uid())? | **RESOLVED** — user-scoped notification policy implemented; users see only their own notifications, company admins see all. |
 
 ---
 
