@@ -100,13 +100,13 @@ Header record for every import operation.
 | `payment_terms` | Setup | `payment_terms`, `payment_term_lines` |
 | `atc_codes` | Setup | `atc_codes` |
 | `tax_codes` | Setup | `tax_codes` (VAT classification master) |
-| `warehouses` | Setup | `warehouses`, `warehouse_locations` |
+| `warehouses` | Setup | `warehouses` — `warehouse_locations` is Phase 2 only |
 | `units_of_measure` | Setup | `units_of_measure` |
 | `approval_matrix` | Setup | `approval_matrix`, `approval_matrix_steps` |
 | `customers` | Master Data | `customers`, `customer_tax_profiles`, `customer_addresses` |
 | `suppliers` | Master Data | `suppliers`, `supplier_tax_profiles`, `supplier_addresses` |
-| `items` | Master Data | `items`, `item_units_of_measure` |
-| `price_lists` | Master Data | `item_price_lists` |
+| `items` | Master Data | `items`, `item_units_of_measure` (bridge table to `units_of_measure`) |
+| `item_prices` | Master Data | `item_prices` (#46) — **[F-2 fix: was `price_lists`→`item_price_lists`, both were ghost names]** |
 | `bank_accounts` | Master Data | `company_bank_accounts` |
 | `opening_balances` | Opening | `opening_balance_entries` → `journal_entries` |
 | `ar_opening` | Opening | `subsidiary_ledger_entries` (AR), customer outstanding invoices |
@@ -132,7 +132,7 @@ One record per row in the import file.
 | `row_number` | integer | NOT NULL | Row number in source file (1-based) |
 | `raw_data` | jsonb | NOT NULL | Original row data as key-value |
 | `mapped_data` | jsonb | NULL | After column mapping applied |
-| `status` | text | CHECK IN ('pending','valid','error','imported','skipped','rolled_back') | |
+| `status` | text | CHECK IN ('pending','valid','invalid','imported','skipped','rolled_back') | — **['error' corrected to 'invalid' to match Doc03 §15 canonical spec]** |
 | `created_record_id` | uuid | NULL | UUID of the record created by this row |
 | `created_record_type` | text | NULL | Table name of created record |
 | `error_count` | integer | NOT NULL DEFAULT 0 | |
@@ -224,7 +224,8 @@ Tracks asynchronous report/export generation jobs. Supabase Realtime enabled.
 | `record_count` | integer | NULL | |
 | `error_message` | text | NULL | |
 | `expires_at` | timestamptz | NULL | When to auto-delete from storage |
-| `compliance_report_run_id` | uuid | FK compliance_report_runs, NULL | Set when export is a compliance form |
+
+> **F-3 fix:** `compliance_report_run_id` column removed — `compliance_report_runs` is not a canonical table (#189 `export_jobs` replaced it). Compliance report exports are identified by `export_jobs.export_type` (e.g., `'vat_2550m'`, `'ewt_1601eq'`) and linked to their output files via `generated_report_files.export_job_id`. No separate compliance_report_run_id FK exists.
 
 ### Export Types
 
@@ -295,7 +296,9 @@ Metadata for all uploaded files. Supabase Storage holds the actual files.
 | `deleted_by` | uuid | FK auth.users, NULL | |
 
 **Supported entity types:**
-`sales_invoices` | `vendor_bills` | `official_receipts` | `disbursement_vouchers` | `cash_sales` | `cash_purchases` | `journal_entries` | `petty_cash_vouchers` | `purchase_orders` | `receiving_reports` | `bank_reconciliations` | `fixed_assets` | `customers` | `suppliers`
+`sales_invoices` | `vendor_bills` | `receipts` | `payment_vouchers` | `cash_sales` | `cash_purchases` | `journal_entries` | `petty_cash_vouchers` | `purchase_orders` | `receiving_reports` | `bank_reconciliations` | `fixed_assets` | `customers` | `suppliers`
+
+> **F-1 fix:** `official_receipts` → `receipts` (#71); `disbursement_vouchers` → `payment_vouchers` (#87). Ghost names removed.
 
 ---
 
@@ -329,7 +332,7 @@ Version history for re-uploaded attachments.
 4. VALIDATION PASS:
    a. For each row: validate required fields, formats, references
    b. Create import_validation_errors for failures
-   c. Update import_rows.status = 'valid' | 'error'
+   c. Update import_rows.status = 'valid' | 'invalid'
    d. Update import_batches.status = 'validated'
    e. Update counts: total_rows, error_rows, success_rows
 5. User reviews validation results
