@@ -6,25 +6,35 @@
 
 All non-canonical table names found in diagrams replaced with canonical names from Doc 02 registry:
 
-| Ghost Name (removed) | Canonical Name (v3.2) | Doc 02 Table # |
+| Ghost Name (removed) | Canonical Name (Doc 02 Registry) | Doc 02 Table # |
 |---|---|---|
 | `credit_memos` | `sales_credit_memos` | #73 |
 | `credit_memo_lines` | `sales_credit_memo_lines` | #74 |
-| `delivery_orders` | `delivery_receipts` | #67 |
-| `delivery_order_lines` | `delivery_receipt_lines` | #68 |
-| `goods_receipts` | `receiving_reports` | #83 |
-| `goods_receipt_lines` | `receiving_report_lines` | #84 |
-| `bank_deposits` | `official_receipts` (for collections) | #123 |
-| `bank_deposit_lines` | `official_receipt_lines` | #124 |
-| `bank_withdrawals` | `disbursement_vouchers` (for payments) | #125 |
-| `bank_transfers` | `bank_fund_transfers` | #133 |
-| `slsp_entries` | `slsp_records` (computed at export, OD-11 resolved) | #165 |
+| `delivery_orders` | `delivery_receipts` | #65 |
+| `delivery_order_lines` | `delivery_receipt_lines` | #66 |
+| `goods_receipts` | `receiving_reports` | #81 |
+| `goods_receipt_lines` | `receiving_report_lines` | #82 |
+| `bank_deposits` | `receipts` (official receipts — AR collections) | #71 |
+| `bank_deposit_lines` | `receipt_lines` | #72 |
+| `bank_withdrawals` | `payment_vouchers` (AP payments) | #87 |
+| `bank_withdrawal_lines` | `payment_voucher_lines` | #88 |
+| `disbursement_vouchers` | `payment_vouchers` | #87 |
+| `disbursement_voucher_lines` | `payment_voucher_lines` | #88 |
+| `official_receipts` | `receipts` | #71 |
+| `official_receipt_lines` | `receipt_lines` | #72 |
+| `bank_transfers` | `bank_fund_transfers` | #101 |
+| `slsp_entries` | `slsp_exports` (export batch records, computed at export) | #143 |
+| `slsp_records` | `slsp_exports` | #143 |
 | `slsp_summary` | *(removed — no such table)* | — |
-| `relief_entries` | `relief_exports` | #167 |
+| `relief_entries` | `relief_exports` | #144 |
 | `relief_summary` | *(removed — no such table)* | — |
-| `qap_entries` | `qap_exports` | #163 |
-| `sawt_entries` | `sawt_records` | #166 |
+| `qap_entries` | `qap_exports` | #151 |
+| `qap_records` | `qap_exports` | #151 |
+| `sawt_entries` | `sawt_exports` | #152 |
+| `sawt_records` | `sawt_exports` | #152 |
 | `certificates_2306` | `certificates_2306_issued` | #149 |
+| `inventory_adjustments` | `stock_adjustments` | #109 |
+| `inventory_adjustment_lines` | `stock_adjustment_lines` | #110 |
 
 ---
 
@@ -65,8 +75,8 @@ All non-canonical table names found in diagrams replaced with canonical names fr
 
 | OD# | Decision | Status |
 |---|---|---|
-| OD-04-V3-01 | `user_branch_access` table — is this still in scope for Phase 1 or deferred? | Unresolved — verify with doc 02 |
-| OD-04-V3-02 | `fwt_entries` — separate table or part of `ewt_entries` with a direction flag? | Unresolved — check doc 06 |
+| OD-04-V3-01 | `user_branch_access` table — is this still in scope for Phase 1 or deferred? | **RESOLVED** — `user_branch_access` is ACTIVE (#7 in Doc 02 registry). Phase 1 uses it for UI-layer branch filtering per Doc 09 Option A. No separate security boundary RLS needed Phase 1. |
+| OD-04-V3-02 | `fwt_entries` — separate table or part of `ewt_entries` with a direction flag? | **RESOLVED** — Separate table confirmed: `fwt_entries` (#146 in Doc 02). WF-series ATC codes only. Separate from `ewt_entries` (#145) WC/WI-series. BIR requires separate 1601FQ form vs 1601EQ — separate tables are correct. |
 
 ---
 
@@ -322,23 +332,23 @@ petty_cash_funds (1)
 
 ## 7. Bank & Cash Relationships
 
-> **v3.2 Ghost Name Fix:** `bank_deposits`, `bank_deposit_lines`, `bank_withdrawals` are not canonical table names. Collections post through `official_receipts`; disbursements post through `disbursement_vouchers`. Bank reconciliation matches posted transactions against imported `bank_statement_lines`.
+> **v3.2 Ghost Name Fix (revised v3.5):** `bank_deposits`, `bank_deposit_lines`, `bank_withdrawals`, `official_receipts`, `disbursement_vouchers` are NOT canonical table names. Canonical names per Doc 02: collections use `receipts` (#71) + `receipt_lines` (#72); disbursements use `payment_vouchers` (#87) + `payment_voucher_lines` (#88). Bank reconciliation matches posted transactions against imported `bank_statement_lines`.
 
 ```
 company_bank_accounts (1)
-  ├── official_receipts (many — collections deposited)  ← canonical: official_receipts (was: bank_deposits)
-  │     └── official_receipt_lines (many)
+  ├── receipts (many — official receipts for AR collections deposited)   ← canonical: receipts #71
+  │     └── receipt_lines (many)                                          ← canonical: receipt_lines #72
   │           └── [customer | journal_entry reference]
-  ├── disbursement_vouchers (many — payments drawn)     ← canonical: disbursement_vouchers (was: bank_withdrawals)
-  │     └── disbursement_voucher_lines (many)
+  ├── payment_vouchers (many — AP payments drawn)                         ← canonical: payment_vouchers #87
+  │     └── payment_voucher_lines (many)                                  ← canonical: payment_voucher_lines #88
   │           └── [supplier | journal_entry reference]
-  ├── bank_fund_transfers (many — inter-account)        ← canonical: bank_fund_transfers (was: bank_transfers)
+  ├── bank_fund_transfers (many — inter-account)                          ← canonical: bank_fund_transfers #101
   │     ├── company_bank_accounts (source)
   │     └── company_bank_accounts (destination)
   └── bank_reconciliations (many)
         └── bank_reconciliation_lines (many)
               ├── bank_statement_lines (imported bank statement)
-              └── [matched transaction: official_receipt | disbursement_voucher | journal_entry]
+              └── [matched transaction: receipt | payment_voucher | journal_entry]
 ```
 
 ---
@@ -354,8 +364,8 @@ inventory_movements (1)
         └── inventory_cost_layer_consumption (many)
               └── inventory_movements (consumption reference — which sale consumed which layer)
 
-inventory_adjustments (1)
-  └── inventory_adjustment_lines (many)
+stock_adjustments (1)                                                     ← canonical: stock_adjustments #109
+  └── stock_adjustment_lines (many)                                        ← canonical: stock_adjustment_lines #110
         ├── items
         └── inventory_movements (generated)
 
@@ -390,7 +400,7 @@ fixed_assets (1)
 
 ```
 [Any Source Document]
-  │  sales_invoices | vendor_bills | official_receipts | disbursement_vouchers
+  │  sales_invoices | vendor_bills | receipts | payment_vouchers
   │  cash_sales | cash_purchases | journal_entries (manual)
   │  petty_cash_vouchers | bank_fund_transfers | asset_acquisitions
   │  inventory_adjustments | depreciation_runs
@@ -453,8 +463,8 @@ vendor_bill_lines / payment_voucher_lines / petty_cash_voucher_lines / cash_purc
         ├── certificates_2307_issued (quarterly aggregate per supplier)
         │     └── generated_documents (2307 PDF)
         └── ewt_remittances_1601eq (1601EQ filing per period)
-              ├── qap_exports (quarterly alphalist export batch)   ← canonical: qap_exports (was: qap_entries)
-              └── sawt_records (summary alphalist records)         ← canonical: sawt_records (was: sawt_entries)
+              ├── qap_exports (quarterly alphalist export batch)   ← canonical: qap_exports #151 (was: qap_entries)
+              └── sawt_exports (SAWT export batch records)         ← canonical: sawt_exports #152 (was: sawt_entries/sawt_records)
 ```
 
 ### 2307 Received Chain
@@ -468,16 +478,16 @@ receipts / payment_received
 
 ### SLSP / RELIEF Chain
 
-> **v3.2 Ghost Name Fix + OD-11 Decision:** `slsp_entries`, `slsp_summary`, `relief_entries`, `relief_summary` are not canonical table names and do not exist. Per OD-11 (resolved): SLSP and RELIEF data is **computed at export time** from existing `vat_entries`, `sales_invoice_lines`, `vendor_bill_lines` snapshots — no persistent per-line table. Only `slsp_records` and `relief_exports` are stored for Phase 1 (export batch metadata and per-record store, specced in Doc 03 § 16 / § 40).
+> **v3.2 Ghost Name Fix + OD-11 Decision (revised v3.5):** `slsp_entries`, `slsp_summary`, `slsp_records`, `relief_entries`, `relief_summary` are not canonical table names and do not exist. Per OD-11 (resolved): SLSP and RELIEF data is **computed at export time** from existing `vat_entries`, `sales_invoice_lines`, `vendor_bill_lines` snapshots — no persistent per-line table. Canonical names per Doc 02: `slsp_exports` (#143) and `relief_exports` (#144) store per-batch export records.
 
 ```
 sales_invoice_lines + customer_tin (snapshot) + vat_entries
   └── [SLSP Edge Function — computed at export time]
-        └── slsp_records (per-record store for 2550Q annex)     ← canonical: slsp_records (was: slsp_entries)
+        └── slsp_exports (export batch records)     ← canonical: slsp_exports #143 (was: slsp_entries/slsp_records)
 
 vendor_bill_lines + supplier_tin (snapshot) + vat_entries
   └── [RELIEF Edge Function — computed at export time]
-        └── relief_exports (per-record store for 2550Q annex)   ← canonical: relief_exports (was: relief_entries)
+        └── relief_exports (export batch records)   ← canonical: relief_exports #144 (was: relief_entries)
 ```
 
 ### Cash Sales Book (BIR)
@@ -637,8 +647,8 @@ import_batches (1)
 | `approval_matrix_steps` | approval_matrix | auth.users/roles | Approver assignments per step |
 | `bank_reconciliation_lines` | bank_reconciliations | transactions | Matched/unmatched lines |
 | `document_relationships` | documents | documents | Cross-document traceability |
-| `qap_exports` | ewt_remittances_1601eq | suppliers | Per-payee alphalist entries (canonical: qap_exports) |
-| `sawt_records` | ewt_entries | customers | Summary alphalist of creditable WHT (canonical: sawt_records) |
+| `qap_exports` | ewt_remittances_1601eq | suppliers | Per-payee alphalist entries — canonical: qap_exports #151 |
+| `sawt_exports` | ewt_entries | customers | SAWT export batch records — canonical: sawt_exports #152 (was: sawt_records/sawt_entries) |
 
 ---
 

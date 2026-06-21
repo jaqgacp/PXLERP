@@ -1,6 +1,6 @@
 # PXL ERP — Pre-Implementation Review Checklist
-**Version:** 3.4 — Codex Review Fix Pass (Second Codex Review)
-**Status:** v3.4 — DATABASE FREEZE NOT APPROVED. Codex second review scored 52/100. 13 required fixes applied in v3.4. Freeze pending Sections 47 and 48 sign-off.
+**Version:** 3.5 — Contract Freeze Fix Pass
+**Status:** v3.5 — DATABASE FREEZE NOT APPROVED. Contract freeze audit identified 10 additional cross-document consistency defects (CF1–CF10). All applied in v3.5. Freeze pending Sections 47, 48, and 49 sign-off.
 **Sign-off Required Before:** SQL migration authoring begins
 
 ---
@@ -213,7 +213,7 @@ Each item requires explicit sign-off from the responsible party before proceedin
 | 10.3 | `document_void_register` immutable confirmed | CPA Lead | [ ] | |
 | 10.4 | `dat_generation_logs` immutable with SHA-256 file hash confirmed (canonical name fixed v3.2 — was `dat_file_generation_logs`) | DB Architect | [x] | |
 | 10.5 | `cas_registrations` stores CAS accreditation per company confirmed | CPA Lead | [ ] | |
-| 10.6 | Posted document immutability trigger reviewed (`status IN ('POSTED','VOIDED','REVERSED')`) | DB Architect | [ ] | |
+| 10.6 | Posted document immutability trigger reviewed (`status IN ('posted','voided','reversed')`) | DB Architect | [ ] | |
 | 10.7 | User activity log events enumerated and complete | Business Lead | [ ] | |
 | 10.8 | `system_alerts` table defined for ATP gap alerts and other automated system alerts | DB Architect | [ ] | |
 | 10.9 | Nightly pg_cron job for ATP gap detection → `system_alerts` confirmed | DB Architect | [ ] | |
@@ -444,9 +444,9 @@ All open decisions must be resolved before SQL migrations begin.
 
 | # | Item | Owner | Status | Comments |
 |---|---|---|---|---|
-| 25.1 | `customers.vat_status` and `suppliers.vat_status` CHECK includes 'government', 'peza', 'boi', 'foreign_entity' confirmed (Principle 5) | CPA Lead | [ ] | |
+| 25.1 | `customers.vat_registration_status` CHECK IN ('vat','non_vat') + `customers.party_special_class` CHECK IN ('government','peza','boi','foreign_entity') confirmed (Principle 5 — v3 split from vat_status) | CPA Lead | [ ] | |
 | 25.2 | PXL does not target these entities as company clients (Principle 4) but supports transacting with them confirmed | CPA Lead | [ ] | |
-| 25.3 | TIN snapshots at posting capture vat_status correctly for SLSP/RELIEF confirmed (Principle 10) | CPA Lead | [ ] | |
+| 25.3 | TIN snapshots at posting capture `vat_registration_status` correctly for SLSP/RELIEF confirmed (Principle 10) | CPA Lead | [ ] | |
 
 ---
 
@@ -870,4 +870,42 @@ All open decisions must be resolved before SQL migrations begin.
 
 ---
 
-*Next step after Sections 47 and 48 are fully signed off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*
+*Next step after Sections 47, 48, and 49 are fully signed off: `11_SQL_MIGRATIONS.md` — create all Supabase migration files in order.*
+
+---
+
+## SECTION 49: Contract Freeze Fix Pass Sign-Off (v3.5)
+
+> Full cross-document contract freeze audit identified 10 consistency defects across Docs 01, 04, 05, 06, 09, 10. All applied in v3.5.
+
+### Fixes Applied (v3.5)
+
+| # | Finding (CF#) | Fix Applied | Doc(s) Changed |
+|---|---|---|---|
+| CF1 | Doc01 §6 cash purchase posting used `gross_amount` — not in canonical column spec | Changed to `net_amount` (cost before VAT) + `input_vat_amount` (VAT portion) | Doc 01 |
+| CF2 | Doc01 §15 referenced `itr_working_papers` — stale name (renamed to `itr_computation_runs` in v3) | Changed to `itr_computation_runs` (#154) | Doc 01 |
+| CF3 | Doc04 v3.2 ghost cleanup table introduced new ghost names as replacements (`official_receipts`, `disbursement_vouchers`, wrong slot numbers) | Rebuilt ghost cleanup table with all correct canonical names and correct Doc02 slot numbers | Doc 04 |
+| CF4 | Doc04 OD-04-V3-01 and OD-04-V3-02 marked Unresolved despite resolution in other docs | Both marked RESOLVED with cross-reference to Doc02 and Doc09 | Doc 04 |
+| CF5 | Doc04 Sections 7, 8, 10, 11, 20 used ghost table names (`bank_deposits`, `bank_withdrawals`, `inventory_adjustments`, `slsp_records`, `sawt_records`) | All replaced with canonical names: `receipts`, `payment_vouchers`, `stock_adjustments`, `slsp_exports`, `sawt_exports` | Doc 04 |
+| CF6 | Doc05 purchase-side `vat_direction` and `vat_classification` values were UPPERCASE — contradicts lowercase CHECK constraints in Doc03 | Lowercased: `'INPUT'`→`'input'`, `'VATABLE'`→`'vatable'`, `'CAPITAL_GOODS'`→`'capital_goods'`, `'SERVICES'`→`'services'` on vendor_bill_lines, cash_purchase_lines, SLSP, RELIEF sections | Doc 05 |
+| CF7 | Doc05 sales-side `vat_direction` values were UPPERCASE (`'OUTPUT'`) | Lowercased: `'OUTPUT'`→`'output'` on sales_invoice_lines and cash_sale_lines | Doc 05 |
+| CF8 | Doc06 `posting_rule_sets.transaction_type` valid values used ghost names `official_receipt`, `disbursement_voucher`, `inventory_adjustment` | Changed to canonical: `receipt`, `payment_voucher`, `stock_adjustment` | Doc 06 |
+| CF9 | Doc06 `journal_entries` spec: column named `entry_type` with only 6 values — missing `je_type` name, missing 3 values, missing 7 columns | Renamed to `je_type`; added values `amortization`, `revenue_recognition`, `auto_reversal`; added columns `posting_batch_id`, `auto_reversal_flag`, `auto_reversal_date`, `auto_reversal_run_id`, `is_auto_reversal`, `amortization_run_detail_id`, `revenue_recognition_run_detail_id` | Doc 06 |
+| CF10 | Doc09 RLS immutability policy used UPPERCASE status values `('POSTED','VOIDED','REVERSED')` | Changed to lowercase `('posted','voided','reversed')` to match CHECK constraints | Doc 09 |
+
+### Section 49 Sign-Off Items
+
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 49.1 | CF1–CF2 (Doc01) fixes reviewed — `net_amount`/`input_vat_amount` column names confirmed correct; `itr_computation_runs` is canonical Doc02 #154 | DB Architect + CPA Lead | [ ] |
+| 49.2 | CF3–CF5 (Doc04) ghost cleanup table rebuild reviewed — all canonical names verified against Doc02 slot numbers | DB Architect | [ ] |
+| 49.3 | CF6–CF7 (Doc05) vat_direction and vat_classification lowercase confirmed — all values match Doc03 CHECK constraint definitions | DB Architect + CPA Lead | [ ] |
+| 49.4 | CF8 (Doc06) `transaction_type` values `receipt`, `payment_voucher`, `stock_adjustment` confirmed match canonical table singular forms (#71, #87, #109) | DB Architect | [ ] |
+| 49.5 | CF9 (Doc06) `journal_entries.je_type` expanded values and 7 new columns confirmed match Doc03 §3 spec and Sections 35–37 of this checklist | DB Architect + Dev Lead | [ ] |
+| 49.6 | CF10 (Doc09) RLS status lowercase confirmed — all status CHECK constraints across all docs now consistently lowercase | DB Architect | [ ] |
+| 49.7 | `source_document_type` values in `journal_entries` (Doc06 §3) confirmed to match `transaction_type` values in `posting_rule_sets` after CF8/CF9 — no mismatches | Dev Lead | [ ] |
+| 49.8 | Doc06 Period-End Step 2 canonical table names (`receipts`, `payment_vouchers`) confirmed | DB Architect | [ ] |
+| 49.9 | Doc10 §25.1 updated column reference (`vat_registration_status` + `party_special_class`) matches Doc03 column spec and Doc10 §31.1 resolution | DB Architect + CPA Lead | [ ] |
+| 49.10 | All CF1–CF10 items signed off by respective owners above | All | [ ] |
+
+**CONTRACT FREEZE APPROVED only when ALL items 47.1–47.12 AND 48.1–48.10 AND 49.1–49.10 are [x].**

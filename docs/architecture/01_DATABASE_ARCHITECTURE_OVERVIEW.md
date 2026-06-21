@@ -353,11 +353,12 @@ CR: Output VAT Payable (vat_amount)
 
 **Cash Purchase posting (goods):**
 ```
-DR: Inventory / Expense Account (gross_amount)
-DR: Input VAT (vat_amount)
-CR: Cash / Bank (gross_amount + vat_amount - ewt_amount)
+DR: Inventory / Expense Account (net_amount)
+DR: Input VAT (input_vat_amount)
+CR: Cash / Bank (net_amount + input_vat_amount - ewt_amount)
 CR: EWT Payable (ewt_amount)   [if EWT-subject]  ← liability, credited
 ```
+Column reference: `net_amount` = cost before VAT; `input_vat_amount` = VAT portion; `total_amount` = net_amount + input_vat_amount.
 
 ---
 
@@ -614,8 +615,8 @@ party_merge_logs (records when two customer or supplier records are merged)
 | Cash Purchases Book | `cash_purchases` + `vat_entries` + `ewt_entries` |
 | 2551Q | `percentage_tax_entries` → `percentage_tax_period_summaries` → form output |
 | 1601FQ | `fwt_entries` → `fwt_remittances_1601fq` → period aggregation |
-| ITR (Corporate) | `itr_working_papers` → Book-to-tax → 1702Q / 1702RT |
-| ITR (Individual) | `itr_working_papers` → Book-to-tax → 1701Q / 1701 |
+| ITR (Corporate) | `itr_computation_runs` → Book-to-tax → 1702Q / 1702RT |
+| ITR (Individual) | `itr_computation_runs` → Book-to-tax → 1701Q / 1701 |
 
 ---
 

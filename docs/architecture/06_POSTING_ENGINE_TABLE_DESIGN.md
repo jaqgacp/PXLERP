@@ -96,7 +96,7 @@ Defines the top-level rule set for each transaction type.
 **v3 Principle 11 Note:** If BIR changes VAT rate or EWT rates, a new `posting_rule_set` with updated `effective_from` is inserted. Historical transactions use the rule set active on their `document_date`. Do NOT update existing active rule sets — insert new versions.
 
 **Valid `transaction_type` values:**
-`sales_invoice` | `vendor_bill` | `official_receipt` | `disbursement_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `inventory_adjustment` | `asset_depreciation` | `bank_fund_transfer` | `journal_entry` | `stock_transfer` | `asset_disposal`
+`sales_invoice` | `vendor_bill` | `receipt` | `payment_voucher` | `cash_sale` | `cash_purchase` | `petty_cash_voucher` | `stock_adjustment` | `asset_depreciation` | `bank_fund_transfer` | `journal_entry` | `stock_transfer` | `asset_disposal`
 
 > **Percentage Tax Note (Principle 3 Driver 1):** `sales_invoice` and `cash_sale` posting rules check `company_compliance_profiles.taxpayer_type` at post time. If `taxpayer_type = 'non_vat'`, the posting engine creates `percentage_tax_entries` instead of `vat_entries`. No separate `transaction_type` is needed — the same source documents drive different compliance entries depending on the company's taxpayer type.
 
@@ -181,12 +181,19 @@ Header record for every set of balanced DR/CR lines.
 | `branch_id` | uuid | FK branches, NULL | |
 | `document_date` | date | NOT NULL | Accounting date |
 | `document_no` | text | NOT NULL | System-assigned JE number |
-| `entry_type` | text | NOT NULL | 'auto' \| 'manual' \| 'reversal' \| 'opening' \| 'recurring' \| 'adjustment' |
+| `je_type` | text | NOT NULL | 'auto' \| 'manual' \| 'reversal' \| 'opening' \| 'recurring' \| 'adjustment' \| 'amortization' \| 'revenue_recognition' \| 'auto_reversal' |
 | `fiscal_year_id` | uuid | FK fiscal_years, NOT NULL | |
 | `fiscal_period_id` | uuid | FK fiscal_periods, NOT NULL | |
-| `source_document_type` | text | NULL | 'sales_invoice' \| 'vendor_bill' \| 'official_receipt' \| 'disbursement_voucher' \| 'cash_sale' \| 'cash_purchase' \| 'petty_cash_voucher' \| 'inventory_adjustment' \| 'asset_depreciation' \| 'bank_fund_transfer' \| 'asset_disposal' \| 'journal_entry' |
+| `source_document_type` | text | NULL | 'sales_invoice' \| 'vendor_bill' \| 'receipt' \| 'payment_voucher' \| 'cash_sale' \| 'cash_purchase' \| 'petty_cash_voucher' \| 'stock_adjustment' \| 'asset_depreciation' \| 'bank_fund_transfer' \| 'asset_disposal' \| 'journal_entry' |
 | `source_document_id` | uuid | NULL | FK to the source document |
 | `rule_set_id` | uuid | FK posting_rule_sets, NULL | NULL for manual JEs |
+| `posting_batch_id` | uuid | FK posting_batches, NULL | Idempotency batch link |
+| `auto_reversal_flag` | boolean | NOT NULL DEFAULT false | Set true to auto-reverse on next period open |
+| `auto_reversal_date` | date | NULL | Target reversal date |
+| `auto_reversal_run_id` | uuid | FK auto_reversal_runs, NULL | Set when auto-reversed |
+| `is_auto_reversal` | boolean | NOT NULL DEFAULT false | True if this JE is itself an auto-reversal |
+| `amortization_run_detail_id` | uuid | FK amortization_run_details, NULL | Source amortization schedule line |
+| `revenue_recognition_run_detail_id` | uuid | FK revenue_recognition_run_details, NULL | Source rev-rec schedule line |
 | `description` | text | NOT NULL | |
 | `reference` | text | NULL | External reference |
 | `currency_code` | text | NOT NULL DEFAULT 'PHP' | |
@@ -479,7 +486,7 @@ PERIOD-END SEQUENCE — recommended order for Philippine MSME:
 
 2.  POST all pending approved documents
     → Run bulk_post_batch for each document type in order: sales_invoices, vendor_bills,
-       official_receipts, disbursement_vouchers, cash_sales, cash_purchases, petty_cash_vouchers
+       receipts, payment_vouchers, cash_sales, cash_purchases, petty_cash_vouchers
 
 3.  RUN amortization (prepaid expenses / deferred charges)
     → amortization_runs for all active amortization_schedules with lines due this period

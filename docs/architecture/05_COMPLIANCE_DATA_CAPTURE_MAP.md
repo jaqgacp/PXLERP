@@ -102,7 +102,7 @@ This document maps every Philippine BIR compliance output to the specific databa
 - `is_vat_inclusive` → affects net amount computation
 
 **`sales_invoice_lines`**
-- `vat_direction` — 'OUTPUT'
+- `vat_direction` — 'output'
 - `vat_classification` — 'vatable' | 'zero_rated' | 'exempt' (stored on lines; 'government' only in vat_entries, derived at posting from party_special_class)
 - `net_amount` — amount before VAT
 - `vat_amount` — 12% of net_amount (or 0 for zero/exempt)
@@ -114,19 +114,19 @@ This document maps every Philippine BIR compliance output to the specific databa
 - `customer_tin` → snapshot at transaction time (required for SLSP if transaction above threshold)
 
 **`cash_sale_lines`**
-- `vat_direction` — 'OUTPUT'
+- `vat_direction` — 'output'
 - `vat_classification` — 'vatable' | 'zero_rated' | 'exempt' (stored on lines; 'government' only in vat_entries, derived at posting from party_special_class)
 - `net_amount`, `vat_amount`
 
 **`vendor_bill_lines`**
-- `vat_direction` — 'INPUT'
-- `vat_classification` — 'VATABLE' | 'CAPITAL_GOODS' | 'SERVICES'
+- `vat_direction` — 'input'
+- `vat_classification` — 'vatable' | 'capital_goods' | 'services'
 - `net_amount`, `vat_amount`
 - `supplier_id` → join to `suppliers.tin`, `supplier_tax_profiles.is_vat_registered`
 
 **`cash_purchase_lines`** (contributes to Input VAT identically to vendor_bill_lines)
-- `vat_direction` — 'INPUT'
-- `vat_classification` — 'VATABLE' | 'CAPITAL_GOODS' | 'SERVICES'
+- `vat_direction` — 'input'
+- `vat_classification` — 'vatable' | 'capital_goods' | 'services'
 - `net_amount`, `vat_amount`
 - `supplier_tin` → snapshot at transaction time
 
@@ -142,10 +142,10 @@ This document maps every Philippine BIR compliance output to the specific databa
 | Buyer name | `customers` | `name` |
 | Invoice/receipt number | `sales_invoices` / `cash_sales` | `document_no` |
 | Invoice/receipt date | `sales_invoices` / `cash_sales` | `document_date` |
-| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='VATABLE'` |
+| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='vatable'` |
 | VAT amount | `vat_entries` | `SUM(vat_amount)` |
-| Exempt amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='EXEMPT'` |
-| Zero-rated amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='ZERO_RATED'` |
+| Exempt amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='exempt'` |
+| Zero-rated amount | `vat_entries` | `SUM(net_amount) WHERE vat_classification='zero_rated'` |
 | Total amount | computed | taxable + vat + exempt + zero-rated |
 
 Source documents: `sales_invoices` AND `cash_sales` (both contribute to SLSP)
@@ -158,9 +158,9 @@ Source documents: `sales_invoices` AND `cash_sales` (both contribute to SLSP)
 | Seller name | `suppliers` | `name` |
 | Invoice number | `vendor_bills` / `cash_purchases` | `document_no` |
 | Invoice date | `vendor_bills` / `cash_purchases` | `document_date` |
-| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_direction='INPUT' AND vat_classification='VATABLE'` |
+| Taxable amount | `vat_entries` | `SUM(net_amount) WHERE vat_direction='input' AND vat_classification='vatable'` |
 | Input VAT amount | `vat_entries` | `SUM(vat_amount)` |
-| Classification | `vat_entries` | `vat_classification` (VATABLE/CAPITAL_GOODS/SERVICES) |
+| Classification | `vat_entries` | `vat_classification` ('vatable'/'capital_goods'/'services') |
 
 Source documents: `vendor_bills` AND `cash_purchases` (both contribute to RELIEF)
 

@@ -380,7 +380,7 @@ CREATE POLICY "{table_name}_update" ON {table_name}
 -- Additional policy on posted documents (sales_invoices, vendor_bills, cash_sales, cash_purchases, etc.):
 CREATE POLICY "{table_name}_no_update_if_posted" ON {table_name}
   FOR UPDATE USING (
-    status NOT IN ('POSTED', 'VOIDED', 'REVERSED')
+    status NOT IN ('posted', 'voided', 'reversed')
   );
 ```
 
