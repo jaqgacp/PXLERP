@@ -187,7 +187,7 @@ payment_terms (1)
 ### Customer
 ```
 customers (1)
-  ├── customer_tax_profiles (1:1)
+  ├── customer_tax_profiles (1:many — versioned by effective_from/effective_to; one active at any time WHERE effective_to IS NULL)
   ├── customer_addresses (many)
   └── customer_contacts (many)
 ```
@@ -195,7 +195,7 @@ customers (1)
 ### Supplier
 ```
 suppliers (1)
-  ├── supplier_tax_profiles (1:1)
+  ├── supplier_tax_profiles (1:many — versioned by effective_from/effective_to; one active at any time WHERE effective_to IS NULL)
   ├── supplier_addresses (many)
   └── supplier_contacts (many)
 ```
@@ -204,19 +204,19 @@ suppliers (1)
 ```
 item_categories (1)
   └── items (many)
-        ├── item_units_of_measure (many) ──► units_of_measure
-        ├── item_warehouse_stock (many) ──► warehouses
-        └── item_price_lists (many) ──► price_lists
-              
+        ├── item_units_of_measure (bridge) ──► units_of_measure    ← canonical: units_of_measure #41
+        ├── inventory_balances (many) ──► warehouses               ← canonical: inventory_balances (not item_warehouse_stock)
+        └── item_prices (many, per price tier)                     ← canonical: item_prices #46 (price_lists = Phase 2)
+
 warehouses (1)
-  └── warehouse_locations (many)
+  └── [warehouse_locations — Phase 2 only; not in Phase 1 table registry]
 ```
 
 ### Fixed Assets
 ```
 asset_categories (1)
   └── fixed_assets (many)
-        └── asset_depreciation_schedule (many)
+        └── asset_depreciation_schedules (many)                    ← canonical: asset_depreciation_schedules (plural)
 ```
 
 ---
@@ -359,7 +359,7 @@ company_bank_accounts (1)
 inventory_movements (1)
   ├── items
   ├── warehouses
-  ├── [source: goods_receipt | delivery_order | adjustment | transfer | cash_sale | cash_purchase]
+  ├── [source: receiving_reports | delivery_receipts | stock_adjustments | stock_transfers | cash_sales | cash_purchases]
   └── inventory_cost_layers (many, FIFO)
         └── inventory_cost_layer_consumption (many)
               └── inventory_movements (consumption reference — which sale consumed which layer)
@@ -385,7 +385,7 @@ fixed_assets (1)
   ├── asset_categories ──► chart_of_accounts (asset account)
   ├── asset_acquisitions (many)
   │     └── vendor_bills (source, via source_document_id)
-  ├── asset_depreciation_schedule (many)
+  ├── asset_depreciation_schedules (many)
   │     └── depreciation_runs (many)
   │           └── journal_entries (auto-generated)
   └── asset_disposals (1:1 when disposed)
@@ -439,7 +439,7 @@ document_relationships
   ├── source_document_id
   ├── target_document_type (e.g., 'sales_invoice')
   ├── target_document_id
-  └── relationship_type ('BILLED_FROM' | 'PAID_BY' | 'REVERSED_BY' | 'DELIVERED_FROM' | 'RECEIVED_FROM' | 'APPLIED_TO' | 'REPLENISHED_BY')
+  └── relationship_type CHECK IN ('billed_from','paid_by','reversed_by','delivered_from','received_from','applied_to','replenished_by') — all lowercase per Doc03 enum standard
 ```
 
 ---
@@ -627,9 +627,9 @@ import_batches (1)
   │     └── import_validation_errors (many)
   └── [created records carry import_batch_id]
         Setup: chart_of_accounts, payment_terms, atc_codes, tax_codes, approval_matrix, warehouses
-        Master: customers, suppliers, items, price_lists, bank_accounts
+        Master: customers, suppliers, items, item_prices, bank_accounts
         Opening: opening_balance_entries, inventory_cost_layers (opening stock), subsidiary_ledger_entries (AR/AP opening)
-        Fixed Assets: fixed_assets, asset_depreciation_schedule
+        Fixed Assets: fixed_assets, asset_depreciation_schedules
 ```
 
 ---
