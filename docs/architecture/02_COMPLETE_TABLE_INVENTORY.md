@@ -500,6 +500,7 @@ Legend:
 | 190 | `percentage_tax_entries` | Percentage tax entries aggregated from NON-VAT company sales transactions per period | ledger | ✅ | ❌ | ❌ | ✅ | medium |
 | 191 | `percentage_tax_period_summaries` | Aggregated PT by period (gross receipts, PT computed) | output | ✅ | ❌ | ❌ | ✅ | low |
 | 192 | `percentage_tax_return_filings` | 2551Q filing tracking records per quarter | transaction | ✅ | ✅ | ❌ | ✅ | low |
+| #193–#198 | *(RESERVED/REMOVED)* | Slots previously allocated for `compliance_report_runs`, `compliance_export_files`, and related compliance reporting tables. Consolidated into `export_jobs` (#189 in MODULE 23) and `generated_report_files` (#190 in MODULE 23) under the unified async export pattern. These slot numbers are permanently retired. | — | — | — | — | — | — |
 
 > Percentage Tax applies only when `company_compliance_profiles.taxpayer_type = 'non_vat'`. The posting engine skips VAT entries and creates `percentage_tax_entries` instead when this condition is met.
 
@@ -804,6 +805,7 @@ This registry is the authoritative source for table names. Any table name used i
 | 190 | `percentage_tax_entries` | ACTIVE | |
 | 191 | `percentage_tax_period_summaries` | ACTIVE | |
 | 192 | `percentage_tax_return_filings` | ACTIVE | |
+| #193–#198 | *(RESERVED/REMOVED)* | Consolidated into `export_jobs` (#189) + `generated_report_files` (#190) | |
 | 199 | `income_tax_computation_lines` | ACTIVE | |
 | 200 | `nolco_tracking` | ACTIVE | |
 | 201 | `amortization_schedules` | ACTIVE | |
