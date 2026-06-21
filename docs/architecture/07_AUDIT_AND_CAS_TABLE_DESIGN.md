@@ -69,28 +69,7 @@ BIR CAS (Computerized Accounting System) accreditation mandates a complete, tamp
 ## 2. Event Audit Log
 
 ### `audit_logs`
-Immutable log of every system event. No soft delete. No update allowed.
-
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `event_type` | text | NOT NULL | See event type table below |
-| `entity_type` | text | NOT NULL | Table name of affected record |
-| `entity_id` | uuid | NOT NULL | ID of affected record |
-| `entity_number` | text | NULL | Human-readable doc number (denormalized for readability) |
-| `description` | text | NOT NULL | Human-readable description |
-| `old_status` | text | NULL | Previous status (for status changes) |
-| `new_status` | text | NULL | New status |
-| `performed_by` | uuid | FK auth.users, NOT NULL | |
-| `performed_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `ip_address` | inet | NULL | Client IP (captured by Edge Function) |
-| `user_agent` | text | NULL | Browser/client user agent |
-| `session_id` | text | NULL | Auth session ID |
-| `branch_id` | uuid | FK branches, NULL | |
-| `metadata` | jsonb | NULL | Additional context (e.g., filter params for exports) |
-
-**No RLS update or delete policies on this table. Insert-only.**
+> Column spec: See Doc03 Section 41 (`audit_logs`). This document retains the authoritative event type list below. **No RLS update or delete policies. Insert-only.**
 
 ### Event Type Values
 
@@ -308,21 +287,9 @@ Every document number allocated from a series. Immutable.
 ## 7. CAS-Specific Tables
 
 ### `cas_registrations`
-Tracks CAS accreditation per company.
+> Column spec: See Doc03 Section 1 (`cas_registrations`). Tracks BIR CAS accreditation per company — cas_number, accreditation_date, valid_until, covered_modules, bir_rdo_code.
 
-| Column | Type | Constraint | Description |
-|---|---|---|---|
-| `id` | uuid | PK | |
-| `company_id` | uuid | FK companies, NOT NULL | |
-| `cas_number` | text | NOT NULL | BIR-issued CAS accreditation number |
-| `accreditation_date` | date | NOT NULL | |
-| `valid_until` | date | NULL | |
-| `covered_modules` | text[] | NOT NULL | e.g., ['GL','AR','AP','INV'] |
-| `bir_rdo_code` | text | NOT NULL | Revenue District Office code |
-| `bir_form_submitted` | text | NULL | BIR form used for CAS (e.g., '1900') |
-| `is_active` | boolean | NOT NULL DEFAULT true | |
-| `created_at` | timestamptz | NOT NULL DEFAULT now() | |
-| `created_by` | uuid | FK auth.users | |
+> Note: `field_change_history` records reference `audit_logs` via the `operation_id` column — they are linked by the same UUID grouping all field changes from a single save operation, not by a direct FK.
 
 ---
 
