@@ -61,6 +61,11 @@
 | L-011-2 | 011 | LOW | `depreciation_runs` | `UNIQUE(company_id, fiscal_period_id)` is DEFERRABLE INITIALLY DEFERRED to allow the runner to insert and update status within the same transaction. DEFERRABLE unique constraints have marginal overhead on every INSERT. At the depreciation_runs volume (one row per period per company = ~12/year), this is acceptable. | OPEN — ACCEPTED AS-IS | FINAL REVIEW PASS: evaluate whether DEFERRABLE is still needed given the posting engine design. May simplify to non-deferrable if the runner always commits the insert before updating. |
 | M-012-1 | 012 | MEDIUM | `budgets` | Only one `status='active'` budget per fiscal year should exist at any time (when a revised budget is approved, the prior version transitions to 'superseded'). No DB unique constraint enforces this — a partial unique WHERE status='active' is not added because versioning is application-managed. | OPEN — APP ENFORCEMENT | Application must transition prior active budget to 'superseded' before activating a new version. FINAL REVIEW PASS: consider adding partial unique index ON budgets (company_id, fiscal_year_id) WHERE status='active'. |
 | L-012-1 | 012 | LOW | `opening_balance_entries` | The partial unique indexes on `uq_obe_company_account_no_branch` and `uq_obe_company_account_branch` are scoped `WHERE is_posted = false`. Once posted, the uniqueness constraint no longer prevents a duplicate unposted row for the same account. This could cause double-posting on re-migration. | OPEN | FINAL REVIEW PASS: evaluate whether to extend uniqueness to include posted rows (remove the `is_posted = false` filter), or add a separate constraint preventing any second row once posted=true. |
+| M-013-1 | 013 | MEDIUM | `journal_entries` | `auto_reversal_run_id`, `amortization_run_detail_id`, `revenue_recognition_run_detail_id` are plain `uuid NULL` columns with no FK constraints. The referenced tables (`auto_reversal_runs`, `amortization_run_details`, `revenue_recognition_run_details`) belong to Module 31 and do not yet exist. FKs must be added in the Module 31 migration. | OPEN | Module 31 migration must ADD CONSTRAINT FK for these three columns once their parent tables are created. |
+| M-013-2 | 013 | MEDIUM | `gl_balances` | `updated_at` has no corresponding `updated_by` column (Doc03 spec intentionally omits it — this is a posting-engine-only table updated via UPSERT). No human user should write to gl_balances directly. No RLS guard in Phase 1. | OPEN | Migration 017 RLS must REVOKE INSERT/UPDATE/DELETE on gl_balances from all app roles; allow only service role (same pattern as inventory_cost_layers.remaining_quantity). |
+| M-013-3 | 013 | MEDIUM | `subsidiary_ledger_entries` | Immutable table written only by the posting engine (service role). No DB guard in Phase 1 prevents app-layer users from inserting rows directly, which would corrupt AR/AP aging subledger. | OPEN | Migration 017 RLS must REVOKE INSERT/UPDATE/DELETE from all non-service roles on subsidiary_ledger_entries. |
+| L-013-1 | 013 | LOW | `document_relationships` | `relationship_type` CHECK uses a combined superset of Doc03 and Doc06 values (Decision 011). Doc03 has 6 values; Doc06 has 7 values; the migration implements 11 combined values. FINAL REVIEW PASS must verify that all 11 are actually needed and no Doc value was omitted or duplicated. | OPEN | FINAL REVIEW PASS: cross-reference relationship_type values against Doc03 §document_relationships and Doc06 §Posting Engine document linkage section. Remove any unused values or add missing ones. |
+| L-013-2 | 013 | LOW | `posting_batches` | `entity_ids uuid[]` is a PostgreSQL array column. Array comparisons in WHERE clauses do not use standard B-tree indexes. The partial unique index on `(entity_ids[1])` accesses only the first element. Multi-document batches (entity_ids length > 1) are not uniqueness-guarded by this index. | OPEN — ACCEPTED AS-IS | Single-document posting (entity_ids[1]) is the primary use case; the index prevents the most common duplicate. Multi-doc batch deduplication is idempotency_key responsibility. FINAL REVIEW PASS: confirm bulk batch design. |
 
 ---
 
@@ -70,9 +75,9 @@
 |---|---|---|---|
 | CRITICAL | 4 | 0 | 4 |
 | HIGH | 4 | 0 | 4 |
-| MEDIUM | 19 | 3 | 16 |
-| LOW | 15 | 1 | 14 |
-| **TOTAL** | **42** | **4** | **38** |
+| MEDIUM | 23 | 3 | 20 |
+| LOW | 17 | 1 | 16 |
+| **TOTAL** | **48** | **4** | **44** |
 
 ---
 
@@ -86,4 +91,4 @@
 
 ---
 
-*Last updated: Migration 012 pre-commit pass*
+*Last updated: Migration 013 pre-commit pass*

@@ -309,4 +309,38 @@ belong in Migration 013.
 
 ---
 
-*Last updated: Migration 012 pre-commit pass*
+---
+
+## Decision 011 — `document_relationships.relationship_type` Combined Superset (Doc03 + Doc06)
+
+**Problem:**
+Doc03 §document_relationships defines `relationship_type` CHECK IN:
+`('generated_journal','reversed_by','paid_by','credit_applied','receipt_applied','generated_from')`
+
+Doc06 (Posting Engine) references additional relationship_type values:
+`('billed_from','delivered_from','received_from','applied_to','replenished_by')`
+and also uses `'reversed_by'` and `'paid_by'` (overlap with Doc03).
+
+The two sources have different value sets; neither is a subset of the other.
+
+**Decision:**
+Use the **combined superset** of all 11 distinct values from both documents:
+- From Doc03: `generated_journal`, `reversed_by`, `paid_by`, `credit_applied`, `receipt_applied`, `generated_from`
+- From Doc06 (additional): `billed_from`, `delivered_from`, `received_from`, `applied_to`, `replenished_by`
+
+Doc03 column names are used (`source_entity_type`/`source_entity_id`/`target_entity_type`/`target_entity_id`)
+as Doc03 is the canonical column specification source.
+
+**Reason:**
+The posting engine (Doc06) is the primary writer of document_relationships rows. Omitting
+Doc06 relationship types would mean the posting engine cannot record doc-to-doc linkage for
+PO→Invoice, Invoice→DR, and Petty Cash→Replenishment flows. The superset satisfies both
+sources without contradiction. Unused values have zero runtime cost.
+
+**Backlog:** L-013-1 tracks FINAL REVIEW PASS verification of all 11 values.
+
+**Final status:** RESOLVED — combined superset implemented in Migration 013.
+
+---
+
+*Last updated: Migration 013 pre-commit pass*
