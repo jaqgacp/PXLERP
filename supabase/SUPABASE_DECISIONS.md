@@ -228,4 +228,37 @@ only. App-layer roles must not be able to write these columns directly.
 
 ---
 
-*Last updated: Migration 010 pre-commit pass*
+## Decision 008 — `fixed_assets` Boolean Flags vs Doc06 Status Enum
+
+**Problem:**
+Doc03 §24 specifies `fixed_assets.is_active boolean` and `fixed_assets.is_disposed boolean`.
+Doc06 §Asset Acquisition Posting references `fixed_assets.status` text column transitioning
+from `'pending'` to `'active'` to `'disposed'`. These two sources are in conflict.
+
+**Decision:**
+Implement the **Doc03 boolean pattern** (`is_active`, `is_disposed`) as specified in the
+column specification document. Doc03 is the authoritative column spec source.
+
+The posting engine (Doc06) reference to `fixed_assets.status` is interpreted as shorthand
+for the combined boolean state:
+- pending  → `is_active = false AND is_disposed = false` (asset record created, not yet activated)
+- active   → `is_active = true AND is_disposed = false`
+- disposed → `is_disposed = true`
+
+**Reason:**
+Doc03 is the Column Specifications document and takes precedence for column definitions.
+Adding a text `status` column that duplicates the boolean flags would create two sources
+of truth for the same state and violate the freeze rule against redesigning tables.
+
+**Application implication:**
+The posting engine must use the boolean flags for state transitions:
+- Asset activation: SET is_active = true
+- Disposal posting: SET is_disposed = true, is_active = false
+
+**Backlog:** M-011-2 tracks this for FINAL REVIEW PASS reconciliation.
+
+**Final status:** RESOLVED — boolean pattern implemented in Migration 011.
+
+---
+
+*Last updated: Migration 011 pre-commit pass*
