@@ -337,3 +337,25 @@ CREATE INDEX ix_tax_calendar_company_due
     WHERE deleted_at IS NULL AND is_filed = false;
 
 ALTER TABLE public.tax_calendar ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- ADDITIVE COMMENTS — Foundation Gate review findings M-005-1, L-005-1
+-- =============================================================================
+
+-- M-005-1: atc_codes is a global BIR reference table (no company_id).
+-- RLS must be handled as a special case in Migration 017:
+--   READ:  all authenticated users (SELECT granted to 'authenticated' role)
+--   WRITE: platform administrators / service role only (is_super_admin = true)
+-- Standard company-scoped RLS pattern does NOT apply here.
+COMMENT ON TABLE public.atc_codes
+    IS 'Global BIR ATC code master — no company_id; codes are issued by BIR and shared across all tenants. RLS special case: READ = all authenticated users; WRITE = platform admin / service role only (is_super_admin check). Standard company-scoped RLS does not apply.';
+
+-- L-005-1: period_covered is free text but must follow a strict format.
+-- Expected formats:
+--   Monthly  : 'YYYY-MM'       e.g. '2025-01'
+--   Quarterly: 'YYYY-Q1'       e.g. '2025-Q1', '2025-Q2', '2025-Q3', '2025-Q4'
+--   Annual   : 'YYYY'          e.g. '2025'
+-- The UNIQUE constraint (company_id, form_code, period_covered) depends on
+-- format consistency. Application layer MUST enforce this format at input.
+COMMENT ON COLUMN public.tax_calendar.period_covered
+    IS 'Structured free-text period identifier. REQUIRED FORMAT: Monthly=YYYY-MM (e.g. 2025-01), Quarterly=YYYY-Q1/Q2/Q3/Q4 (e.g. 2025-Q1), Annual=YYYY (e.g. 2025). Application layer must enforce this format to ensure UNIQUE constraint correctness.';
