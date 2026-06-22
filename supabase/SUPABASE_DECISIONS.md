@@ -159,4 +159,40 @@ Future Proposal v4.1-001: Add `user_id uuid NULL REFERENCES auth.users(id)` to
 
 ---
 
-*Last updated: Migration 008 pre-development pass*
+---
+
+## Decision 006 — EWT on Petty Cash: Captured at Voucher Line Level (OD-09)
+
+**Problem:**
+Petty cash payments may be subject to Expanded Withholding Tax (e.g., professional fees paid
+from the petty cash fund). Two possible capture points exist:
+1. At the `petty_cash_voucher_line` level (when the expense is recorded).
+2. At the `petty_cash_replenishments` level (when the fund is replenished via payment voucher).
+
+**Decision:**
+EWT is captured at `petty_cash_voucher_line` level — NOT at the replenishment payment voucher.
+Columns `ewt_atc_id` and `ewt_amount` are on `petty_cash_voucher_lines`.
+The replenishment `payment_voucher` does NOT re-capture EWT.
+
+**Reason:**
+This mirrors the treatment of `cash_purchase_lines` (EWT at the expense line, not at the
+payment). The posting engine writes `ewt_entries` when the petty cash voucher is posted.
+At replenishment time, the AP/EWT liability is already recorded; the payment voucher merely
+settles the replenishment fund transfer. Re-capturing EWT on the payment voucher would cause
+double-booking of EWT liability and double-counting in 1601EQ and QAP.
+
+This is an **OPEN/RESOLVED architectural decision** from Doc02 Section OD-09:
+*"EWT on petty cash — captured at voucher or at replenishment? RESOLVED v3.7: Captured at
+petty_cash_voucher line level."*
+
+**Application implication:**
+The posting engine must:
+1. Write `ewt_entries` from `petty_cash_voucher_lines.ewt_atc_id/ewt_amount` at voucher post.
+2. NOT generate EWT entries from the linked `payment_vouchers` on replenishment.
+The QAP and 1601EQ sourcing logic must include `petty_cash_voucher_lines` as an EWT source.
+
+**Final status:** RESOLVED — implemented in Migration 009.
+
+---
+
+*Last updated: Migration 009 pre-development pass*
