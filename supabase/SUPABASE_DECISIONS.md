@@ -222,9 +222,16 @@ and Microsoft Dynamics for cost layer tracking.
 Migration 017 RLS must RESTRICT UPDATE on `remaining_quantity` and `is_exhausted` to service role
 only. App-layer roles must not be able to write these columns directly.
 
-**Backlog:** M-010-1 tracks the RLS guard requirement.
+**Backlog:** M-010-1 tracks the RLS guard requirement. RLS ENABLE is confirmed applied to
+`inventory_cost_layers` in Migration 010 (that migration already called ENABLE ROW LEVEL SECURITY).
+The service-role write-only guard via RLS POLICY is pending Migration 017.
 
-**Final status:** RESOLVED — implemented in Migration 010.
+**Clarification (Migration 016):** The cost layer partial mutability pattern is accepted.
+`ENABLE ROW LEVEL SECURITY` on `inventory_cost_layers` was already present in Migration 010.
+The service-role-only WRITE guard (POLICY layer) is the remaining work — tracked in backlog M-010-1
+and to be implemented in Migration 017. Decision 007 remains RESOLVED at the schema level.
+
+**Final status:** RESOLVED — implemented in Migration 010. RLS POLICY guard deferred to Migration 017.
 
 ---
 
@@ -399,4 +406,58 @@ in Section 25 of Migration 015.
 
 ---
 
-*Last updated: Migration 015 pre-commit pass*
+---
+
+## Decision 014 — inventory_movements entity_type: customer_return and purchase_return (M-010-2 Escalation)
+
+**Problem:**
+`inventory_movements.entity_type` CHECK (frozen per Doc03) did not include `'customer_return'`
+or `'purchase_return'`. Both document types from Migrations 007/008 generate inventory IN/OUT
+movements via the posting engine (sales returns generate IN; purchase returns generate OUT).
+Without these values in the CHECK, the posting engine would fail with a CHECK violation on
+every return document post.
+
+**Decision:**
+Escalate backlog item M-010-2 from MEDIUM to **PRE-POSTING BLOCKER** and resolve in
+Migration 016 (pre-RLS patch) rather than waiting for FINAL REVIEW PASS.
+
+The two new values are added to the CHECK constraint:
+- `'customer_return'` — sales return / customer return from Migration 007
+- `'purchase_return'` — purchase return from Migration 008
+
+Doc03 omission is treated as a documentation gap in the frozen spec, not a design intent.
+The posting engine design is the authoritative source for entity_type values.
+
+**Method:**
+`ALTER TABLE inventory_movements DROP CONSTRAINT ck_im_entity_type;`
+`ALTER TABLE inventory_movements ADD CONSTRAINT ck_im_entity_type CHECK (...extended list...);`
+
+**Final status:** RESOLVED — Migration 016 Section 14.
+
+---
+
+## Decision 015 — Pre-RLS Security Patch Scope (Migration 016)
+
+**Problem:**
+Codex audit identified that:
+1. `ENABLE ROW LEVEL SECURITY` was absent from all 32 Migration 004 tables, `payment_term_lines`
+   (Migration 006), and all tables in Migrations 013/014/015 (42 tables).
+2. Multiple NULL-branch uniqueness gaps in `number_series`, `system_account_config`, `user_roles`.
+3. Missing `role_code` uniqueness on `roles`.
+4. Missing code uniqueness on `departments` and `cost_centers`.
+5. Missing CAS and ATP guards.
+
+**Decision:**
+Create Migration 016 as a pure remediation migration (no new tables). All fixes are additive:
+`ENABLE ROW LEVEL SECURITY`, new partial unique indexes, new CHECK constraints. No column
+additions, no table redesigns, no posting logic changes.
+
+This migration runs BEFORE Migration 017 (RLS Policies). With RLS enabled but no policies,
+tables default to DENY-ALL for non-owners — this is acceptable in a development environment
+and correct for production (service role bypasses RLS regardless of policy state).
+
+**Final status:** RESOLVED — Migration 016.
+
+---
+
+*Last updated: Migration 016 — Pre-RLS Security & Constraints Patch*
