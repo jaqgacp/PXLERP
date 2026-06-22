@@ -261,4 +261,52 @@ The posting engine must use the boolean flags for state transitions:
 
 ---
 
-*Last updated: Migration 011 pre-commit pass*
+## Decision 009 — Migration 011 Incorrect FK Deferral to chart_of_accounts
+
+**Problem:**
+Migration 011 (fixed_assets) declared the following columns as plain `uuid NOT NULL` (without FK
+constraints) with comments stating the FK would be "added in Migration 012":
+- `asset_categories.depreciation_expense_account_id`
+- `fixed_assets.asset_account_id`
+- `fixed_assets.depreciation_account_id`
+- `fixed_assets.accumulated_depreciation_account_id`
+- `asset_disposals.disposal_account_id`
+
+However, `chart_of_accounts` already exists from Migration 004. These FKs could have been
+added inline in Migration 011. The deferral was an error.
+
+**Decision:**
+Add the missing FK constraints as ALTER TABLE ... ADD CONSTRAINT statements in Migration 012.
+Do NOT modify Migration 011 (ONE migration = ONE commit = ONE review — no retroactive edits).
+
+**Resolution:**
+Migration 012 Section 1 adds all 5 FK constraints via ALTER TABLE.
+Backlog item M-011-1 documents the Doc03/Doc06 discrepancy for `depreciation_expense_account_id`
+and its FINAL REVIEW PASS resolution requirement.
+
+**Final status:** RESOLVED — FK constraints added in Migration 012 Section 1.
+
+---
+
+## Decision 010 — posting_rule_sets and posting_rule_lines in Migration 012 (not 013)
+
+**Problem:**
+`posting_rule_sets` and `posting_rule_lines` are listed in Module 16 (Accounting) in Doc02.
+The question is whether they belong in Migration 012 (COA foundation) or Migration 013 (GL/JE).
+
+**Decision:**
+`posting_rule_sets` and `posting_rule_lines` are **COA-dependent configuration tables**
+and belong in Migration 012. They are not GL-runtime tables:
+- `posting_rule_lines.fixed_account_id → chart_of_accounts.id` (direct COA dependency)
+- They define which accounts the posting engine uses; they do NOT store JE data
+- They are seeded at company setup alongside system_account_config
+
+The GL-runtime tables (`journal_entries`, `journal_lines`, `gl_balances`,
+`subsidiary_ledger_entries`, `document_relationships`, `posting_batches`, `posting_errors`)
+belong in Migration 013.
+
+**Final status:** RESOLVED — posting_rule_sets/lines in Migration 012.
+
+---
+
+*Last updated: Migration 012 pre-commit pass*
