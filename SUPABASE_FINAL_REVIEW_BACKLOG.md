@@ -46,6 +46,10 @@
 | M-008-2 | 008 | MEDIUM | `purchase_order_lines` | `received_qty` and `billed_qty` are mutable columns updated by the posting engine (service role). No DB guard prevents app-layer users from updating them directly. | OPEN | Migration 017 RLS must RESTRICT UPDATE on received_qty/billed_qty to service role only (same pattern as customer_credit_profiles.current_outstanding). |
 | L-008-1 | 008 | LOW | `payment_voucher_lines` | `applied_to_id` is a polymorphic reference with no DB FK. Type safety is entirely application-enforced. If applied_to_type = 'vendor_bill' but applied_to_id points to a deleted vendor_bill, the application has no referential guard. | OPEN — APP ENFORCEMENT | Application must validate applied_to_id references an existing, non-deleted record of the correct type before saving. Consider a trigger in a future migration to enforce this at DB level. |
 | L-008-2 | 008 | LOW | `vendor_credits`, `supplier_debit_memos`, `purchase_returns` | `journal_entry_id` column present without FK comment on these adjustment tables (unlike vendor_bills/cash_purchases which have explicit COMMENT). | OPEN | FINAL REVIEW PASS: add COMMENT ON COLUMN for journal_entry_id on vendor_credits, supplier_debit_memos, purchase_returns to match vendor_bills pattern. |
+| M-009-1 | 009 | MEDIUM | `petty_cash_funds` | `current_balance` is mutable — updated by posting engine (service role) at each voucher post and replenishment. No DB guard prevents app-layer users from updating it directly. | OPEN | Migration 017 RLS must RESTRICT UPDATE on current_balance to service role only (same pattern as customer_credit_profiles.current_outstanding and purchase_order_lines.received_qty). |
+| L-009-1 | 009 | LOW | `petty_cash_count_lines` | No `company_id` column — only `count_sheet_id` anchor. RLS for this table in Migration 017 must correlated-join through `petty_cash_count_sheets` (same overhead concern as payment_term_lines). | OPEN | FINAL REVIEW PASS: evaluate adding `company_id` as denormalized RLS anchor to petty_cash_count_lines. Not added now — architecture freeze. |
+| L-009-2 | 009 | LOW | `bank_statement_lines` | `matched_to_type` / `matched_to_id` is a polymorphic reference (4 possible target tables). If a receipt or payment_voucher is voided after matching, the statement line's matched_to_id becomes a stale reference with no DB guard. | OPEN — APP ENFORCEMENT | Application must clear matched_to_id when the referenced document is voided, or mark the line as 'exception'. Reconciliation process must verify target document status before finalizing. |
+| L-009-3 | 009 | LOW | `inter_branch_transfers` | No DB CHECK that `from_branch_id` and `to_branch_id` both belong to the same `company_id`. A cross-company transfer would be structurally valid but semantically wrong. | OPEN — APP ENFORCEMENT | Application must validate that both branches belong to the same company before saving. Consider a trigger in a future migration. |
 
 ---
 
@@ -55,9 +59,9 @@
 |---|---|---|---|
 | CRITICAL | 4 | 0 | 4 |
 | HIGH | 4 | 0 | 4 |
-| MEDIUM | 11 | 3 | 8 |
-| LOW | 8 | 1 | 7 |
-| **TOTAL** | **27** | **4** | **23** |
+| MEDIUM | 12 | 3 | 9 |
+| LOW | 11 | 1 | 10 |
+| **TOTAL** | **31** | **4** | **27** |
 
 ---
 
@@ -71,4 +75,4 @@
 
 ---
 
-*Last updated: Migration 008 pre-development pass*
+*Last updated: Migration 009 pre-development pass*
