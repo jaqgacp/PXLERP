@@ -195,4 +195,37 @@ The QAP and 1601EQ sourcing logic must include `petty_cash_voucher_lines` as an 
 
 ---
 
-*Last updated: Migration 009 pre-development pass*
+## Decision 007 — `inventory_cost_layers` Partial Mutability
+
+**Problem:**
+Doc02 marks `inventory_cost_layers` as Immutable=YES. However, Doc03 defines `remaining_quantity`
+and `is_exhausted` as columns that are updated by the posting engine on each FIFO consumption event.
+These two sources are in apparent conflict.
+
+**Decision:**
+Implement the **partial mutability pattern**:
+- The row itself is append-only: rows are never deleted and `original_quantity`, `unit_cost`,
+  and `total_cost` are never modified after creation.
+- `remaining_quantity` and `is_exhausted` ARE updated by the posting engine (service role) atomically
+  with each `inventory_cost_layer_consumption` insert.
+
+This matches the intent of Doc02's "Immutable" classification (no row deletion; no cost revision)
+while satisfying Doc03's operational requirement that the posting engine track FIFO layer depletion.
+
+**Reason:**
+Enterprise FIFO costing requires the layer row to be the authoritative remaining-quantity record.
+Recomputing remaining_quantity from consumption rows on every query would be prohibitively expensive
+at scale. The partial mutability pattern is the standard approach used by NetSuite, SAP Business One,
+and Microsoft Dynamics for cost layer tracking.
+
+**RLS / Application implication:**
+Migration 017 RLS must RESTRICT UPDATE on `remaining_quantity` and `is_exhausted` to service role
+only. App-layer roles must not be able to write these columns directly.
+
+**Backlog:** M-010-1 tracks the RLS guard requirement.
+
+**Final status:** RESOLVED — implemented in Migration 010.
+
+---
+
+*Last updated: Migration 010 pre-commit pass*

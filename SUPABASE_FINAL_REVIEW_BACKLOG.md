@@ -50,6 +50,10 @@
 | L-009-1 | 009 | LOW | `petty_cash_count_lines` | No `company_id` column — only `count_sheet_id` anchor. RLS for this table in Migration 017 must correlated-join through `petty_cash_count_sheets` (same overhead concern as payment_term_lines). | OPEN | FINAL REVIEW PASS: evaluate adding `company_id` as denormalized RLS anchor to petty_cash_count_lines. Not added now — architecture freeze. |
 | L-009-2 | 009 | LOW | `bank_statement_lines` | `matched_to_type` / `matched_to_id` is a polymorphic reference (4 possible target tables). If a receipt or payment_voucher is voided after matching, the statement line's matched_to_id becomes a stale reference with no DB guard. | OPEN — APP ENFORCEMENT | Application must clear matched_to_id when the referenced document is voided, or mark the line as 'exception'. Reconciliation process must verify target document status before finalizing. |
 | L-009-3 | 009 | LOW | `inter_branch_transfers` | No DB CHECK that `from_branch_id` and `to_branch_id` both belong to the same `company_id`. A cross-company transfer would be structurally valid but semantically wrong. | OPEN — APP ENFORCEMENT | Application must validate that both branches belong to the same company before saving. Consider a trigger in a future migration. |
+| M-010-1 | 010 | MEDIUM | `inventory_cost_layers` | `remaining_quantity` and `is_exhausted` are mutable columns updated by the posting engine on FIFO consumption. No DB guard prevents app-layer users from updating them directly, which would corrupt FIFO costing. | OPEN | Migration 017 RLS must RESTRICT UPDATE on remaining_quantity/is_exhausted to service role only (same pattern as customer_credit_profiles.current_outstanding). |
+| M-010-2 | 010 | MEDIUM | `inventory_movements` | `entity_type` CHECK (per frozen Doc03 spec) does not include `'customer_return'` or `'purchase_return'` — both document types from Migrations 007/008 generate inventory movements. This is a gap in the frozen spec that will surface when the posting engine is built. | OPEN | FINAL REVIEW PASS: evaluate adding `'customer_return'`, `'purchase_return'` to entity_type CHECK constraint if confirmed by architecture review. Must not be added unilaterally without doc freeze review. |
+| M-010-3 | 010 | MEDIUM | `inventory_balances` | `quantity_available` must equal `quantity_on_hand − quantity_reserved` at all times. No DB-computed column or trigger enforces this invariant in Phase 1. A stale quantity_available could cause incorrect ATP (available-to-promise) calculations. | OPEN | Application must recompute quantity_available on every reservation change. Migration 017 RLS must restrict direct writes to service role only. FINAL REVIEW PASS: consider DB-generated column. |
+| L-010-1 | 010 | LOW | `stock_adjustment_lines` | `quantity_after` is stored as a snapshot (`quantity_before + quantity_adjusted`) but no DB CHECK constraint enforces this arithmetic invariant. A mismatch between quantity_before, quantity_adjusted, and quantity_after is not caught at the DB level. | OPEN | FINAL REVIEW PASS: add CHECK(quantity_after = quantity_before + quantity_adjusted) or trigger to enforce the invariant. |
 
 ---
 
@@ -59,9 +63,9 @@
 |---|---|---|---|
 | CRITICAL | 4 | 0 | 4 |
 | HIGH | 4 | 0 | 4 |
-| MEDIUM | 12 | 3 | 9 |
-| LOW | 11 | 1 | 10 |
-| **TOTAL** | **31** | **4** | **27** |
+| MEDIUM | 15 | 3 | 12 |
+| LOW | 12 | 1 | 11 |
+| **TOTAL** | **35** | **4** | **31** |
 
 ---
 
@@ -75,4 +79,4 @@
 
 ---
 
-*Last updated: Migration 009 pre-development pass*
+*Last updated: Migration 010 pre-commit pass*
