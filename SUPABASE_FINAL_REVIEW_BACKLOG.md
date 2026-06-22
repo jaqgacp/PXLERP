@@ -42,6 +42,10 @@
 | L-006-2 | 006 | LOW | `warehouses` | `uq_warehouses_branch_default` partial unique correctly enforces one default per (company_id, branch_id). | RESOLVED — NO ACTION | Verified correct in Foundation Gate review. |
 | L-006-3 | 006 | LOW | `personnel` | No link between `personnel` and `auth.users`/`profiles`. Approval notification emails cannot be routed to system users. | OPEN — FUTURE PROPOSAL v4.1 | Future Proposal v4.1: add `user_id uuid NULL REFERENCES auth.users(id)` to personnel to optionally link records to system logins. Deferred post-Phase 1. |
 | L-005-1 | 005 | LOW | `tax_calendar` | `period_covered text NOT NULL` is free-form. Inconsistent entry ('Jan 2025' vs 'January 2025') breaks UNIQUE constraint and calendar lookups. | OPEN — APP ENFORCEMENT | COMMENT added specifying mandatory formats: Monthly=YYYY-MM, Quarterly=YYYY-Q1, Annual=YYYY. Application layer must enforce at input. Consider adding CHECK(period_covered ~ '^[0-9]{4}(-[0-9]{2}|-Q[1-4])?$') in FINAL REVIEW PASS. |
+| M-008-1 | 008 | MEDIUM | `vendor_bills`, `cash_purchases` | No DB-level guard preventing `supplier_name` from being blank string. A blank snapshot defeats RELIEF/SLSP compliance. | OPEN | FINAL REVIEW PASS: add CHECK(LENGTH(TRIM(supplier_name)) > 0) to vendor_bills and cash_purchases. |
+| M-008-2 | 008 | MEDIUM | `purchase_order_lines` | `received_qty` and `billed_qty` are mutable columns updated by the posting engine (service role). No DB guard prevents app-layer users from updating them directly. | OPEN | Migration 017 RLS must RESTRICT UPDATE on received_qty/billed_qty to service role only (same pattern as customer_credit_profiles.current_outstanding). |
+| L-008-1 | 008 | LOW | `payment_voucher_lines` | `applied_to_id` is a polymorphic reference with no DB FK. Type safety is entirely application-enforced. If applied_to_type = 'vendor_bill' but applied_to_id points to a deleted vendor_bill, the application has no referential guard. | OPEN — APP ENFORCEMENT | Application must validate applied_to_id references an existing, non-deleted record of the correct type before saving. Consider a trigger in a future migration to enforce this at DB level. |
+| L-008-2 | 008 | LOW | `vendor_credits`, `supplier_debit_memos`, `purchase_returns` | `journal_entry_id` column present without FK comment on these adjustment tables (unlike vendor_bills/cash_purchases which have explicit COMMENT). | OPEN | FINAL REVIEW PASS: add COMMENT ON COLUMN for journal_entry_id on vendor_credits, supplier_debit_memos, purchase_returns to match vendor_bills pattern. |
 
 ---
 
@@ -51,9 +55,9 @@
 |---|---|---|---|
 | CRITICAL | 4 | 0 | 4 |
 | HIGH | 4 | 0 | 4 |
-| MEDIUM | 9 | 3 | 6 |
-| LOW | 6 | 1 | 5 |
-| **TOTAL** | **23** | **4** | **19** |
+| MEDIUM | 11 | 3 | 8 |
+| LOW | 8 | 1 | 7 |
+| **TOTAL** | **27** | **4** | **23** |
 
 ---
 
@@ -67,4 +71,4 @@
 
 ---
 
-*Last updated: Migration 007 pre-development pass*
+*Last updated: Migration 008 pre-development pass*
