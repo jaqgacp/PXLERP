@@ -66,6 +66,16 @@
 | M-013-3 | 013 | MEDIUM | `subsidiary_ledger_entries` | Immutable table written only by the posting engine (service role). No DB guard in Phase 1 prevents app-layer users from inserting rows directly, which would corrupt AR/AP aging subledger. | OPEN | Migration 017 RLS must REVOKE INSERT/UPDATE/DELETE from all non-service roles on subsidiary_ledger_entries. |
 | L-013-1 | 013 | LOW | `document_relationships` | `relationship_type` CHECK uses a combined superset of Doc03 and Doc06 values (Decision 011). Doc03 has 6 values; Doc06 has 7 values; the migration implements 11 combined values. FINAL REVIEW PASS must verify that all 11 are actually needed and no Doc value was omitted or duplicated. | OPEN | FINAL REVIEW PASS: cross-reference relationship_type values against Doc03 §document_relationships and Doc06 §Posting Engine document linkage section. Remove any unused values or add missing ones. |
 | L-013-2 | 013 | LOW | `posting_batches` | `entity_ids uuid[]` is a PostgreSQL array column. Array comparisons in WHERE clauses do not use standard B-tree indexes. The partial unique index on `(entity_ids[1])` accesses only the first element. Multi-document batches (entity_ids length > 1) are not uniqueness-guarded by this index. | OPEN — ACCEPTED AS-IS | Single-document posting (entity_ids[1]) is the primary use case; the index prevents the most common duplicate. Multi-doc batch deduplication is idempotency_key responsibility. FINAL REVIEW PASS: confirm bulk batch design. |
+| M-014-1 | 014 | MEDIUM | `amortization_schedule_lines`, `revenue_recognition_schedule_lines` | `status` and `journal_entry_id` are mutable columns updated by the posting engine. No DB guard prevents app-layer users from updating them directly, which could allow marking periods as 'processed' without actually creating a JE. | OPEN | Migration 017 RLS must RESTRICT UPDATE on status/journal_entry_id to service role only on these two tables. |
+| M-014-2 | 014 | MEDIUM | `amortization_schedules`, `revenue_recognition_schedules` | `amount_amortized`, `amount_remaining`, `amount_recognized` are mutable columns updated by the posting engine after each run. No DB CHECK enforces `amount_remaining = total_amount - amount_amortized`. Stale values could cause incorrect schedule completion detection. | OPEN | FINAL REVIEW PASS: consider adding CHECK(amount_remaining = total_amount - amount_amortized) and CHECK(amount_recognized + amount_remaining = total_amount). Or enforce via trigger. |
+| L-014-1 | 014 | LOW | `amortization_runs`, `revenue_recognition_runs` | No UNIQUE constraint on (company_id, fiscal_period_id). Multiple runs per period are allowed (e.g., partial re-runs). Prevents duplicate protection at the DB level — application must guard against duplicate completed runs for the same period. | OPEN — APP ENFORCEMENT | Application should check for existing completed runs before initiating a new one for the same period. FINAL REVIEW PASS: consider partial unique WHERE status='completed'. |
+| M-015-1 | 015 | MEDIUM | `vat_entries`, `ewt_entries`, `fwt_entries`, `percentage_tax_entries` | These compliance ledger tables are immutable and must only be written by the posting engine (service role). No DB guard in Phase 1 prevents app-layer direct insert. Incorrect entries would corrupt VAT returns and BIR compliance reports. | OPEN | Migration 017 RLS must REVOKE INSERT/UPDATE/DELETE from all non-service roles on all four compliance ledger tables. |
+| M-015-2 | 015 | MEDIUM | `ewt_entries` | `document_type` CHECK currently allows: `vendor_bill`, `cash_purchase`, `payment_voucher`, `petty_cash_voucher`. Decision 006 (EWT on petty cash at voucher line level) is implemented. However the CHECK uses document type names without verifying they exist — if a new document type needs EWT (e.g., cash_sale for self-billing scenarios), the CHECK must be updated in FINAL REVIEW PASS. | OPEN | FINAL REVIEW PASS: verify CHECK values cover all EWT-generating transaction types per Doc06 posting engine design. |
+| M-015-3 | 015 | MEDIUM | `income_tax_return_filings` | `itr_computation_run_id` is the reference to the LATEST computation run, but multiple runs may exist per filing (run_sequence 1,2,3...). No DB constraint prevents setting itr_computation_run_id to an older run. Application must ensure it always points to the latest run. | OPEN — APP ENFORCEMENT | Application must update itr_computation_run_id to latest run on each new itr_computation_run INSERT. FINAL REVIEW PASS: evaluate trigger-based enforcement. |
+| L-015-1 | 015 | LOW | `certificates_2307_issued` | `generated_document_id` FK to `generated_documents.id` is deferred to Module 25 migration. Until that migration runs, no FK constraint guards this column. A stale UUID would be silently accepted. | OPEN | Module 25 migration must ADD CONSTRAINT FK. Until then, application must validate generated_document_id before saving. |
+| L-015-2 | 015 | LOW | `certificates_2307_received`, `certificates_2306_issued` | `attachment_id` and `generated_document_id` FKs deferred to Module 21/25 migrations respectively. Same stale UUID risk as L-015-1. | OPEN | Module 21/25 migrations must ADD CONSTRAINT FKs. |
+| L-015-3 | 015 | LOW | `fwt_remittances_1601fq`, `percentage_tax_return_filings`, `income_tax_return_filings` | `export_job_id` FK to `export_jobs.id` deferred to Module 23 migration. | OPEN | Module 23 migration must ADD CONSTRAINT FKs for all three tables. |
+| L-015-4 | 015 | LOW | `nolco_tracking` | `remaining_balance` is computed as `nolco_amount - (applied_fy1 + applied_fy2 + applied_fy3)` but no DB CHECK or generated column enforces this invariant. Stale remaining_balance would cause incorrect NOLCO deduction calculations. | OPEN | FINAL REVIEW PASS: add CHECK(remaining_balance = nolco_amount - applied_fy1_amount - applied_fy2_amount - applied_fy3_amount) or use DB-generated column. |
 
 ---
 
@@ -75,9 +85,9 @@
 |---|---|---|---|
 | CRITICAL | 4 | 0 | 4 |
 | HIGH | 4 | 0 | 4 |
-| MEDIUM | 23 | 3 | 20 |
-| LOW | 17 | 1 | 16 |
-| **TOTAL** | **48** | **4** | **44** |
+| MEDIUM | 30 | 3 | 27 |
+| LOW | 23 | 1 | 22 |
+| **TOTAL** | **61** | **4** | **57** |
 
 ---
 
@@ -91,4 +101,4 @@
 
 ---
 
-*Last updated: Migration 013 pre-commit pass*
+*Last updated: Migration 015 pre-commit pass*

@@ -343,4 +343,60 @@ sources without contradiction. Unused values have zero runtime cost.
 
 ---
 
-*Last updated: Migration 013 pre-commit pass*
+---
+
+## Decision 012 — Migration 014 Scope: Module 31 Tables Only
+
+**Problem:**
+The task brief for Migration 014 asked for "posting engine support tables not already
+created." All Module 16 posting-engine runtime tables were created in Migrations 012/013:
+posting_rule_sets, posting_rule_lines (012), and posting_batches, posting_errors,
+journal_entries, journal_lines, gl_balances, subsidiary_ledger_entries,
+document_relationships, recurring_journal_templates, recurring_journal_template_lines (013).
+The question was whether any additional posting-engine tables remained.
+
+**Decision:**
+Migration 014 creates Module 31 (Accounting Schedules) tables only.
+No new Module 16 tables are required.
+
+Module 31 is the canonical set of posting-engine support tables remaining:
+- amortization_schedules / amortization_schedule_lines (prepaid expense amortization)
+- amortization_runs / amortization_run_details (run execution + traceability)
+- revenue_recognition_schedules / revenue_recognition_schedule_lines (deferred revenue)
+- revenue_recognition_runs / revenue_recognition_run_details (run execution + traceability)
+- auto_reversal_runs (auto-reversal batch header)
+
+Migration 014 also wires the three deferred FKs on journal_entries that were left as plain
+uuid NULL in Migration 013 with comment "deferred to Module 31 migration":
+- journal_entries.auto_reversal_run_id → auto_reversal_runs.id
+- journal_entries.amortization_run_detail_id → amortization_run_details.id
+- journal_entries.revenue_recognition_run_detail_id → revenue_recognition_run_details.id
+
+**Final status:** RESOLVED — implemented in Migration 014.
+
+---
+
+## Decision 013 — Migration 015 Circular FK: income_tax_return_filings ↔ itr_computation_runs
+
+**Problem:**
+`income_tax_return_filings.itr_computation_run_id → itr_computation_runs.id` and
+`itr_computation_runs.itr_filing_id → income_tax_return_filings.id` create a circular
+FK dependency. Both tables must be in the same migration (Module 19). PostgreSQL does
+not allow two tables to reference each other in the same CREATE TABLE block.
+
+**Decision:**
+Create `income_tax_return_filings` first with `itr_computation_run_id` as plain
+`uuid NULL` (no FK constraint). Then create `itr_computation_runs` with FK to
+`income_tax_return_filings`. Then wire the deferred FK via `ALTER TABLE
+income_tax_return_filings ADD CONSTRAINT fk_itrf_itr_computation_run`.
+
+The semantic meaning: `itr_computation_run_id` on `income_tax_return_filings` points
+to the LATEST computation run. This is set by the application on each new run
+(run_sequence 1, 2, 3…). Application must enforce it always points to the latest run.
+
+**Final status:** RESOLVED — within-migration circular FK resolved via ALTER TABLE
+in Section 25 of Migration 015.
+
+---
+
+*Last updated: Migration 015 pre-commit pass*
