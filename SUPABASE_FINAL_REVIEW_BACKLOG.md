@@ -54,6 +54,11 @@
 | M-010-2 | 010 | MEDIUM | `inventory_movements` | `entity_type` CHECK (per frozen Doc03 spec) does not include `'customer_return'` or `'purchase_return'` — both document types from Migrations 007/008 generate inventory movements. This is a gap in the frozen spec that will surface when the posting engine is built. | OPEN | FINAL REVIEW PASS: evaluate adding `'customer_return'`, `'purchase_return'` to entity_type CHECK constraint if confirmed by architecture review. Must not be added unilaterally without doc freeze review. |
 | M-010-3 | 010 | MEDIUM | `inventory_balances` | `quantity_available` must equal `quantity_on_hand − quantity_reserved` at all times. No DB-computed column or trigger enforces this invariant in Phase 1. A stale quantity_available could cause incorrect ATP (available-to-promise) calculations. | OPEN | Application must recompute quantity_available on every reservation change. Migration 017 RLS must restrict direct writes to service role only. FINAL REVIEW PASS: consider DB-generated column. |
 | L-010-1 | 010 | LOW | `stock_adjustment_lines` | `quantity_after` is stored as a snapshot (`quantity_before + quantity_adjusted`) but no DB CHECK constraint enforces this arithmetic invariant. A mismatch between quantity_before, quantity_adjusted, and quantity_after is not caught at the DB level. | OPEN | FINAL REVIEW PASS: add CHECK(quantity_after = quantity_before + quantity_adjusted) or trigger to enforce the invariant. |
+| M-011-1 | 011 | MEDIUM | `asset_categories` | Doc03 §24 column spec does NOT list `depreciation_expense_account_id` on `asset_categories`. Doc06 §Asset Depreciation Posting explicitly reads `asset_categories.depreciation_expense_account_id` as the FROM_ITEM source for DR Depreciation Expense. Column included per Doc06 (posting engine is authoritative for GL account linkage). Doc03 omission documented here for FINAL REVIEW PASS verification. | OPEN | FINAL REVIEW PASS: confirm column is intentional per Doc06. Add FK → chart_of_accounts in Migration 012. |
+| M-011-2 | 011 | MEDIUM | `fixed_assets` | Doc03 §24 uses `is_active boolean` + `is_disposed boolean` flags. Doc06 §Asset Acquisition Posting refers to `fixed_assets.status` transitioning from `'pending'` to `'active'` to `'disposed'`. Migration 011 follows Doc03 boolean flags (column spec authority). No `status` text column was added. This discrepancy may require a trigger or application-layer status derivation when integrating with the posting engine. | OPEN | FINAL REVIEW PASS: reconcile Doc03 boolean pattern with Doc06 status enum reference. Consider adding a DB-generated `status` expression column or trigger. |
+| M-011-3 | 011 | MEDIUM | `fixed_assets` | `accumulated_depreciation` and `net_book_value` are mutable — updated by posting engine on each depreciation run and impairment. No DB guard prevents app-layer users from updating them directly, which would corrupt asset NBV and financial statements. | OPEN | Migration 017 RLS must RESTRICT UPDATE on accumulated_depreciation/net_book_value to service role only (same pattern as customer_credit_profiles.current_outstanding). |
+| L-011-1 | 011 | LOW | `asset_depreciation_schedules` | `status` column is the only mutable column (transitions from 'pending' to 'processed' by the depreciation runner). No DB guard prevents app-layer users from updating it directly. A premature 'processed' flag would cause a period to be skipped by the runner. | OPEN | Migration 017 RLS must RESTRICT UPDATE on status to service role only. |
+| L-011-2 | 011 | LOW | `depreciation_runs` | `UNIQUE(company_id, fiscal_period_id)` is DEFERRABLE INITIALLY DEFERRED to allow the runner to insert and update status within the same transaction. DEFERRABLE unique constraints have marginal overhead on every INSERT. At the depreciation_runs volume (one row per period per company = ~12/year), this is acceptable. | OPEN — ACCEPTED AS-IS | FINAL REVIEW PASS: evaluate whether DEFERRABLE is still needed given the posting engine design. May simplify to non-deferrable if the runner always commits the insert before updating. |
 
 ---
 
@@ -63,9 +68,9 @@
 |---|---|---|---|
 | CRITICAL | 4 | 0 | 4 |
 | HIGH | 4 | 0 | 4 |
-| MEDIUM | 15 | 3 | 12 |
-| LOW | 12 | 1 | 11 |
-| **TOTAL** | **35** | **4** | **31** |
+| MEDIUM | 18 | 3 | 15 |
+| LOW | 14 | 1 | 13 |
+| **TOTAL** | **40** | **4** | **36** |
 
 ---
 
@@ -79,4 +84,4 @@
 
 ---
 
-*Last updated: Migration 010 pre-commit pass*
+*Last updated: Migration 011 pre-commit pass*
