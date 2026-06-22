@@ -778,6 +778,15 @@ CREATE INDEX ix_item_prices_item
     ON public.item_prices (company_id, item_id)
     WHERE deleted_at IS NULL;
 
+-- M-006-1: One active price per (item, price_list, min_qty, customer_group) combination.
+-- Prevents contradictory active prices for the same lookup key.
+-- NULL customer_group = "all customers" treated as a distinct bucket (NULLS DISTINCT).
+-- Overlap between historical (effective_to IS NOT NULL) rows is an app-layer concern.
+CREATE UNIQUE INDEX uq_item_prices_active
+    ON public.item_prices (company_id, item_id, price_list_name, min_quantity,
+                           COALESCE(customer_group, ''))
+    WHERE effective_to IS NULL AND deleted_at IS NULL;
+
 ALTER TABLE public.item_prices ENABLE ROW LEVEL SECURITY;
 
 -- ---------------------------------------------------------------------------
@@ -841,7 +850,12 @@ CREATE TABLE public.warehouse_stock_settings (
     CONSTRAINT pk_warehouse_stock_settings PRIMARY KEY (id),
     CONSTRAINT ck_wss_min_qty CHECK (min_quantity >= 0),
     CONSTRAINT ck_wss_max_qty CHECK (max_quantity >= 0),
-    CONSTRAINT ck_wss_reorder CHECK (reorder_point >= 0)
+    CONSTRAINT ck_wss_reorder CHECK (reorder_point >= 0),
+    -- M-006-3: enforce min ≤ reorder ≤ max when max > 0 (0 = uncapped stock)
+    CONSTRAINT ck_wss_ordering CHECK (
+        max_quantity = 0 OR
+        (min_quantity <= reorder_point AND reorder_point <= max_quantity)
+    )
 );
 
 CREATE UNIQUE INDEX uq_warehouse_stock_settings
@@ -853,3 +867,50 @@ CREATE INDEX ix_warehouse_stock_settings_warehouse
     WHERE deleted_at IS NULL;
 
 ALTER TABLE public.warehouse_stock_settings ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- ADDITIVE COMMENTS — Foundation Gate review findings M-006-4, M-006-2,
+-- L-006-1, L-006-3 (applied post-006-review; no DDL change)
+-- =============================================================================
+
+-- M-006-4: current_outstanding is a denormalized value maintained by the AR
+-- posting engine via the service role ONLY. Direct UPDATE by application users
+-- must be blocked by RLS policy in Migration 017. Any value written outside
+-- the posting engine is a data integrity violation.
+COMMENT ON COLUMN public.customer_credit_profiles.current_outstanding
+    IS 'Maintained exclusively by the AR posting engine (service role). Application users must NOT update this column directly. RLS policy in Migration 017 must RESTRICT writes to service role only.';
+
+-- M-006-4: similarly, credit_limit on customers is the user-entered setup
+-- default and is NOT the authoritative credit limit after a credit profile
+-- exists. The authoritative limit is customer_credit_profiles.credit_limit.
+-- When a credit profile row is created it should be seeded from customers.credit_limit.
+-- Thereafter customers.credit_limit is the user-visible "setup default" only.
+COMMENT ON COLUMN public.customers.credit_limit
+    IS 'User-entered setup default. Authoritative credit limit after onboarding is customer_credit_profiles.credit_limit. These two must not diverge; credit_profiles row is seeded from this value at customer creation.';
+
+-- M-006-2: ewt_codes must only reference WC- or WI-series ATC codes.
+-- DB-level CHECK requires joining atc_codes.code which is not possible in a
+-- column CHECK constraint. APPLICATION VALIDATION REQUIRED: before inserting
+-- an ewt_codes row, verify atc_codes.code LIKE 'WC%' OR 'WI%'.
+COMMENT ON TABLE public.ewt_codes
+    IS 'Expanded withholding tax codes per company. Each row must reference a WC- or WI-series ATC code only (WF-series belongs in fwt_codes). APPLICATION VALIDATION REQUIRED — DB cannot enforce series membership without a trigger. Misclassification causes incorrect Form 1601-EQ submissions.';
+
+-- M-006-2: fwt_codes must only reference WF-series ATC codes.
+COMMENT ON TABLE public.fwt_codes
+    IS 'Final withholding tax codes per company. Each row must reference a WF-series ATC code only (WC/WI-series belongs in ewt_codes). APPLICATION VALIDATION REQUIRED — DB cannot enforce series membership without a trigger. Misclassification causes incorrect Form 1601-FQ submissions.';
+
+-- L-006-1: uom_conversions stores one-directional factors.
+-- The reverse conversion (to → from) is a separate required row.
+-- APPLICATION RESPONSIBILITY: when creating BOX→PC (factor=12), the inverse
+-- PC→BOX (factor=1/12) must also be created. The posting engine must not
+-- assume bidirectional symmetry from a single row.
+COMMENT ON TABLE public.uom_conversions
+    IS 'Unit of measure conversion factors. Each row is ONE direction only. The inverse conversion must be stored as a separate row. Application layer is responsible for creating both directions when a UOM pair is defined.';
+
+-- L-006-3: personnel has no link to auth.users / profiles.
+-- Future Proposal v4.1: add user_id uuid NULL REFERENCES auth.users(id) to
+-- allow mapping personnel records to system login accounts. Needed for
+-- approval notification emails and audit attribution. Deferred — schema change
+-- requires review in the FINAL SUPABASE REVIEW PASS.
+COMMENT ON TABLE public.personnel
+    IS 'Employee lite records for approver name resolution only — NOT a payroll table. No link to profiles/auth.users in Phase 1. Future Proposal v4.1: add user_id FK to auth.users for approval notification routing.';
