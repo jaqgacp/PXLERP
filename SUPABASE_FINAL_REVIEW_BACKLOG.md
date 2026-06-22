@@ -59,6 +59,8 @@
 | M-011-3 | 011 | MEDIUM | `fixed_assets` | `accumulated_depreciation` and `net_book_value` are mutable — updated by posting engine on each depreciation run and impairment. No DB guard prevents app-layer users from updating them directly, which would corrupt asset NBV and financial statements. | OPEN | Migration 017 RLS must RESTRICT UPDATE on accumulated_depreciation/net_book_value to service role only (same pattern as customer_credit_profiles.current_outstanding). |
 | L-011-1 | 011 | LOW | `asset_depreciation_schedules` | `status` column is the only mutable column (transitions from 'pending' to 'processed' by the depreciation runner). No DB guard prevents app-layer users from updating it directly. A premature 'processed' flag would cause a period to be skipped by the runner. | OPEN | Migration 017 RLS must RESTRICT UPDATE on status to service role only. |
 | L-011-2 | 011 | LOW | `depreciation_runs` | `UNIQUE(company_id, fiscal_period_id)` is DEFERRABLE INITIALLY DEFERRED to allow the runner to insert and update status within the same transaction. DEFERRABLE unique constraints have marginal overhead on every INSERT. At the depreciation_runs volume (one row per period per company = ~12/year), this is acceptable. | OPEN — ACCEPTED AS-IS | FINAL REVIEW PASS: evaluate whether DEFERRABLE is still needed given the posting engine design. May simplify to non-deferrable if the runner always commits the insert before updating. |
+| M-012-1 | 012 | MEDIUM | `budgets` | Only one `status='active'` budget per fiscal year should exist at any time (when a revised budget is approved, the prior version transitions to 'superseded'). No DB unique constraint enforces this — a partial unique WHERE status='active' is not added because versioning is application-managed. | OPEN — APP ENFORCEMENT | Application must transition prior active budget to 'superseded' before activating a new version. FINAL REVIEW PASS: consider adding partial unique index ON budgets (company_id, fiscal_year_id) WHERE status='active'. |
+| L-012-1 | 012 | LOW | `opening_balance_entries` | The partial unique indexes on `uq_obe_company_account_no_branch` and `uq_obe_company_account_branch` are scoped `WHERE is_posted = false`. Once posted, the uniqueness constraint no longer prevents a duplicate unposted row for the same account. This could cause double-posting on re-migration. | OPEN | FINAL REVIEW PASS: evaluate whether to extend uniqueness to include posted rows (remove the `is_posted = false` filter), or add a separate constraint preventing any second row once posted=true. |
 
 ---
 
@@ -68,9 +70,9 @@
 |---|---|---|---|
 | CRITICAL | 4 | 0 | 4 |
 | HIGH | 4 | 0 | 4 |
-| MEDIUM | 18 | 3 | 15 |
-| LOW | 14 | 1 | 13 |
-| **TOTAL** | **40** | **4** | **36** |
+| MEDIUM | 19 | 3 | 16 |
+| LOW | 15 | 1 | 14 |
+| **TOTAL** | **42** | **4** | **38** |
 
 ---
 
@@ -84,4 +86,4 @@
 
 ---
 
-*Last updated: Migration 011 pre-commit pass*
+*Last updated: Migration 012 pre-commit pass*
