@@ -256,68 +256,91 @@
   <div class="nav-item" data-module="setup">
     <div class="nav-label" onclick="go('setup')">⚙️ Setup <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">🏢 Organization</div>
-        <a class="dd-item" href="#/setup/company-setup"><span class="dot"></span>Company Setup</a>
-        <a class="dd-item" href="#/setup/branch-setup"><span class="dot"></span>Branch Setup</a>
-        <a class="dd-item" href="#/setup/departments"><span class="dot"></span>Department Setup</a>
-        <a class="dd-item" href="#/setup/cost-centers"><span class="dot"></span>Cost Centers</a>
-        <a class="dd-item" href="#/setup/cas-registrations"><span class="dot"></span>CAS Registrations</a>
-        <a class="dd-item" href="#/setup/company-bank-accounts"><span class="dot"></span>Company Bank Accounts</a>
-        <a class="dd-item" href="#/setup/compliance-profile"><span class="dot"></span>Compliance Profile</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🔧 System Controls</div>
-        <div class="dd-sub-head">Number Series</div>
-        <a class="dd-item" href="#/setup/number-series/sales"><span class="dot"></span>Sales Documents</a>
-        <a class="dd-item" href="#/setup/number-series/purchasing"><span class="dot"></span>Purchasing Documents</a>
-        <a class="dd-item" href="#/setup/number-series/accounting"><span class="dot"></span>Accounting Documents</a>
-        <a class="dd-item" href="#/setup/number-series/compliance"><span class="dot"></span>Compliance Documents</a>
-        <a class="dd-item" href="#/setup/atp-monitoring"><span class="dot"></span>ATP Monitoring</a>
-        <div class="dd-sub-head">Feature Settings</div>
-        <a class="dd-item" href="#/setup/feature-settings/inventory"><span class="dot"></span>Inventory Settings</a>
-        <a class="dd-item" href="#/setup/feature-settings/fixed-assets"><span class="dot"></span>Fixed Assets Settings</a>
-        <a class="dd-item" href="#/setup/feature-settings/petty-cash"><span class="dot"></span>Petty Cash Settings</a>
-        <a class="dd-item" href="#/setup/feature-settings/bank-recon"><span class="dot"></span>Bank Reconciliation Settings</a>
-        <a class="dd-item" href="#/setup/feature-settings/budget"><span class="dot"></span>Budget Settings</a>
-        <div class="dd-sub-head">Approval Matrix</div>
-        <a class="dd-item" href="#/setup/approval/sales"><span class="dot"></span>Sales Approval</a>
-        <a class="dd-item" href="#/setup/approval/purchasing"><span class="dot"></span>Purchasing Approval</a>
-        <a class="dd-item" href="#/setup/approval/payment"><span class="dot"></span>Payment Approval</a>
-        <a class="dd-item" href="#/setup/approval/journal"><span class="dot"></span>Journal Approval</a>
-        <a class="dd-item" href="#/setup/approval/master-data"><span class="dot"></span>Master Data Approval</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📋 Document &amp; Validation</div>
-        <div class="dd-sub-head">Document Controls</div>
-        <a class="dd-item" href="#/setup/doc-controls/status"><span class="dot"></span>Status Controls</a>
-        <a class="dd-item" href="#/setup/doc-controls/posting"><span class="dot"></span>Posting Controls</a>
-        <a class="dd-item" href="#/setup/doc-controls/void"><span class="dot"></span>Void Controls</a>
-        <a class="dd-item" href="#/setup/doc-controls/reversal"><span class="dot"></span>Reversal Controls</a>
-        <div class="dd-sub-head">Validation Rules</div>
-        <a class="dd-item" href="#/setup/validation/master-data"><span class="dot"></span>Master Data Rules</a>
-        <a class="dd-item" href="#/setup/validation/transaction"><span class="dot"></span>Transaction Rules</a>
-        <a class="dd-item" href="#/setup/validation/posting"><span class="dot"></span>Posting Validation Rules</a>
-        <a class="dd-item" href="#/setup/validation/period"><span class="dot"></span>Period Controls</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📊 Accounting Setup</div>
-        <a class="dd-item" href="#/setup/fiscal-years"><span class="dot"></span>Fiscal Years</a>
-        <a class="dd-item" href="#/setup/fiscal-calendar"><span class="dot"></span>Fiscal Calendar</a>
-        <a class="dd-item" href="#/setup/chart-of-accounts"><span class="dot"></span>Chart of Accounts</a>
-        <a class="dd-item" href="#/setup/currencies"><span class="dot"></span>Currency Setup</a>
-        <a class="dd-item" href="#/setup/opening-balances"><span class="dot"></span>Opening Balances</a>
-        <a class="dd-item" href="#/setup/fs-fields"><span class="dot"></span>Financial Statement Fields</a>
-        <a class="dd-item" href="#/setup/gl-posting-config"><span class="dot"></span>GL Posting Configuration</a>
-        <div class="dd-group-head" style="margin-top:8px">🧾 Tax Setup</div>
-        <a class="dd-item" href="#/setup/bir-form-config"><span class="dot"></span>BIR Form Configuration</a>
-        <a class="dd-item" href="#/setup/tax-codes"><span class="dot"></span>Tax Codes</a>
-        <a class="dd-item" href="#/setup/vat-codes"><span class="dot"></span>VAT Codes</a>
-        <a class="dd-item" href="#/setup/ewt-codes"><span class="dot"></span>EWT Codes</a>
-        <a class="dd-item" href="#/setup/fwt-codes"><span class="dot"></span>FWT Codes</a>
-        <a class="dd-item" href="#/setup/percentage-tax-codes"><span class="dot"></span>Percentage Tax Codes</a>
-        <a class="dd-item" href="#/setup/atc-codes"><span class="dot"></span>ATC Codes</a>
-        <a class="dd-item" href="#/setup/tax-calendar"><span class="dot"></span>Tax Calendar</a>
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="setup-cats">
+          <div class="flyout-cat active" data-panel="setup-panel-org" onmouseenter="activateCat(this,'setup')">
+            <span class="cat-icon">🏢</span> Organization <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="setup-panel-sys" onmouseenter="activateCat(this,'setup')">
+            <span class="cat-icon">🔧</span> System Controls <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="setup-panel-doc" onmouseenter="activateCat(this,'setup')">
+            <span class="cat-icon">📋</span> Document &amp; Validation <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="setup-panel-acct" onmouseenter="activateCat(this,'setup')">
+            <span class="cat-icon">📊</span> Accounting Setup <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="setup-panel-tax" onmouseenter="activateCat(this,'setup')">
+            <span class="cat-icon">🧾</span> Tax Setup <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="setup-panel-org">
+            <div class="fp-head">🏢 Organization</div>
+            <a class="dd-item" href="#/setup/company-setup"><span class="dot"></span>Company Setup</a>
+            <a class="dd-item" href="#/setup/branch-setup"><span class="dot"></span>Branch Setup</a>
+            <a class="dd-item" href="#/setup/departments"><span class="dot"></span>Department Setup</a>
+            <a class="dd-item" href="#/setup/cost-centers"><span class="dot"></span>Cost Centers</a>
+            <a class="dd-item" href="#/setup/cas-registrations"><span class="dot"></span>CAS Registrations</a>
+            <a class="dd-item" href="#/setup/company-bank-accounts"><span class="dot"></span>Company Bank Accounts</a>
+            <a class="dd-item" href="#/setup/compliance-profile"><span class="dot"></span>Compliance Profile</a>
+          </div>
+          <div class="flyout-panel" id="setup-panel-sys">
+            <div class="fp-head">🔧 System Controls</div>
+            <div class="dd-sub-head">Number Series</div>
+            <a class="dd-item" href="#/setup/number-series/sales"><span class="dot"></span>Sales Documents</a>
+            <a class="dd-item" href="#/setup/number-series/purchasing"><span class="dot"></span>Purchasing Documents</a>
+            <a class="dd-item" href="#/setup/number-series/accounting"><span class="dot"></span>Accounting Documents</a>
+            <a class="dd-item" href="#/setup/number-series/compliance"><span class="dot"></span>Compliance Documents</a>
+            <a class="dd-item" href="#/setup/atp-monitoring"><span class="dot"></span>ATP Monitoring</a>
+            <div class="dd-sub-head">Feature Settings</div>
+            <a class="dd-item" href="#/setup/feature-settings/inventory"><span class="dot"></span>Inventory Settings</a>
+            <a class="dd-item" href="#/setup/feature-settings/fixed-assets"><span class="dot"></span>Fixed Assets Settings</a>
+            <a class="dd-item" href="#/setup/feature-settings/petty-cash"><span class="dot"></span>Petty Cash Settings</a>
+            <a class="dd-item" href="#/setup/feature-settings/bank-recon"><span class="dot"></span>Bank Reconciliation Settings</a>
+            <a class="dd-item" href="#/setup/feature-settings/budget"><span class="dot"></span>Budget Settings</a>
+            <div class="dd-sub-head">Approval Matrix</div>
+            <a class="dd-item" href="#/setup/approval/sales"><span class="dot"></span>Sales Approval</a>
+            <a class="dd-item" href="#/setup/approval/purchasing"><span class="dot"></span>Purchasing Approval</a>
+            <a class="dd-item" href="#/setup/approval/payment"><span class="dot"></span>Payment Approval</a>
+            <a class="dd-item" href="#/setup/approval/journal"><span class="dot"></span>Journal Approval</a>
+            <a class="dd-item" href="#/setup/approval/master-data"><span class="dot"></span>Master Data Approval</a>
+          </div>
+          <div class="flyout-panel" id="setup-panel-doc">
+            <div class="fp-head">📋 Document &amp; Validation</div>
+            <div class="dd-sub-head">Document Controls</div>
+            <a class="dd-item" href="#/setup/doc-controls/status"><span class="dot"></span>Status Controls</a>
+            <a class="dd-item" href="#/setup/doc-controls/posting"><span class="dot"></span>Posting Controls</a>
+            <a class="dd-item" href="#/setup/doc-controls/void"><span class="dot"></span>Void Controls</a>
+            <a class="dd-item" href="#/setup/doc-controls/reversal"><span class="dot"></span>Reversal Controls</a>
+            <div class="dd-sub-head">Validation Rules</div>
+            <a class="dd-item" href="#/setup/validation/master-data"><span class="dot"></span>Master Data Rules</a>
+            <a class="dd-item" href="#/setup/validation/transaction"><span class="dot"></span>Transaction Rules</a>
+            <a class="dd-item" href="#/setup/validation/posting"><span class="dot"></span>Posting Validation Rules</a>
+            <a class="dd-item" href="#/setup/validation/period"><span class="dot"></span>Period Controls</a>
+          </div>
+          <div class="flyout-panel" id="setup-panel-acct">
+            <div class="fp-head">📊 Accounting Setup</div>
+            <a class="dd-item" href="#/setup/fiscal-years"><span class="dot"></span>Fiscal Years</a>
+            <a class="dd-item" href="#/setup/fiscal-calendar"><span class="dot"></span>Fiscal Calendar</a>
+            <a class="dd-item" href="#/setup/chart-of-accounts"><span class="dot"></span>Chart of Accounts</a>
+            <a class="dd-item" href="#/setup/currencies"><span class="dot"></span>Currency Setup</a>
+            <a class="dd-item" href="#/setup/opening-balances"><span class="dot"></span>Opening Balances</a>
+            <a class="dd-item" href="#/setup/fs-fields"><span class="dot"></span>Financial Statement Fields</a>
+            <a class="dd-item" href="#/setup/gl-posting-config"><span class="dot"></span>GL Posting Configuration</a>
+          </div>
+          <div class="flyout-panel" id="setup-panel-tax">
+            <div class="fp-head">🧾 Tax Setup</div>
+            <a class="dd-item" href="#/setup/bir-form-config"><span class="dot"></span>BIR Form Configuration</a>
+            <a class="dd-item" href="#/setup/tax-codes"><span class="dot"></span>Tax Codes</a>
+            <a class="dd-item" href="#/setup/vat-codes"><span class="dot"></span>VAT Codes</a>
+            <a class="dd-item" href="#/setup/ewt-codes"><span class="dot"></span>EWT Codes</a>
+            <a class="dd-item" href="#/setup/fwt-codes"><span class="dot"></span>FWT Codes</a>
+            <a class="dd-item" href="#/setup/percentage-tax-codes"><span class="dot"></span>Percentage Tax Codes</a>
+            <a class="dd-item" href="#/setup/atc-codes"><span class="dot"></span>ATC Codes</a>
+            <a class="dd-item" href="#/setup/tax-calendar"><span class="dot"></span>Tax Calendar</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -326,35 +349,65 @@
   <div class="nav-item" data-module="master-data">
     <div class="nav-label" onclick="go('master-data')">🗂️ Master Data <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">👥 Parties</div>
-        <a class="dd-item" href="#/master-data/customers"><span class="dot"></span>Customers</a>
-        <a class="dd-item" href="#/master-data/suppliers"><span class="dot"></span>Suppliers</a>
-        <a class="dd-item" href="#/master-data/personnel"><span class="dot"></span>Personnel / Employees Lite</a>
-        <div class="dd-group-head" style="margin-top:8px">🤝 Shared</div>
-        <a class="dd-item" href="#/master-data/payment-terms"><span class="dot"></span>Payment Terms</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🏬 Customer Profile</div>
-        <a class="dd-item" href="#/master-data/customer-addresses"><span class="dot"></span>Customer Addresses</a>
-        <a class="dd-item" href="#/master-data/customer-contacts"><span class="dot"></span>Customer Contacts</a>
-        <a class="dd-item" href="#/master-data/customer-tax-profiles"><span class="dot"></span>Customer Tax Profiles</a>
-        <a class="dd-item" href="#/master-data/customer-credit-profiles"><span class="dot"></span>Customer Credit Profiles</a>
-        <div class="dd-group-head" style="margin-top:8px">🏭 Supplier Profile</div>
-        <a class="dd-item" href="#/master-data/supplier-addresses"><span class="dot"></span>Supplier Addresses</a>
-        <a class="dd-item" href="#/master-data/supplier-contacts"><span class="dot"></span>Supplier Contacts</a>
-        <a class="dd-item" href="#/master-data/supplier-tax-profiles"><span class="dot"></span>Supplier Tax Profiles</a>
-        <a class="dd-item" href="#/master-data/supplier-bank-details"><span class="dot"></span>Supplier Bank Details</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📦 Items &amp; Services</div>
-        <a class="dd-item" href="#/master-data/item-categories"><span class="dot"></span>Item Categories</a>
-        <a class="dd-item" href="#/master-data/units-of-measure"><span class="dot"></span>Units of Measure</a>
-        <a class="dd-item" href="#/master-data/items"><span class="dot"></span>Items</a>
-        <a class="dd-item" href="#/master-data/services"><span class="dot"></span>Services</a>
-        <div class="dd-group-head" style="margin-top:8px">🏗️ Inventory Master</div>
-        <a class="dd-item" href="#/master-data/warehouses"><span class="dot"></span>Warehouses</a>
-        <a class="dd-item" href="#/master-data/warehouse-stock-settings"><span class="dot"></span>Warehouse Stock Settings</a>
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="md-cats">
+          <div class="flyout-cat active" data-panel="md-panel-parties" onmouseenter="activateCat(this,'md')">
+            <span class="cat-icon">👥</span> Parties <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="md-panel-cust" onmouseenter="activateCat(this,'md')">
+            <span class="cat-icon">🏬</span> Customer Profile <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="md-panel-supp" onmouseenter="activateCat(this,'md')">
+            <span class="cat-icon">🏭</span> Supplier Profile <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="md-panel-items" onmouseenter="activateCat(this,'md')">
+            <span class="cat-icon">📦</span> Items &amp; Services <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="md-panel-inv" onmouseenter="activateCat(this,'md')">
+            <span class="cat-icon">🏗️</span> Inventory Master <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="md-panel-shared" onmouseenter="activateCat(this,'md')">
+            <span class="cat-icon">🤝</span> Shared <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="md-panel-parties">
+            <div class="fp-head">👥 Parties</div>
+            <a class="dd-item" href="#/master-data/customers"><span class="dot"></span>Customers</a>
+            <a class="dd-item" href="#/master-data/suppliers"><span class="dot"></span>Suppliers</a>
+            <a class="dd-item" href="#/master-data/personnel"><span class="dot"></span>Personnel / Employees Lite</a>
+          </div>
+          <div class="flyout-panel" id="md-panel-cust">
+            <div class="fp-head">🏬 Customer Profile</div>
+            <a class="dd-item" href="#/master-data/customer-addresses"><span class="dot"></span>Customer Addresses</a>
+            <a class="dd-item" href="#/master-data/customer-contacts"><span class="dot"></span>Customer Contacts</a>
+            <a class="dd-item" href="#/master-data/customer-tax-profiles"><span class="dot"></span>Customer Tax Profiles</a>
+            <a class="dd-item" href="#/master-data/customer-credit-profiles"><span class="dot"></span>Customer Credit Profiles</a>
+          </div>
+          <div class="flyout-panel" id="md-panel-supp">
+            <div class="fp-head">🏭 Supplier Profile</div>
+            <a class="dd-item" href="#/master-data/supplier-addresses"><span class="dot"></span>Supplier Addresses</a>
+            <a class="dd-item" href="#/master-data/supplier-contacts"><span class="dot"></span>Supplier Contacts</a>
+            <a class="dd-item" href="#/master-data/supplier-tax-profiles"><span class="dot"></span>Supplier Tax Profiles</a>
+            <a class="dd-item" href="#/master-data/supplier-bank-details"><span class="dot"></span>Supplier Bank Details</a>
+          </div>
+          <div class="flyout-panel" id="md-panel-items">
+            <div class="fp-head">📦 Items &amp; Services</div>
+            <a class="dd-item" href="#/master-data/item-categories"><span class="dot"></span>Item Categories</a>
+            <a class="dd-item" href="#/master-data/units-of-measure"><span class="dot"></span>Units of Measure</a>
+            <a class="dd-item" href="#/master-data/items"><span class="dot"></span>Items</a>
+            <a class="dd-item" href="#/master-data/services"><span class="dot"></span>Services</a>
+          </div>
+          <div class="flyout-panel" id="md-panel-inv">
+            <div class="fp-head">🏗️ Inventory Master</div>
+            <a class="dd-item" href="#/master-data/warehouses"><span class="dot"></span>Warehouses</a>
+            <a class="dd-item" href="#/master-data/warehouse-stock-settings"><span class="dot"></span>Warehouse Stock Settings</a>
+          </div>
+          <div class="flyout-panel" id="md-panel-shared">
+            <div class="fp-head">🤝 Shared</div>
+            <a class="dd-item" href="#/master-data/payment-terms"><span class="dot"></span>Payment Terms</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -363,36 +416,61 @@
   <div class="nav-item" data-module="sales">
     <div class="nav-label" onclick="go('sales')">🛒 Sales <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">📄 Transactions</div>
-        <a class="dd-item" href="#/sales/invoices"><span class="dot"></span>Sales Invoices</a>
-        <a class="dd-item" href="#/sales/cash-sales"><span class="dot"></span>Cash Sales</a>
-        <a class="dd-item" href="#/sales/receipts"><span class="dot"></span>Receipts</a>
-        <a class="dd-item" href="#/sales/credit-memos"><span class="dot"></span>Credit Memos</a>
-        <a class="dd-item" href="#/sales/debit-memos"><span class="dot"></span>Debit Memos</a>
-        <a class="dd-item" href="#/sales/customer-returns"><span class="dot"></span>Customer Returns</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🔄 Sales Cycle</div>
-        <a class="dd-item" href="#/sales/quotations"><span class="dot"></span>Quotations</a>
-        <a class="dd-item" href="#/sales/sales-orders"><span class="dot"></span>Sales Orders</a>
-        <a class="dd-item" href="#/sales/delivery-receipts"><span class="dot"></span>Delivery Receipts</a>
-        <div class="dd-group-head" style="margin-top:8px">💰 Receivables</div>
-        <a class="dd-item" href="#/sales/customer-ledger"><span class="dot"></span>Customer Ledger</a>
-        <a class="dd-item" href="#/sales/ar-aging"><span class="dot"></span>AR Aging</a>
-        <a class="dd-item" href="#/sales/collection-monitoring"><span class="dot"></span>Collection Monitoring</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🧾 Tax Review</div>
-        <a class="dd-item" href="#/sales/output-vat-review"><span class="dot"></span>Output VAT Review</a>
-        <a class="dd-item" href="#/sales/percentage-tax-review"><span class="dot"></span>Percentage Tax Review</a>
-        <a class="dd-item" href="#/sales/2307-received"><span class="dot"></span>2307 Received Review</a>
-        <div class="dd-group-head" style="margin-top:8px">📋 Registers</div>
-        <a class="dd-item" href="#/sales/invoice-register"><span class="dot"></span>Sales Invoice Register</a>
-        <a class="dd-item" href="#/sales/receipt-register"><span class="dot"></span>Receipt Register</a>
-        <a class="dd-item" href="#/sales/credit-memo-register"><span class="dot"></span>Credit Memo Register</a>
-        <a class="dd-item" href="#/sales/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
-        <a class="dd-item" href="#/sales/sls"><span class="dot"></span>SLS</a>
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="sales-cats">
+          <div class="flyout-cat active" data-panel="sales-panel-tx" onmouseenter="activateCat(this,'sales')">
+            <span class="cat-icon">📄</span> Transactions <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="sales-panel-cycle" onmouseenter="activateCat(this,'sales')">
+            <span class="cat-icon">🔄</span> Sales Cycle <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="sales-panel-ar" onmouseenter="activateCat(this,'sales')">
+            <span class="cat-icon">💰</span> Receivables <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="sales-panel-tax" onmouseenter="activateCat(this,'sales')">
+            <span class="cat-icon">🧾</span> Tax Review <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="sales-panel-reg" onmouseenter="activateCat(this,'sales')">
+            <span class="cat-icon">📋</span> Registers <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="sales-panel-tx">
+            <div class="fp-head">📄 Transactions</div>
+            <a class="dd-item" href="#/sales/invoices"><span class="dot"></span>Sales Invoices</a>
+            <a class="dd-item" href="#/sales/cash-sales"><span class="dot"></span>Cash Sales</a>
+            <a class="dd-item" href="#/sales/receipts"><span class="dot"></span>Receipts</a>
+            <a class="dd-item" href="#/sales/credit-memos"><span class="dot"></span>Credit Memos</a>
+            <a class="dd-item" href="#/sales/debit-memos"><span class="dot"></span>Debit Memos</a>
+            <a class="dd-item" href="#/sales/customer-returns"><span class="dot"></span>Customer Returns</a>
+          </div>
+          <div class="flyout-panel" id="sales-panel-cycle">
+            <div class="fp-head">🔄 Sales Cycle</div>
+            <a class="dd-item" href="#/sales/quotations"><span class="dot"></span>Quotations</a>
+            <a class="dd-item" href="#/sales/sales-orders"><span class="dot"></span>Sales Orders</a>
+            <a class="dd-item" href="#/sales/delivery-receipts"><span class="dot"></span>Delivery Receipts</a>
+          </div>
+          <div class="flyout-panel" id="sales-panel-ar">
+            <div class="fp-head">💰 Receivables</div>
+            <a class="dd-item" href="#/sales/customer-ledger"><span class="dot"></span>Customer Ledger</a>
+            <a class="dd-item" href="#/sales/ar-aging"><span class="dot"></span>AR Aging</a>
+            <a class="dd-item" href="#/sales/collection-monitoring"><span class="dot"></span>Collection Monitoring</a>
+          </div>
+          <div class="flyout-panel" id="sales-panel-tax">
+            <div class="fp-head">🧾 Tax Review</div>
+            <a class="dd-item" href="#/sales/output-vat-review"><span class="dot"></span>Output VAT Review</a>
+            <a class="dd-item" href="#/sales/percentage-tax-review"><span class="dot"></span>Percentage Tax Review</a>
+            <a class="dd-item" href="#/sales/2307-received"><span class="dot"></span>2307 Received Review</a>
+          </div>
+          <div class="flyout-panel" id="sales-panel-reg">
+            <div class="fp-head">📋 Registers</div>
+            <a class="dd-item" href="#/sales/invoice-register"><span class="dot"></span>Sales Invoice Register</a>
+            <a class="dd-item" href="#/sales/receipt-register"><span class="dot"></span>Receipt Register</a>
+            <a class="dd-item" href="#/sales/credit-memo-register"><span class="dot"></span>Credit Memo Register</a>
+            <a class="dd-item" href="#/sales/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
+            <a class="dd-item" href="#/sales/sls"><span class="dot"></span>SLS</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -401,33 +479,53 @@
   <div class="nav-item" data-module="purchasing">
     <div class="nav-label" onclick="go('purchasing')">🏪 Purchasing <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">📄 Transactions</div>
-        <a class="dd-item" href="#/purchasing/purchase-orders"><span class="dot"></span>Purchase Orders</a>
-        <a class="dd-item" href="#/purchasing/receiving-reports"><span class="dot"></span>Receiving Reports</a>
-        <a class="dd-item" href="#/purchasing/vendor-bills"><span class="dot"></span>Vendor Bills</a>
-        <a class="dd-item" href="#/purchasing/cash-purchases"><span class="dot"></span>Cash Purchases</a>
-        <a class="dd-item" href="#/purchasing/payment-vouchers"><span class="dot"></span>Payment Vouchers</a>
-        <a class="dd-item" href="#/purchasing/vendor-credits"><span class="dot"></span>Vendor Credits</a>
-        <a class="dd-item" href="#/purchasing/supplier-debit-memos"><span class="dot"></span>Debit Memos to Suppliers</a>
-        <a class="dd-item" href="#/purchasing/purchase-returns"><span class="dot"></span>Purchase Returns</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">💳 Payables</div>
-        <a class="dd-item" href="#/purchasing/supplier-ledger"><span class="dot"></span>Supplier Ledger</a>
-        <a class="dd-item" href="#/purchasing/ap-aging"><span class="dot"></span>AP Aging</a>
-        <a class="dd-item" href="#/purchasing/payment-monitoring"><span class="dot"></span>Payment Monitoring</a>
-        <div class="dd-group-head" style="margin-top:8px">🧾 Tax Review</div>
-        <a class="dd-item" href="#/purchasing/input-vat-review"><span class="dot"></span>Input VAT Review</a>
-        <a class="dd-item" href="#/purchasing/ewt-summary"><span class="dot"></span>EWT Summary</a>
-        <a class="dd-item" href="#/purchasing/2307-issued"><span class="dot"></span>2307 Issued Review</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📋 Registers</div>
-        <a class="dd-item" href="#/purchasing/vendor-bill-register"><span class="dot"></span>Vendor Bill Register</a>
-        <a class="dd-item" href="#/purchasing/payment-register"><span class="dot"></span>Payment Register</a>
-        <a class="dd-item" href="#/purchasing/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
-        <a class="dd-item" href="#/purchasing/slp"><span class="dot"></span>SLP</a>
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="pur-cats">
+          <div class="flyout-cat active" data-panel="pur-panel-tx" onmouseenter="activateCat(this,'pur')">
+            <span class="cat-icon">📄</span> Transactions <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="pur-panel-pay" onmouseenter="activateCat(this,'pur')">
+            <span class="cat-icon">💳</span> Payables <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="pur-panel-tax" onmouseenter="activateCat(this,'pur')">
+            <span class="cat-icon">🧾</span> Tax Review <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="pur-panel-reg" onmouseenter="activateCat(this,'pur')">
+            <span class="cat-icon">📋</span> Registers <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="pur-panel-tx">
+            <div class="fp-head">📄 Transactions</div>
+            <a class="dd-item" href="#/purchasing/purchase-orders"><span class="dot"></span>Purchase Orders</a>
+            <a class="dd-item" href="#/purchasing/receiving-reports"><span class="dot"></span>Receiving Reports</a>
+            <a class="dd-item" href="#/purchasing/vendor-bills"><span class="dot"></span>Vendor Bills</a>
+            <a class="dd-item" href="#/purchasing/cash-purchases"><span class="dot"></span>Cash Purchases</a>
+            <a class="dd-item" href="#/purchasing/payment-vouchers"><span class="dot"></span>Payment Vouchers</a>
+            <a class="dd-item" href="#/purchasing/vendor-credits"><span class="dot"></span>Vendor Credits</a>
+            <a class="dd-item" href="#/purchasing/supplier-debit-memos"><span class="dot"></span>Debit Memos to Suppliers</a>
+            <a class="dd-item" href="#/purchasing/purchase-returns"><span class="dot"></span>Purchase Returns</a>
+          </div>
+          <div class="flyout-panel" id="pur-panel-pay">
+            <div class="fp-head">💳 Payables</div>
+            <a class="dd-item" href="#/purchasing/supplier-ledger"><span class="dot"></span>Supplier Ledger</a>
+            <a class="dd-item" href="#/purchasing/ap-aging"><span class="dot"></span>AP Aging</a>
+            <a class="dd-item" href="#/purchasing/payment-monitoring"><span class="dot"></span>Payment Monitoring</a>
+          </div>
+          <div class="flyout-panel" id="pur-panel-tax">
+            <div class="fp-head">🧾 Tax Review</div>
+            <a class="dd-item" href="#/purchasing/input-vat-review"><span class="dot"></span>Input VAT Review</a>
+            <a class="dd-item" href="#/purchasing/ewt-summary"><span class="dot"></span>EWT Summary</a>
+            <a class="dd-item" href="#/purchasing/2307-issued"><span class="dot"></span>2307 Issued Review</a>
+          </div>
+          <div class="flyout-panel" id="pur-panel-reg">
+            <div class="fp-head">📋 Registers</div>
+            <a class="dd-item" href="#/purchasing/vendor-bill-register"><span class="dot"></span>Vendor Bill Register</a>
+            <a class="dd-item" href="#/purchasing/payment-register"><span class="dot"></span>Payment Register</a>
+            <a class="dd-item" href="#/purchasing/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
+            <a class="dd-item" href="#/purchasing/slp"><span class="dot"></span>SLP</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -503,33 +601,58 @@
   <div class="nav-item" data-module="accounting">
     <div class="nav-label" onclick="go('accounting')">📒 Accounting <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">✏️ Journal Entries</div>
-        <a class="dd-item" href="#/accounting/journal-entries"><span class="dot"></span>Journal Entries</a>
-        <a class="dd-item" href="#/accounting/recurring-templates"><span class="dot"></span>Recurring Journal Templates</a>
-        <div class="dd-group-head" style="margin-top:8px">📋 Schedules</div>
-        <a class="dd-item" href="#/accounting/amortization-schedules"><span class="dot"></span>Amortization Schedules</a>
-        <a class="dd-item" href="#/accounting/revenue-recognition-schedules"><span class="dot"></span>Revenue Recognition Schedules</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📖 Ledgers</div>
-        <a class="dd-item" href="#/accounting/general-ledger"><span class="dot"></span>General Ledger</a>
-        <a class="dd-item" href="#/accounting/account-detail-ledger"><span class="dot"></span>Account Detail Ledger</a>
-        <a class="dd-item" href="#/accounting/trial-balance"><span class="dot"></span>Trial Balance</a>
-        <div class="dd-group-head" style="margin-top:8px">📚 Subsidiary Ledgers</div>
-        <a class="dd-item" href="#/accounting/customer-ledger"><span class="dot"></span>Customer Ledger (Accounting View)</a>
-        <a class="dd-item" href="#/accounting/supplier-ledger"><span class="dot"></span>Supplier Ledger (Accounting View)</a>
-        <a class="dd-item" href="#/accounting/control-account-recon"><span class="dot"></span>Control Account Reconciliation</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📅 Period Management</div>
-        <a class="dd-item" href="#/accounting/period-closing"><span class="dot"></span>Period Closing</a>
-        <a class="dd-item" href="#/accounting/fiscal-locks"><span class="dot"></span>Fiscal Locks</a>
-        <a class="dd-item" href="#/accounting/posting-review"><span class="dot"></span>Posting Review</a>
-        <a class="dd-item" href="#/accounting/reversal-review"><span class="dot"></span>Reversal Review</a>
-        <a class="dd-item" href="#/accounting/amortization-run"><span class="dot"></span>Amortization Run</a>
-        <a class="dd-item" href="#/accounting/revenue-recognition-run"><span class="dot"></span>Revenue Recognition Run</a>
-        <a class="dd-item" href="#/accounting/auto-reversal-run"><span class="dot"></span>Auto Reversal Run</a>
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="acct-cats">
+          <div class="flyout-cat active" data-panel="acct-panel-je" onmouseenter="activateCat(this,'acct')">
+            <span class="cat-icon">✏️</span> Journal Entries <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="acct-panel-led" onmouseenter="activateCat(this,'acct')">
+            <span class="cat-icon">📖</span> Ledgers <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="acct-panel-sub" onmouseenter="activateCat(this,'acct')">
+            <span class="cat-icon">📚</span> Subsidiary Ledgers <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="acct-panel-sched" onmouseenter="activateCat(this,'acct')">
+            <span class="cat-icon">📋</span> Schedules <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="acct-panel-period" onmouseenter="activateCat(this,'acct')">
+            <span class="cat-icon">📅</span> Period Management <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="acct-panel-je">
+            <div class="fp-head">✏️ Journal Entries</div>
+            <a class="dd-item" href="#/accounting/journal-entries"><span class="dot"></span>Journal Entries</a>
+            <a class="dd-item" href="#/accounting/recurring-templates"><span class="dot"></span>Recurring Journal Templates</a>
+          </div>
+          <div class="flyout-panel" id="acct-panel-led">
+            <div class="fp-head">📖 Ledgers</div>
+            <a class="dd-item" href="#/accounting/general-ledger"><span class="dot"></span>General Ledger</a>
+            <a class="dd-item" href="#/accounting/account-detail-ledger"><span class="dot"></span>Account Detail Ledger</a>
+            <a class="dd-item" href="#/accounting/trial-balance"><span class="dot"></span>Trial Balance</a>
+          </div>
+          <div class="flyout-panel" id="acct-panel-sub">
+            <div class="fp-head">📚 Subsidiary Ledgers</div>
+            <a class="dd-item" href="#/accounting/customer-ledger"><span class="dot"></span>Customer Ledger (Accounting View)</a>
+            <a class="dd-item" href="#/accounting/supplier-ledger"><span class="dot"></span>Supplier Ledger (Accounting View)</a>
+            <a class="dd-item" href="#/accounting/control-account-recon"><span class="dot"></span>Control Account Reconciliation</a>
+          </div>
+          <div class="flyout-panel" id="acct-panel-sched">
+            <div class="fp-head">📋 Schedules</div>
+            <a class="dd-item" href="#/accounting/amortization-schedules"><span class="dot"></span>Amortization Schedules</a>
+            <a class="dd-item" href="#/accounting/revenue-recognition-schedules"><span class="dot"></span>Revenue Recognition Schedules</a>
+          </div>
+          <div class="flyout-panel" id="acct-panel-period">
+            <div class="fp-head">📅 Period Management</div>
+            <a class="dd-item" href="#/accounting/period-closing"><span class="dot"></span>Period Closing</a>
+            <a class="dd-item" href="#/accounting/fiscal-locks"><span class="dot"></span>Fiscal Locks</a>
+            <a class="dd-item" href="#/accounting/posting-review"><span class="dot"></span>Posting Review</a>
+            <a class="dd-item" href="#/accounting/reversal-review"><span class="dot"></span>Reversal Review</a>
+            <a class="dd-item" href="#/accounting/amortization-run"><span class="dot"></span>Amortization Run</a>
+            <a class="dd-item" href="#/accounting/revenue-recognition-run"><span class="dot"></span>Revenue Recognition Run</a>
+            <a class="dd-item" href="#/accounting/auto-reversal-run"><span class="dot"></span>Auto Reversal Run</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -662,68 +785,114 @@
   <div class="nav-item" data-module="reports">
     <div class="nav-label" onclick="go('reports')">📊 Reports <span class="arrow">▼</span></div>
     <div class="mega-dd" style="right:0; left:auto">
-      <div class="dd-col">
-        <div class="dd-group-head">📈 Financial Statements</div>
-        <a class="dd-item" href="#/reports/balance-sheet"><span class="dot"></span>Balance Sheet</a>
-        <a class="dd-item" href="#/reports/income-statement"><span class="dot"></span>Income Statement</a>
-        <a class="dd-item" href="#/reports/cash-flows"><span class="dot"></span>Statement of Cash Flows</a>
-        <a class="dd-item" href="#/reports/changes-in-equity"><span class="dot"></span>Statement of Changes in Equity</a>
-        <a class="dd-item" href="#/reports/comparative-fs"><span class="dot"></span>Comparative Financial Statements</a>
-        <div class="dd-group-head" style="margin-top:8px">⚖️ Trial Balance</div>
-        <a class="dd-item" href="#/reports/unadjusted-tb"><span class="dot"></span>Unadjusted Trial Balance</a>
-        <a class="dd-item" href="#/reports/adjusted-tb"><span class="dot"></span>Adjusted Trial Balance</a>
-        <a class="dd-item" href="#/reports/post-closing-tb"><span class="dot"></span>Post-Closing Trial Balance</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🧾 Tax Reports</div>
-        <a class="dd-item" href="#/reports/output-vat"><span class="dot"></span>Output VAT Summary</a>
-        <a class="dd-item" href="#/reports/input-vat"><span class="dot"></span>Input VAT Summary</a>
-        <a class="dd-item" href="#/reports/percentage-tax-summary"><span class="dot"></span>Percentage Tax Summary</a>
-        <a class="dd-item" href="#/reports/ewt-summary"><span class="dot"></span>EWT Summary</a>
-        <a class="dd-item" href="#/reports/fwt-summary"><span class="dot"></span>FWT Summary</a>
-        <a class="dd-item" href="#/reports/2307-issued"><span class="dot"></span>2307 Issued Listing</a>
-        <a class="dd-item" href="#/reports/2307-received"><span class="dot"></span>2307 Received Listing</a>
-        <div class="dd-group-head" style="margin-top:8px">📅 Aging Reports</div>
-        <a class="dd-item" href="#/reports/ar-aging"><span class="dot"></span>AR Aging</a>
-        <a class="dd-item" href="#/reports/ap-aging"><span class="dot"></span>AP Aging</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🏦 Bank Reports</div>
-        <a class="dd-item" href="#/reports/bank-position"><span class="dot"></span>Bank Position Report</a>
-        <a class="dd-item" href="#/reports/bank-recon-summary"><span class="dot"></span>Bank Reconciliation Summary</a>
-        <a class="dd-item" href="#/reports/outstanding-checks"><span class="dot"></span>Outstanding Checks Report</a>
-        <div class="dd-group-head" style="margin-top:8px">📦 Inventory Reports</div>
-        <a class="dd-item" href="#/reports/inventory-valuation"><span class="dot"></span>Inventory Valuation</a>
-        <a class="dd-item" href="#/reports/stock-movement"><span class="dot"></span>Stock Movement</a>
-        <a class="dd-item" href="#/reports/inventory-ledger"><span class="dot"></span>Inventory Ledger</a>
-        <a class="dd-item" href="#/reports/slow-moving"><span class="dot"></span>Slow Moving Inventory</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🏗️ Fixed Asset Reports</div>
-        <a class="dd-item" href="#/reports/fixed-asset-register"><span class="dot"></span>Fixed Asset Register</a>
-        <a class="dd-item" href="#/reports/depreciation-schedule"><span class="dot"></span>Depreciation Schedule</a>
-        <a class="dd-item" href="#/reports/book-vs-tax-depr"><span class="dot"></span>Book vs Tax Depreciation</a>
-        <a class="dd-item" href="#/reports/asset-disposal"><span class="dot"></span>Asset Disposal Report</a>
-        <div class="dd-group-head" style="margin-top:8px">📉 Management Reports</div>
-        <a class="dd-item" href="#/reports/branch-pl"><span class="dot"></span>Branch P&amp;L</a>
-        <a class="dd-item" href="#/reports/department-report"><span class="dot"></span>Department Report</a>
-        <a class="dd-item" href="#/reports/cost-center-report"><span class="dot"></span>Cost Center Report</a>
-        <a class="dd-item" href="#/reports/gross-margin"><span class="dot"></span>Gross Margin Analysis</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📋 Transaction Registers</div>
-        <a class="dd-item" href="#/reports/journal-register"><span class="dot"></span>Journal Register</a>
-        <a class="dd-item" href="#/reports/sales-invoice-register"><span class="dot"></span>Sales Invoice Register</a>
-        <a class="dd-item" href="#/reports/receipt-register"><span class="dot"></span>Receipt Register</a>
-        <a class="dd-item" href="#/reports/purchase-register"><span class="dot"></span>Purchase Register</a>
-        <a class="dd-item" href="#/reports/payment-register"><span class="dot"></span>Payment Register</a>
-        <a class="dd-item" href="#/reports/credit-memo-register"><span class="dot"></span>Credit Memo Register</a>
-        <a class="dd-item" href="#/reports/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
-        <a class="dd-item" href="#/reports/check-register"><span class="dot"></span>Check Register</a>
-        <div class="dd-group-head" style="margin-top:8px">🔎 Audit Reports</div>
-        <a class="dd-item" href="#/reports/period-close-checklist"><span class="dot"></span>Period Close Checklist</a>
-        <a class="dd-item" href="#/reports/audit-support"><span class="dot"></span>Audit Support Package</a>
-        <a class="dd-item" href="#/reports/user-activity"><span class="dot"></span>User Activity Report</a>
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="rep-cats">
+          <div class="flyout-cat active" data-panel="rep-panel-fs" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">📈</span> Financial Statements <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-tb" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">⚖️</span> Trial Balance <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-tax" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">🧾</span> Tax Reports <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-aging" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">📅</span> Aging Reports <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-bank" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">🏦</span> Bank Reports <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-inv" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">📦</span> Inventory Reports <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-fa" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">🏗️</span> Fixed Asset Reports <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-mgmt" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">📉</span> Management Reports <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-reg" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">📋</span> Transaction Registers <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="rep-panel-audit" onmouseenter="activateCat(this,'rep')">
+            <span class="cat-icon">🔎</span> Audit Reports <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="rep-panel-fs">
+            <div class="fp-head">📈 Financial Statements</div>
+            <a class="dd-item" href="#/reports/balance-sheet"><span class="dot"></span>Balance Sheet</a>
+            <a class="dd-item" href="#/reports/income-statement"><span class="dot"></span>Income Statement</a>
+            <a class="dd-item" href="#/reports/cash-flows"><span class="dot"></span>Statement of Cash Flows</a>
+            <a class="dd-item" href="#/reports/changes-in-equity"><span class="dot"></span>Statement of Changes in Equity</a>
+            <a class="dd-item" href="#/reports/comparative-fs"><span class="dot"></span>Comparative Financial Statements</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-tb">
+            <div class="fp-head">⚖️ Trial Balance</div>
+            <a class="dd-item" href="#/reports/unadjusted-tb"><span class="dot"></span>Unadjusted Trial Balance</a>
+            <a class="dd-item" href="#/reports/adjusted-tb"><span class="dot"></span>Adjusted Trial Balance</a>
+            <a class="dd-item" href="#/reports/post-closing-tb"><span class="dot"></span>Post-Closing Trial Balance</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-tax">
+            <div class="fp-head">🧾 Tax Reports</div>
+            <a class="dd-item" href="#/reports/output-vat"><span class="dot"></span>Output VAT Summary</a>
+            <a class="dd-item" href="#/reports/input-vat"><span class="dot"></span>Input VAT Summary</a>
+            <a class="dd-item" href="#/reports/percentage-tax-summary"><span class="dot"></span>Percentage Tax Summary</a>
+            <a class="dd-item" href="#/reports/ewt-summary"><span class="dot"></span>EWT Summary</a>
+            <a class="dd-item" href="#/reports/fwt-summary"><span class="dot"></span>FWT Summary</a>
+            <a class="dd-item" href="#/reports/2307-issued"><span class="dot"></span>2307 Issued Listing</a>
+            <a class="dd-item" href="#/reports/2307-received"><span class="dot"></span>2307 Received Listing</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-aging">
+            <div class="fp-head">📅 Aging Reports</div>
+            <a class="dd-item" href="#/reports/ar-aging"><span class="dot"></span>AR Aging</a>
+            <a class="dd-item" href="#/reports/ap-aging"><span class="dot"></span>AP Aging</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-bank">
+            <div class="fp-head">🏦 Bank Reports</div>
+            <a class="dd-item" href="#/reports/bank-position"><span class="dot"></span>Bank Position Report</a>
+            <a class="dd-item" href="#/reports/bank-recon-summary"><span class="dot"></span>Bank Reconciliation Summary</a>
+            <a class="dd-item" href="#/reports/outstanding-checks"><span class="dot"></span>Outstanding Checks Report</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-inv">
+            <div class="fp-head">📦 Inventory Reports</div>
+            <a class="dd-item" href="#/reports/inventory-valuation"><span class="dot"></span>Inventory Valuation</a>
+            <a class="dd-item" href="#/reports/stock-movement"><span class="dot"></span>Stock Movement</a>
+            <a class="dd-item" href="#/reports/inventory-ledger"><span class="dot"></span>Inventory Ledger</a>
+            <a class="dd-item" href="#/reports/slow-moving"><span class="dot"></span>Slow Moving Inventory</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-fa">
+            <div class="fp-head">🏗️ Fixed Asset Reports</div>
+            <a class="dd-item" href="#/reports/fixed-asset-register"><span class="dot"></span>Fixed Asset Register</a>
+            <a class="dd-item" href="#/reports/depreciation-schedule"><span class="dot"></span>Depreciation Schedule</a>
+            <a class="dd-item" href="#/reports/book-vs-tax-depr"><span class="dot"></span>Book vs Tax Depreciation</a>
+            <a class="dd-item" href="#/reports/asset-disposal"><span class="dot"></span>Asset Disposal Report</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-mgmt">
+            <div class="fp-head">📉 Management Reports</div>
+            <a class="dd-item" href="#/reports/branch-pl"><span class="dot"></span>Branch P&amp;L</a>
+            <a class="dd-item" href="#/reports/department-report"><span class="dot"></span>Department Report</a>
+            <a class="dd-item" href="#/reports/cost-center-report"><span class="dot"></span>Cost Center Report</a>
+            <a class="dd-item" href="#/reports/gross-margin"><span class="dot"></span>Gross Margin Analysis</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-reg">
+            <div class="fp-head">📋 Transaction Registers</div>
+            <a class="dd-item" href="#/reports/journal-register"><span class="dot"></span>Journal Register</a>
+            <a class="dd-item" href="#/reports/sales-invoice-register"><span class="dot"></span>Sales Invoice Register</a>
+            <a class="dd-item" href="#/reports/receipt-register"><span class="dot"></span>Receipt Register</a>
+            <a class="dd-item" href="#/reports/purchase-register"><span class="dot"></span>Purchase Register</a>
+            <a class="dd-item" href="#/reports/payment-register"><span class="dot"></span>Payment Register</a>
+            <a class="dd-item" href="#/reports/credit-memo-register"><span class="dot"></span>Credit Memo Register</a>
+            <a class="dd-item" href="#/reports/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
+            <a class="dd-item" href="#/reports/check-register"><span class="dot"></span>Check Register</a>
+          </div>
+          <div class="flyout-panel" id="rep-panel-audit">
+            <div class="fp-head">🔎 Audit Reports</div>
+            <a class="dd-item" href="#/reports/period-close-checklist"><span class="dot"></span>Period Close Checklist</a>
+            <a class="dd-item" href="#/reports/audit-support"><span class="dot"></span>Audit Support Package</a>
+            <a class="dd-item" href="#/reports/user-activity"><span class="dot"></span>User Activity Report</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
