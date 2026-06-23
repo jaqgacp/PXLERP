@@ -84,6 +84,23 @@
   .nav-item.open > .nav-label { background: var(--ns-hover); color: #fff; border-bottom: 2px solid var(--ns-accent); }
   .nav-label .arrow { font-size: 8px; opacity: .6; margin-top: 1px; }
 
+  /*
+   * PXL ERP — Navigation Architecture Standard
+   *
+   * Level 1  Business Module      — top nav: Setup, Master Data, Sales, Purchasing,
+   *                                  Assets, Accounting, Compliance, Reports
+   * Level 2  Business Category    — revealed on hover; categories only, no pages
+   * Level 3  Workspace / Screen   — actual pages appear after hovering a category
+   * Level 4  Actions              — New, Edit, View, Print, Export, Approve, Void,
+   *                                  Reverse — belong INSIDE the workspace, never in nav
+   *
+   * Rules:
+   *   • All modules use the same flyout-wrap / flyout-cats / flyout-panels pattern.
+   *   • No module may use a custom or one-off navigation style.
+   *   • Future pages plug into Module → Category → Workspace.
+   *   • Every breadcrumb: Home › Module › Category › Workspace
+   */
+
   /* ── MEGA DROPDOWN ───────────────────────────────── */
   .mega-dd {
     display: none;
@@ -101,16 +118,8 @@
   }
   .nav-item.open .mega-dd { display: flex; }
 
-  .mega-dd .dd-col { min-width: 190px; padding: 8px 0; border-right: 1px solid #e4edf5; flex-shrink: 0; }
-  .mega-dd .dd-col:last-child { border-right: none; }
+  /* dd-col and dd-group-head removed — all modules now use the flyout pattern */
 
-  .dd-group-head {
-    font-size: 10px; font-weight: 700; color: var(--dd-head);
-    text-transform: uppercase; letter-spacing: .8px;
-    padding: 10px 16px 4px; background: #f4f8fc;
-    border-bottom: 1px solid #dce9f5;
-    display: flex; align-items: center; gap: 6px;
-  }
   .dd-sub-head {
     font-size: 10px; font-weight: 700; color: var(--dd-cat);
     text-transform: uppercase; letter-spacing: .6px;
@@ -133,6 +142,7 @@
   .flyout-cats {
     width: 188px; background: #f4f8fc; border-right: 1px solid #dce9f5;
     padding: 8px 0; flex-shrink: 0;
+    max-height: calc(100vh - 82px); overflow-y: auto;
   }
   .flyout-cat {
     display: flex; align-items: center; justify-content: space-between;
