@@ -27,7 +27,7 @@
 
   body { font-family: "Segoe UI", Arial, sans-serif; background: var(--content-bg); min-height: 100vh; }
 
-  /* TOP BAR */
+  /* ── TOP BAR ─────────────────────────────────────── */
   #topbar {
     background: var(--ns-darker);
     height: 36px;
@@ -37,7 +37,7 @@
     border-bottom: 1px solid #0d1f33;
     gap: 12px;
   }
-  #topbar .logo { color: var(--ns-accent); font-weight: 700; font-size: 15px; letter-spacing: .5px; white-space: nowrap; }
+  #topbar .logo { color: var(--ns-accent); font-weight: 700; font-size: 15px; letter-spacing: .5px; white-space: nowrap; cursor:pointer; }
   #topbar .logo span { color: #fff; font-weight: 300; }
   #topbar .divider { width: 1px; height: 18px; background: var(--ns-border); opacity: .4; }
   #topbar .top-links { display: flex; gap: 2px; margin-left: auto; }
@@ -47,7 +47,7 @@
   #topbar .search-box { background: #0d1f33; border: 1px solid var(--ns-border); border-radius: 3px; padding: 3px 8px; color: #fff; font-size: 11px; width: 180px; outline: none; }
   #topbar .search-box::placeholder { color: var(--ns-muted); }
 
-  /* NAV BAR */
+  /* ── NAV BAR ─────────────────────────────────────── */
   #navbar {
     background: var(--ns-dark);
     height: 32px;
@@ -59,13 +59,11 @@
     z-index: 1000;
     user-select: none;
   }
-
   .nav-item {
     position: relative;
     display: flex;
     align-items: center;
   }
-
   .nav-item > .nav-label {
     color: var(--ns-text);
     font-size: 12px;
@@ -79,17 +77,17 @@
     border-right: 1px solid rgba(255,255,255,.06);
     letter-spacing: .3px;
     gap: 5px;
+    text-decoration: none;
   }
   .nav-item > .nav-label:hover,
   .nav-item.active > .nav-label { background: var(--ns-hover); color: #fff; }
-  .nav-item.active > .nav-label { border-bottom: 2px solid var(--ns-accent); }
+  .nav-item.open > .nav-label { background: var(--ns-hover); color: #fff; border-bottom: 2px solid var(--ns-accent); }
   .nav-label .arrow { font-size: 8px; opacity: .6; margin-top: 1px; }
 
-  /* MEGA DROPDOWN */
+  /* ── MEGA DROPDOWN ───────────────────────────────── */
   .mega-dd {
     display: none;
     position: fixed;
-
     top: 68px;
     background: var(--dd-bg);
     border: 1px solid var(--dd-border);
@@ -101,599 +99,641 @@
     max-height: calc(100vh - 80px);
     overflow-y: auto;
   }
-  .nav-item:hover .mega-dd,
-  .nav-item.pinned .mega-dd { display: flex; }
+  .nav-item.open .mega-dd { display: flex; }
 
   .mega-dd .dd-col { min-width: 190px; padding: 8px 0; border-right: 1px solid #e4edf5; flex-shrink: 0; }
   .mega-dd .dd-col:last-child { border-right: none; }
 
   .dd-group-head {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--dd-head);
-    text-transform: uppercase;
-    letter-spacing: .8px;
-    padding: 10px 16px 4px;
-    background: #f4f8fc;
+    font-size: 10px; font-weight: 700; color: var(--dd-head);
+    text-transform: uppercase; letter-spacing: .8px;
+    padding: 10px 16px 4px; background: #f4f8fc;
     border-bottom: 1px solid #dce9f5;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    display: flex; align-items: center; gap: 6px;
   }
-
+  .dd-sub-head {
+    font-size: 10px; font-weight: 700; color: var(--dd-cat);
+    text-transform: uppercase; letter-spacing: .6px;
+    padding: 8px 16px 2px 20px;
+  }
   .dd-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 16px 6px 20px;
-    font-size: 12px;
-    color: var(--dd-item);
-    cursor: pointer;
-    white-space: nowrap;
-    text-decoration: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px 6px 20px; font-size: 12px;
+    color: var(--dd-item); cursor: pointer;
+    white-space: nowrap; text-decoration: none;
     border-left: 3px solid transparent;
   }
   .dd-item:hover { background: var(--dd-hover); border-left-color: var(--ns-accent); color: var(--ns-dark); }
   .dd-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ns-muted); flex-shrink: 0; }
   .dd-item:hover .dot { background: var(--ns-accent); }
 
-  .dd-sub-head {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--dd-cat);
-    text-transform: uppercase;
-    letter-spacing: .6px;
-    padding: 8px 16px 2px 20px;
+  /* ── FLYOUT (2-level) ────────────────────────────── */
+  .flyout-wrap { display: flex; min-height: 280px; }
+
+  .flyout-cats {
+    width: 188px; background: #f4f8fc; border-right: 1px solid #dce9f5;
+    padding: 8px 0; flex-shrink: 0;
+  }
+  .flyout-cat {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 14px 9px 16px; font-size: 12px; font-weight: 600;
+    color: #2a4a6e; cursor: pointer; gap: 6px;
+    border-left: 3px solid transparent;
+  }
+  .flyout-cat:hover, .flyout-cat.active {
+    background: #dce9f5; border-left-color: var(--ns-accent); color: var(--ns-dark);
+  }
+  .flyout-cat .cat-icon { font-size: 14px; }
+  .flyout-cat .cat-arrow { font-size: 8px; opacity: .5; margin-left: auto; }
+
+  .flyout-panels { flex: 1; min-width: 210px; padding: 8px 0; }
+  .flyout-panel { display: none; }
+  .flyout-panel.active { display: block; }
+  .flyout-panel .fp-head {
+    font-size: 10px; font-weight: 700; color: var(--dd-head);
+    text-transform: uppercase; letter-spacing: .8px;
+    padding: 8px 16px 4px; background: #f4f8fc;
+    border-bottom: 1px solid #dce9f5; margin-bottom: 2px;
   }
 
-  /* CONTENT AREA */
-  #content { padding: 32px 40px 60px; }
-  .breadcrumb { font-size: 12px; color: #7a9bb5; margin-bottom: 4px; }
+  /* ── CONTENT ─────────────────────────────────────── */
+  #content { padding: 28px 36px 80px; }
+  .breadcrumb { font-size: 11px; color: #7a9bb5; margin-bottom: 6px; }
+  .breadcrumb a { color: #7a9bb5; text-decoration: none; cursor: pointer; }
+  .breadcrumb a:hover { color: var(--ns-dark); text-decoration: underline; }
+  .breadcrumb .sep { margin: 0 5px; opacity: .5; }
   .breadcrumb b { color: var(--ns-dark); }
-  .page-title { font-size: 22px; font-weight: 700; color: var(--ns-dark); margin-bottom: 24px; }
+  .page-title { font-size: 22px; font-weight: 700; color: var(--ns-dark); margin-bottom: 6px; }
+  .page-subtitle { font-size: 13px; color: #5a7a96; margin-bottom: 24px; }
 
-  .dashboard-grid {
+  /* Module grid */
+  .module-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
+    gap: 14px;
   }
   .module-card {
-    background: #fff;
-    border: 1px solid #d4e4f0;
-    border-radius: 6px;
-    padding: 20px;
-    cursor: pointer;
-    transition: box-shadow .15s, border-color .15s;
+    background: #fff; border: 1px solid #d4e4f0;
+    border-radius: 6px; padding: 20px; cursor: pointer;
+    transition: box-shadow .15s, border-color .15s; text-decoration: none;
+    display: block;
   }
   .module-card:hover { box-shadow: 0 4px 16px rgba(31,58,95,.12); border-color: var(--ns-accent); }
   .module-card .card-icon { font-size: 28px; margin-bottom: 10px; }
   .module-card .card-title { font-size: 14px; font-weight: 700; color: var(--ns-dark); margin-bottom: 4px; }
   .module-card .card-desc { font-size: 11px; color: #7a9bb5; }
 
-  /* STATUS BAR */
+  /* Quick-link cards (within module landing) */
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 10px; margin-top: 8px;
+  }
+  .quick-card {
+    background: #fff; border: 1px solid #d4e4f0;
+    border-radius: 5px; padding: 13px 15px; cursor: pointer;
+    transition: box-shadow .12s, border-color .12s; text-decoration: none;
+    display: block;
+  }
+  .quick-card:hover { box-shadow: 0 2px 10px rgba(31,58,95,.10); border-color: var(--ns-accent); }
+  .quick-card .qc-icon { font-size: 20px; margin-bottom: 6px; }
+  .quick-card .qc-title { font-size: 12px; font-weight: 700; color: var(--ns-dark); margin-bottom: 2px; }
+  .quick-card .qc-desc { font-size: 10px; color: #7a9bb5; }
+
+  /* Section headers */
+  .section-head {
+    font-size: 11px; font-weight: 700; color: var(--ns-dark);
+    text-transform: uppercase; letter-spacing: .6px;
+    margin: 24px 0 10px; border-bottom: 1px solid #d4e4f0; padding-bottom: 6px;
+  }
+
+  /* Placeholder page */
+  .placeholder-box {
+    background: #fff; border: 1px solid #d4e4f0; border-radius: 6px;
+    padding: 40px 36px; max-width: 640px; margin-top: 8px;
+  }
+  .placeholder-box .ph-badge {
+    display: inline-block; background: #eef4fb; color: var(--ns-sub);
+    font-size: 10px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; padding: 3px 10px; border-radius: 12px;
+    border: 1px solid #c8d8e8; margin-bottom: 14px;
+  }
+  .placeholder-box h2 { font-size: 18px; font-weight: 700; color: var(--ns-dark); margin-bottom: 8px; }
+  .placeholder-box p { font-size: 13px; color: #5a7a96; line-height: 1.6; }
+  .placeholder-box .ph-meta { margin-top: 20px; font-size: 11px; color: #9ab3cc; border-top: 1px solid #e8f0f8; padding-top: 14px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .placeholder-box .ph-meta span b { color: var(--ns-dark); }
+
+  /* Status bar */
   .status-bar {
-    background: var(--ns-darker);
-    color: var(--ns-muted);
-    font-size: 11px;
-    padding: 4px 16px;
-    display: flex;
-    gap: 20px;
-    border-top: 1px solid #0d1f33;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
+    background: var(--ns-darker); color: var(--ns-muted);
+    font-size: 11px; padding: 4px 16px;
+    display: flex; gap: 20px; border-top: 1px solid #0d1f33;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
   }
   .status-bar span b { color: var(--ns-accent); }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
+<!-- ── TOP BAR ─────────────────────────────── -->
 <div id="topbar">
-  <div class="logo">PXL <span>ERP</span></div>
+  <div class="logo" onclick="go('')">PXL <span>ERP</span></div>
   <div class="divider"></div>
   <input class="search-box" type="text" placeholder="🔍  Search transactions, records…" />
   <div class="top-links">
-    <a>Home</a><a>Activities</a><a>Documents</a><a>Help</a>
+    <a onclick="go('')">Home</a>
+    <a>Activities</a>
+    <a>Documents</a>
+    <a>Help</a>
   </div>
   <div class="user-chip">👤 Admin</div>
 </div>
 
-<!-- NAV BAR -->
+<!-- ── NAV BAR ────────────────────────────── -->
 <nav id="navbar">
 
   <!-- SETUP -->
-  <div class="nav-item">
-    <div class="nav-label">⚙️ Setup <span class="arrow">▼</span></div>
+  <div class="nav-item" data-module="setup">
+    <div class="nav-label" onclick="go('setup')">⚙️ Setup <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">🏢 Organization</div>
-        <a class="dd-item"><span class="dot"></span>Company Setup</a>
-        <a class="dd-item"><span class="dot"></span>Branch Setup</a>
-        <a class="dd-item"><span class="dot"></span>Department Setup</a>
-        <a class="dd-item"><span class="dot"></span>Cost Centers</a>
-        <a class="dd-item"><span class="dot"></span>CAS Registrations</a>
-        <a class="dd-item"><span class="dot"></span>Company Bank Accounts</a>
-        <a class="dd-item"><span class="dot"></span>Compliance Profile</a>
+        <a class="dd-item" href="#/setup/company-setup"><span class="dot"></span>Company Setup</a>
+        <a class="dd-item" href="#/setup/branch-setup"><span class="dot"></span>Branch Setup</a>
+        <a class="dd-item" href="#/setup/departments"><span class="dot"></span>Department Setup</a>
+        <a class="dd-item" href="#/setup/cost-centers"><span class="dot"></span>Cost Centers</a>
+        <a class="dd-item" href="#/setup/cas-registrations"><span class="dot"></span>CAS Registrations</a>
+        <a class="dd-item" href="#/setup/company-bank-accounts"><span class="dot"></span>Company Bank Accounts</a>
+        <a class="dd-item" href="#/setup/compliance-profile"><span class="dot"></span>Compliance Profile</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🔧 System Controls</div>
         <div class="dd-sub-head">Number Series</div>
-        <a class="dd-item"><span class="dot"></span>Sales Documents</a>
-        <a class="dd-item"><span class="dot"></span>Purchasing Documents</a>
-        <a class="dd-item"><span class="dot"></span>Accounting Documents</a>
-        <a class="dd-item"><span class="dot"></span>Compliance Documents</a>
-        <a class="dd-item"><span class="dot"></span>ATP Monitoring</a>
+        <a class="dd-item" href="#/setup/number-series/sales"><span class="dot"></span>Sales Documents</a>
+        <a class="dd-item" href="#/setup/number-series/purchasing"><span class="dot"></span>Purchasing Documents</a>
+        <a class="dd-item" href="#/setup/number-series/accounting"><span class="dot"></span>Accounting Documents</a>
+        <a class="dd-item" href="#/setup/number-series/compliance"><span class="dot"></span>Compliance Documents</a>
+        <a class="dd-item" href="#/setup/atp-monitoring"><span class="dot"></span>ATP Monitoring</a>
         <div class="dd-sub-head">Feature Settings</div>
-        <a class="dd-item"><span class="dot"></span>Inventory Settings</a>
-        <a class="dd-item"><span class="dot"></span>Fixed Assets Settings</a>
-        <a class="dd-item"><span class="dot"></span>Petty Cash Settings</a>
-        <a class="dd-item"><span class="dot"></span>Bank Reconciliation Settings</a>
-        <a class="dd-item"><span class="dot"></span>Budget Settings</a>
+        <a class="dd-item" href="#/setup/feature-settings/inventory"><span class="dot"></span>Inventory Settings</a>
+        <a class="dd-item" href="#/setup/feature-settings/fixed-assets"><span class="dot"></span>Fixed Assets Settings</a>
+        <a class="dd-item" href="#/setup/feature-settings/petty-cash"><span class="dot"></span>Petty Cash Settings</a>
+        <a class="dd-item" href="#/setup/feature-settings/bank-recon"><span class="dot"></span>Bank Reconciliation Settings</a>
+        <a class="dd-item" href="#/setup/feature-settings/budget"><span class="dot"></span>Budget Settings</a>
         <div class="dd-sub-head">Approval Matrix</div>
-        <a class="dd-item"><span class="dot"></span>Sales Approval</a>
-        <a class="dd-item"><span class="dot"></span>Purchasing Approval</a>
-        <a class="dd-item"><span class="dot"></span>Payment Approval</a>
-        <a class="dd-item"><span class="dot"></span>Journal Approval</a>
-        <a class="dd-item"><span class="dot"></span>Master Data Approval</a>
+        <a class="dd-item" href="#/setup/approval/sales"><span class="dot"></span>Sales Approval</a>
+        <a class="dd-item" href="#/setup/approval/purchasing"><span class="dot"></span>Purchasing Approval</a>
+        <a class="dd-item" href="#/setup/approval/payment"><span class="dot"></span>Payment Approval</a>
+        <a class="dd-item" href="#/setup/approval/journal"><span class="dot"></span>Journal Approval</a>
+        <a class="dd-item" href="#/setup/approval/master-data"><span class="dot"></span>Master Data Approval</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📋 Document &amp; Validation</div>
         <div class="dd-sub-head">Document Controls</div>
-        <a class="dd-item"><span class="dot"></span>Status Controls</a>
-        <a class="dd-item"><span class="dot"></span>Posting Controls</a>
-        <a class="dd-item"><span class="dot"></span>Void Controls</a>
-        <a class="dd-item"><span class="dot"></span>Reversal Controls</a>
+        <a class="dd-item" href="#/setup/doc-controls/status"><span class="dot"></span>Status Controls</a>
+        <a class="dd-item" href="#/setup/doc-controls/posting"><span class="dot"></span>Posting Controls</a>
+        <a class="dd-item" href="#/setup/doc-controls/void"><span class="dot"></span>Void Controls</a>
+        <a class="dd-item" href="#/setup/doc-controls/reversal"><span class="dot"></span>Reversal Controls</a>
         <div class="dd-sub-head">Validation Rules</div>
-        <a class="dd-item"><span class="dot"></span>Master Data Rules</a>
-        <a class="dd-item"><span class="dot"></span>Transaction Rules</a>
-        <a class="dd-item"><span class="dot"></span>Posting Validation Rules</a>
-        <a class="dd-item"><span class="dot"></span>Period Controls</a>
+        <a class="dd-item" href="#/setup/validation/master-data"><span class="dot"></span>Master Data Rules</a>
+        <a class="dd-item" href="#/setup/validation/transaction"><span class="dot"></span>Transaction Rules</a>
+        <a class="dd-item" href="#/setup/validation/posting"><span class="dot"></span>Posting Validation Rules</a>
+        <a class="dd-item" href="#/setup/validation/period"><span class="dot"></span>Period Controls</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📊 Accounting Setup</div>
-        <a class="dd-item"><span class="dot"></span>Fiscal Years</a>
-        <a class="dd-item"><span class="dot"></span>Fiscal Calendar</a>
-        <a class="dd-item"><span class="dot"></span>Chart of Accounts</a>
-        <a class="dd-item"><span class="dot"></span>Currency Setup</a>
-        <a class="dd-item"><span class="dot"></span>Opening Balances</a>
-        <a class="dd-item"><span class="dot"></span>Financial Statement Fields</a>
-        <a class="dd-item"><span class="dot"></span>GL Posting Configuration</a>
+        <a class="dd-item" href="#/setup/fiscal-years"><span class="dot"></span>Fiscal Years</a>
+        <a class="dd-item" href="#/setup/fiscal-calendar"><span class="dot"></span>Fiscal Calendar</a>
+        <a class="dd-item" href="#/setup/chart-of-accounts"><span class="dot"></span>Chart of Accounts</a>
+        <a class="dd-item" href="#/setup/currencies"><span class="dot"></span>Currency Setup</a>
+        <a class="dd-item" href="#/setup/opening-balances"><span class="dot"></span>Opening Balances</a>
+        <a class="dd-item" href="#/setup/fs-fields"><span class="dot"></span>Financial Statement Fields</a>
+        <a class="dd-item" href="#/setup/gl-posting-config"><span class="dot"></span>GL Posting Configuration</a>
         <div class="dd-group-head" style="margin-top:8px">🧾 Tax Setup</div>
-        <a class="dd-item"><span class="dot"></span>BIR Form Configuration</a>
-        <a class="dd-item"><span class="dot"></span>Tax Codes</a>
-        <a class="dd-item"><span class="dot"></span>VAT Codes</a>
-        <a class="dd-item"><span class="dot"></span>EWT Codes</a>
-        <a class="dd-item"><span class="dot"></span>FWT Codes</a>
-        <a class="dd-item"><span class="dot"></span>Percentage Tax Codes</a>
-        <a class="dd-item"><span class="dot"></span>ATC Codes</a>
-        <a class="dd-item"><span class="dot"></span>Tax Calendar</a>
+        <a class="dd-item" href="#/setup/bir-form-config"><span class="dot"></span>BIR Form Configuration</a>
+        <a class="dd-item" href="#/setup/tax-codes"><span class="dot"></span>Tax Codes</a>
+        <a class="dd-item" href="#/setup/vat-codes"><span class="dot"></span>VAT Codes</a>
+        <a class="dd-item" href="#/setup/ewt-codes"><span class="dot"></span>EWT Codes</a>
+        <a class="dd-item" href="#/setup/fwt-codes"><span class="dot"></span>FWT Codes</a>
+        <a class="dd-item" href="#/setup/percentage-tax-codes"><span class="dot"></span>Percentage Tax Codes</a>
+        <a class="dd-item" href="#/setup/atc-codes"><span class="dot"></span>ATC Codes</a>
+        <a class="dd-item" href="#/setup/tax-calendar"><span class="dot"></span>Tax Calendar</a>
       </div>
     </div>
   </div>
 
   <!-- MASTER DATA -->
-  <div class="nav-item">
-    <div class="nav-label">🗂️ Master Data <span class="arrow">▼</span></div>
+  <div class="nav-item" data-module="master-data">
+    <div class="nav-label" onclick="go('master-data')">🗂️ Master Data <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">👥 Parties</div>
-        <a class="dd-item"><span class="dot"></span>Customers</a>
-        <a class="dd-item"><span class="dot"></span>Suppliers</a>
-        <a class="dd-item"><span class="dot"></span>Personnel / Employees Lite</a>
+        <a class="dd-item" href="#/master-data/customers"><span class="dot"></span>Customers</a>
+        <a class="dd-item" href="#/master-data/suppliers"><span class="dot"></span>Suppliers</a>
+        <a class="dd-item" href="#/master-data/personnel"><span class="dot"></span>Personnel / Employees Lite</a>
         <div class="dd-group-head" style="margin-top:8px">🤝 Shared</div>
-        <a class="dd-item"><span class="dot"></span>Payment Terms</a>
+        <a class="dd-item" href="#/master-data/payment-terms"><span class="dot"></span>Payment Terms</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🏬 Customer Profile</div>
-        <a class="dd-item"><span class="dot"></span>Customer Addresses</a>
-        <a class="dd-item"><span class="dot"></span>Customer Contacts</a>
-        <a class="dd-item"><span class="dot"></span>Customer Tax Profiles</a>
-        <a class="dd-item"><span class="dot"></span>Customer Credit Profiles</a>
+        <a class="dd-item" href="#/master-data/customer-addresses"><span class="dot"></span>Customer Addresses</a>
+        <a class="dd-item" href="#/master-data/customer-contacts"><span class="dot"></span>Customer Contacts</a>
+        <a class="dd-item" href="#/master-data/customer-tax-profiles"><span class="dot"></span>Customer Tax Profiles</a>
+        <a class="dd-item" href="#/master-data/customer-credit-profiles"><span class="dot"></span>Customer Credit Profiles</a>
         <div class="dd-group-head" style="margin-top:8px">🏭 Supplier Profile</div>
-        <a class="dd-item"><span class="dot"></span>Supplier Addresses</a>
-        <a class="dd-item"><span class="dot"></span>Supplier Contacts</a>
-        <a class="dd-item"><span class="dot"></span>Supplier Tax Profiles</a>
-        <a class="dd-item"><span class="dot"></span>Supplier Bank Details</a>
+        <a class="dd-item" href="#/master-data/supplier-addresses"><span class="dot"></span>Supplier Addresses</a>
+        <a class="dd-item" href="#/master-data/supplier-contacts"><span class="dot"></span>Supplier Contacts</a>
+        <a class="dd-item" href="#/master-data/supplier-tax-profiles"><span class="dot"></span>Supplier Tax Profiles</a>
+        <a class="dd-item" href="#/master-data/supplier-bank-details"><span class="dot"></span>Supplier Bank Details</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📦 Items &amp; Services</div>
-        <a class="dd-item"><span class="dot"></span>Item Categories</a>
-        <a class="dd-item"><span class="dot"></span>Units of Measure</a>
-        <a class="dd-item"><span class="dot"></span>Items</a>
-        <a class="dd-item"><span class="dot"></span>Services</a>
+        <a class="dd-item" href="#/master-data/item-categories"><span class="dot"></span>Item Categories</a>
+        <a class="dd-item" href="#/master-data/units-of-measure"><span class="dot"></span>Units of Measure</a>
+        <a class="dd-item" href="#/master-data/items"><span class="dot"></span>Items</a>
+        <a class="dd-item" href="#/master-data/services"><span class="dot"></span>Services</a>
         <div class="dd-group-head" style="margin-top:8px">🏗️ Inventory Master</div>
-        <a class="dd-item"><span class="dot"></span>Warehouses</a>
-        <a class="dd-item"><span class="dot"></span>Warehouse Stock Settings</a>
+        <a class="dd-item" href="#/master-data/warehouses"><span class="dot"></span>Warehouses</a>
+        <a class="dd-item" href="#/master-data/warehouse-stock-settings"><span class="dot"></span>Warehouse Stock Settings</a>
       </div>
     </div>
   </div>
 
   <!-- SALES -->
-  <div class="nav-item">
-    <div class="nav-label">🛒 Sales <span class="arrow">▼</span></div>
+  <div class="nav-item" data-module="sales">
+    <div class="nav-label" onclick="go('sales')">🛒 Sales <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">📄 Transactions</div>
-        <a class="dd-item"><span class="dot"></span>Sales Invoices</a>
-        <a class="dd-item"><span class="dot"></span>Cash Sales</a>
-        <a class="dd-item"><span class="dot"></span>Receipts</a>
-        <a class="dd-item"><span class="dot"></span>Credit Memos</a>
-        <a class="dd-item"><span class="dot"></span>Debit Memos</a>
-        <a class="dd-item"><span class="dot"></span>Customer Returns</a>
+        <a class="dd-item" href="#/sales/invoices"><span class="dot"></span>Sales Invoices</a>
+        <a class="dd-item" href="#/sales/cash-sales"><span class="dot"></span>Cash Sales</a>
+        <a class="dd-item" href="#/sales/receipts"><span class="dot"></span>Receipts</a>
+        <a class="dd-item" href="#/sales/credit-memos"><span class="dot"></span>Credit Memos</a>
+        <a class="dd-item" href="#/sales/debit-memos"><span class="dot"></span>Debit Memos</a>
+        <a class="dd-item" href="#/sales/customer-returns"><span class="dot"></span>Customer Returns</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🔄 Sales Cycle</div>
-        <a class="dd-item"><span class="dot"></span>Quotations</a>
-        <a class="dd-item"><span class="dot"></span>Sales Orders</a>
-        <a class="dd-item"><span class="dot"></span>Delivery Receipts</a>
+        <a class="dd-item" href="#/sales/quotations"><span class="dot"></span>Quotations</a>
+        <a class="dd-item" href="#/sales/sales-orders"><span class="dot"></span>Sales Orders</a>
+        <a class="dd-item" href="#/sales/delivery-receipts"><span class="dot"></span>Delivery Receipts</a>
         <div class="dd-group-head" style="margin-top:8px">💰 Receivables</div>
-        <a class="dd-item"><span class="dot"></span>Customer Ledger</a>
-        <a class="dd-item"><span class="dot"></span>AR Aging</a>
-        <a class="dd-item"><span class="dot"></span>Collection Monitoring</a>
+        <a class="dd-item" href="#/sales/customer-ledger"><span class="dot"></span>Customer Ledger</a>
+        <a class="dd-item" href="#/sales/ar-aging"><span class="dot"></span>AR Aging</a>
+        <a class="dd-item" href="#/sales/collection-monitoring"><span class="dot"></span>Collection Monitoring</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🧾 Tax Review</div>
-        <a class="dd-item"><span class="dot"></span>Output VAT Review</a>
-        <a class="dd-item"><span class="dot"></span>Percentage Tax Review</a>
-        <a class="dd-item"><span class="dot"></span>2307 Received Review</a>
+        <a class="dd-item" href="#/sales/output-vat-review"><span class="dot"></span>Output VAT Review</a>
+        <a class="dd-item" href="#/sales/percentage-tax-review"><span class="dot"></span>Percentage Tax Review</a>
+        <a class="dd-item" href="#/sales/2307-received"><span class="dot"></span>2307 Received Review</a>
         <div class="dd-group-head" style="margin-top:8px">📋 Registers</div>
-        <a class="dd-item"><span class="dot"></span>Sales Invoice Register</a>
-        <a class="dd-item"><span class="dot"></span>Receipt Register</a>
-        <a class="dd-item"><span class="dot"></span>Credit Memo Register</a>
-        <a class="dd-item"><span class="dot"></span>Debit Memo Register</a>
-        <a class="dd-item"><span class="dot"></span>SLS</a>
+        <a class="dd-item" href="#/sales/invoice-register"><span class="dot"></span>Sales Invoice Register</a>
+        <a class="dd-item" href="#/sales/receipt-register"><span class="dot"></span>Receipt Register</a>
+        <a class="dd-item" href="#/sales/credit-memo-register"><span class="dot"></span>Credit Memo Register</a>
+        <a class="dd-item" href="#/sales/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
+        <a class="dd-item" href="#/sales/sls"><span class="dot"></span>SLS</a>
       </div>
     </div>
   </div>
 
   <!-- PURCHASING -->
-  <div class="nav-item">
-    <div class="nav-label">🏪 Purchasing <span class="arrow">▼</span></div>
+  <div class="nav-item" data-module="purchasing">
+    <div class="nav-label" onclick="go('purchasing')">🏪 Purchasing <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">📄 Transactions</div>
-        <a class="dd-item"><span class="dot"></span>Purchase Orders</a>
-        <a class="dd-item"><span class="dot"></span>Receiving Reports</a>
-        <a class="dd-item"><span class="dot"></span>Vendor Bills</a>
-        <a class="dd-item"><span class="dot"></span>Cash Purchases</a>
-        <a class="dd-item"><span class="dot"></span>Payment Vouchers</a>
-        <a class="dd-item"><span class="dot"></span>Vendor Credits</a>
-        <a class="dd-item"><span class="dot"></span>Debit Memos to Suppliers</a>
-        <a class="dd-item"><span class="dot"></span>Purchase Returns</a>
+        <a class="dd-item" href="#/purchasing/purchase-orders"><span class="dot"></span>Purchase Orders</a>
+        <a class="dd-item" href="#/purchasing/receiving-reports"><span class="dot"></span>Receiving Reports</a>
+        <a class="dd-item" href="#/purchasing/vendor-bills"><span class="dot"></span>Vendor Bills</a>
+        <a class="dd-item" href="#/purchasing/cash-purchases"><span class="dot"></span>Cash Purchases</a>
+        <a class="dd-item" href="#/purchasing/payment-vouchers"><span class="dot"></span>Payment Vouchers</a>
+        <a class="dd-item" href="#/purchasing/vendor-credits"><span class="dot"></span>Vendor Credits</a>
+        <a class="dd-item" href="#/purchasing/supplier-debit-memos"><span class="dot"></span>Debit Memos to Suppliers</a>
+        <a class="dd-item" href="#/purchasing/purchase-returns"><span class="dot"></span>Purchase Returns</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">💳 Payables</div>
-        <a class="dd-item"><span class="dot"></span>Supplier Ledger</a>
-        <a class="dd-item"><span class="dot"></span>AP Aging</a>
-        <a class="dd-item"><span class="dot"></span>Payment Monitoring</a>
+        <a class="dd-item" href="#/purchasing/supplier-ledger"><span class="dot"></span>Supplier Ledger</a>
+        <a class="dd-item" href="#/purchasing/ap-aging"><span class="dot"></span>AP Aging</a>
+        <a class="dd-item" href="#/purchasing/payment-monitoring"><span class="dot"></span>Payment Monitoring</a>
         <div class="dd-group-head" style="margin-top:8px">🧾 Tax Review</div>
-        <a class="dd-item"><span class="dot"></span>Input VAT Review</a>
-        <a class="dd-item"><span class="dot"></span>EWT Summary</a>
-        <a class="dd-item"><span class="dot"></span>2307 Issued Review</a>
+        <a class="dd-item" href="#/purchasing/input-vat-review"><span class="dot"></span>Input VAT Review</a>
+        <a class="dd-item" href="#/purchasing/ewt-summary"><span class="dot"></span>EWT Summary</a>
+        <a class="dd-item" href="#/purchasing/2307-issued"><span class="dot"></span>2307 Issued Review</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📋 Registers</div>
-        <a class="dd-item"><span class="dot"></span>Vendor Bill Register</a>
-        <a class="dd-item"><span class="dot"></span>Payment Register</a>
-        <a class="dd-item"><span class="dot"></span>Debit Memo Register</a>
-        <a class="dd-item"><span class="dot"></span>SLP</a>
+        <a class="dd-item" href="#/purchasing/vendor-bill-register"><span class="dot"></span>Vendor Bill Register</a>
+        <a class="dd-item" href="#/purchasing/payment-register"><span class="dot"></span>Payment Register</a>
+        <a class="dd-item" href="#/purchasing/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
+        <a class="dd-item" href="#/purchasing/slp"><span class="dot"></span>SLP</a>
       </div>
     </div>
   </div>
 
-  <!-- PETTY CASH -->
-  <div class="nav-item">
-    <div class="nav-label">💵 Petty Cash <span class="arrow">▼</span></div>
+  <!-- ASSETS (2-level flyout) -->
+  <div class="nav-item" data-module="assets">
+    <div class="nav-label" onclick="go('assets')">💼 Assets <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">💵 Petty Cash</div>
-        <a class="dd-item"><span class="dot"></span>Petty Cash Fund Setup</a>
-        <a class="dd-item"><span class="dot"></span>Petty Cash Vouchers</a>
-        <a class="dd-item"><span class="dot"></span>Petty Cash Replenishment</a>
-        <a class="dd-item"><span class="dot"></span>Cash Count Sheet</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- BANK -->
-  <div class="nav-item">
-    <div class="nav-label">🏦 Bank <span class="arrow">▼</span></div>
-    <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">💸 Transactions</div>
-        <a class="dd-item"><span class="dot"></span>Fund Transfers</a>
-        <a class="dd-item"><span class="dot"></span>Inter-Branch Transfers</a>
-        <a class="dd-item"><span class="dot"></span>Bank Adjustments</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">⚖️ Reconciliation</div>
-        <a class="dd-item"><span class="dot"></span>Bank Reconciliation</a>
-        <a class="dd-item"><span class="dot"></span>Outstanding Checks</a>
-        <a class="dd-item"><span class="dot"></span>Deposits in Transit</a>
-        <div class="dd-group-head" style="margin-top:8px">📋 Registers</div>
-        <a class="dd-item"><span class="dot"></span>Bank Transfer Register</a>
-        <a class="dd-item"><span class="dot"></span>Check Register</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- INVENTORY -->
-  <div class="nav-item">
-    <div class="nav-label">📦 Inventory <span class="arrow">▼</span></div>
-    <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">🔄 Transactions</div>
-        <a class="dd-item"><span class="dot"></span>Stock Adjustments</a>
-        <a class="dd-item"><span class="dot"></span>Stock Transfers</a>
-        <a class="dd-item"><span class="dot"></span>Goods Issues</a>
-        <a class="dd-item"><span class="dot"></span>Physical Count Entry</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📊 Reports</div>
-        <a class="dd-item"><span class="dot"></span>Stock Status</a>
-        <a class="dd-item"><span class="dot"></span>Inventory Valuation</a>
-        <a class="dd-item"><span class="dot"></span>Stock Movement</a>
-        <a class="dd-item"><span class="dot"></span>Reorder Report</a>
-        <a class="dd-item"><span class="dot"></span>Slow Moving Inventory</a>
-        <a class="dd-item"><span class="dot"></span>Inventory Subsidiary Ledger</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- FIXED ASSETS -->
-  <div class="nav-item">
-    <div class="nav-label">🏗️ Fixed Assets <span class="arrow">▼</span></div>
-    <div class="mega-dd" style="left:0">
-      <div class="dd-col">
-        <div class="dd-group-head">⚙️ Setup</div>
-        <a class="dd-item"><span class="dot"></span>Asset Categories</a>
-        <a class="dd-item"><span class="dot"></span>Depreciation Profiles</a>
-        <a class="dd-item"><span class="dot"></span>Asset Register</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📄 Transactions</div>
-        <a class="dd-item"><span class="dot"></span>Asset Acquisitions</a>
-        <a class="dd-item"><span class="dot"></span>Depreciation Run</a>
-        <a class="dd-item"><span class="dot"></span>Asset Disposals</a>
-        <a class="dd-item"><span class="dot"></span>Asset Transfers</a>
-        <a class="dd-item"><span class="dot"></span>Asset Impairment</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📊 Reports</div>
-        <a class="dd-item"><span class="dot"></span>Fixed Asset Register</a>
-        <a class="dd-item"><span class="dot"></span>Lapsing Schedule</a>
-        <a class="dd-item"><span class="dot"></span>Depreciation Schedule</a>
-        <a class="dd-item"><span class="dot"></span>Book vs Tax Depreciation</a>
-        <a class="dd-item"><span class="dot"></span>Asset Disposal Report</a>
+      <div class="flyout-wrap">
+        <!-- Category list -->
+        <div class="flyout-cats" id="assets-cats">
+          <div class="flyout-cat active" data-panel="assets-panel-cash" onmouseenter="activateCat(this,'assets')">
+            <span class="cat-icon">💵</span> Cash Management <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="assets-panel-inv" onmouseenter="activateCat(this,'assets')">
+            <span class="cat-icon">📦</span> Inventory <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="assets-panel-fa" onmouseenter="activateCat(this,'assets')">
+            <span class="cat-icon">🏗️</span> Fixed Assets <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <!-- Panels -->
+        <div class="flyout-panels">
+          <!-- Cash Management -->
+          <div class="flyout-panel active" id="assets-panel-cash">
+            <div class="fp-head">💵 Cash Management</div>
+            <div class="dd-sub-head">Petty Cash</div>
+            <a class="dd-item" href="#/assets/cash-management/petty-cash-funds"><span class="dot"></span>Petty Cash Fund Setup</a>
+            <a class="dd-item" href="#/assets/cash-management/petty-cash-vouchers"><span class="dot"></span>Petty Cash Vouchers</a>
+            <a class="dd-item" href="#/assets/cash-management/petty-cash-replenishment"><span class="dot"></span>Petty Cash Replenishment</a>
+            <a class="dd-item" href="#/assets/cash-management/cash-count-sheet"><span class="dot"></span>Cash Count Sheet</a>
+            <div class="dd-sub-head">Bank</div>
+            <a class="dd-item" href="#/assets/cash-management/fund-transfers"><span class="dot"></span>Fund Transfers</a>
+            <a class="dd-item" href="#/assets/cash-management/inter-branch-transfers"><span class="dot"></span>Inter-Branch Transfers</a>
+            <a class="dd-item" href="#/assets/cash-management/bank-adjustments"><span class="dot"></span>Bank Adjustments</a>
+            <a class="dd-item" href="#/assets/cash-management/bank-reconciliation"><span class="dot"></span>Bank Reconciliation</a>
+            <a class="dd-item" href="#/assets/cash-management/outstanding-checks"><span class="dot"></span>Outstanding Checks</a>
+            <a class="dd-item" href="#/assets/cash-management/deposits-in-transit"><span class="dot"></span>Deposits in Transit</a>
+          </div>
+          <!-- Inventory -->
+          <div class="flyout-panel" id="assets-panel-inv">
+            <div class="fp-head">📦 Inventory</div>
+            <a class="dd-item" href="#/assets/inventory"><span class="dot"></span>Inventory Dashboard</a>
+            <a class="dd-item" href="#/master-data/items"><span class="dot"></span>Items</a>
+            <a class="dd-item" href="#/master-data/warehouses"><span class="dot"></span>Warehouses</a>
+            <a class="dd-item" href="#/assets/inventory/stock-adjustments"><span class="dot"></span>Stock Adjustment</a>
+            <a class="dd-item" href="#/assets/inventory/stock-transfers"><span class="dot"></span>Stock Transfer</a>
+            <a class="dd-item" href="#/assets/inventory/goods-issues"><span class="dot"></span>Goods Issue</a>
+            <a class="dd-item" href="#/assets/inventory/physical-count"><span class="dot"></span>Physical Count</a>
+            <a class="dd-item" href="#/assets/inventory/inventory-movements"><span class="dot"></span>Inventory Movements</a>
+            <a class="dd-item" href="#/assets/inventory/inventory-valuation"><span class="dot"></span>Inventory Valuation</a>
+          </div>
+          <!-- Fixed Assets -->
+          <div class="flyout-panel" id="assets-panel-fa">
+            <div class="fp-head">🏗️ Fixed Assets</div>
+            <a class="dd-item" href="#/assets/fixed-assets"><span class="dot"></span>Fixed Asset Dashboard</a>
+            <a class="dd-item" href="#/assets/fixed-assets/register"><span class="dot"></span>Asset Register</a>
+            <a class="dd-item" href="#/assets/fixed-assets/acquisitions"><span class="dot"></span>Asset Acquisition</a>
+            <a class="dd-item" href="#/assets/fixed-assets/depreciation"><span class="dot"></span>Depreciation</a>
+            <a class="dd-item" href="#/assets/fixed-assets/disposals"><span class="dot"></span>Disposal</a>
+            <a class="dd-item" href="#/assets/fixed-assets/transfers"><span class="dot"></span>Transfer</a>
+            <a class="dd-item" href="#/assets/fixed-assets/impairments"><span class="dot"></span>Impairment</a>
+            <div class="dd-sub-head">Setup</div>
+            <a class="dd-item" href="#/assets/fixed-assets/categories"><span class="dot"></span>Asset Categories</a>
+            <a class="dd-item" href="#/assets/fixed-assets/depreciation-profiles"><span class="dot"></span>Depreciation Profiles</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- ACCOUNTING -->
-  <div class="nav-item">
-    <div class="nav-label">📒 Accounting <span class="arrow">▼</span></div>
+  <div class="nav-item" data-module="accounting">
+    <div class="nav-label" onclick="go('accounting')">📒 Accounting <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
       <div class="dd-col">
         <div class="dd-group-head">✏️ Journal Entries</div>
-        <a class="dd-item"><span class="dot"></span>Journal Entries</a>
-        <a class="dd-item"><span class="dot"></span>Recurring Journal Templates</a>
+        <a class="dd-item" href="#/accounting/journal-entries"><span class="dot"></span>Journal Entries</a>
+        <a class="dd-item" href="#/accounting/recurring-templates"><span class="dot"></span>Recurring Journal Templates</a>
         <div class="dd-group-head" style="margin-top:8px">📋 Schedules</div>
-        <a class="dd-item"><span class="dot"></span>Amortization Schedules</a>
-        <a class="dd-item"><span class="dot"></span>Revenue Recognition Schedules</a>
+        <a class="dd-item" href="#/accounting/amortization-schedules"><span class="dot"></span>Amortization Schedules</a>
+        <a class="dd-item" href="#/accounting/revenue-recognition-schedules"><span class="dot"></span>Revenue Recognition Schedules</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📖 Ledgers</div>
-        <a class="dd-item"><span class="dot"></span>General Ledger</a>
-        <a class="dd-item"><span class="dot"></span>Account Detail Ledger</a>
-        <a class="dd-item"><span class="dot"></span>Trial Balance</a>
+        <a class="dd-item" href="#/accounting/general-ledger"><span class="dot"></span>General Ledger</a>
+        <a class="dd-item" href="#/accounting/account-detail-ledger"><span class="dot"></span>Account Detail Ledger</a>
+        <a class="dd-item" href="#/accounting/trial-balance"><span class="dot"></span>Trial Balance</a>
         <div class="dd-group-head" style="margin-top:8px">📚 Subsidiary Ledgers</div>
-        <a class="dd-item"><span class="dot"></span>Customer Ledger (Accounting View)</a>
-        <a class="dd-item"><span class="dot"></span>Supplier Ledger (Accounting View)</a>
-        <a class="dd-item"><span class="dot"></span>Control Account Reconciliation</a>
+        <a class="dd-item" href="#/accounting/customer-ledger"><span class="dot"></span>Customer Ledger (Accounting View)</a>
+        <a class="dd-item" href="#/accounting/supplier-ledger"><span class="dot"></span>Supplier Ledger (Accounting View)</a>
+        <a class="dd-item" href="#/accounting/control-account-recon"><span class="dot"></span>Control Account Reconciliation</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📅 Period Management</div>
-        <a class="dd-item"><span class="dot"></span>Period Closing</a>
-        <a class="dd-item"><span class="dot"></span>Fiscal Locks</a>
-        <a class="dd-item"><span class="dot"></span>Posting Review</a>
-        <a class="dd-item"><span class="dot"></span>Reversal Review</a>
-        <a class="dd-item"><span class="dot"></span>Amortization Run</a>
-        <a class="dd-item"><span class="dot"></span>Revenue Recognition Run</a>
-        <a class="dd-item"><span class="dot"></span>Auto Reversal Run</a>
+        <a class="dd-item" href="#/accounting/period-closing"><span class="dot"></span>Period Closing</a>
+        <a class="dd-item" href="#/accounting/fiscal-locks"><span class="dot"></span>Fiscal Locks</a>
+        <a class="dd-item" href="#/accounting/posting-review"><span class="dot"></span>Posting Review</a>
+        <a class="dd-item" href="#/accounting/reversal-review"><span class="dot"></span>Reversal Review</a>
+        <a class="dd-item" href="#/accounting/amortization-run"><span class="dot"></span>Amortization Run</a>
+        <a class="dd-item" href="#/accounting/revenue-recognition-run"><span class="dot"></span>Revenue Recognition Run</a>
+        <a class="dd-item" href="#/accounting/auto-reversal-run"><span class="dot"></span>Auto Reversal Run</a>
       </div>
     </div>
   </div>
 
-  <!-- COMPLIANCE — right-aligned -->
-  <div class="nav-item" id="nav-compliance">
-    <div class="nav-label">📑 Compliance <span class="arrow">▼</span></div>
-    <div class="mega-dd" style="right:0">
-      <div class="dd-col">
-        <div class="dd-group-head">📊 Percentage Tax</div>
-        <a class="dd-item"><span class="dot"></span>Percentage Tax Dashboard</a>
-        <a class="dd-item"><span class="dot"></span>PT Working Papers</a>
-        <a class="dd-item"><span class="dot"></span>PT Quarterly Return 2551Q</a>
-        <a class="dd-item"><span class="dot"></span>PT Reconciliation</a>
-        <a class="dd-item"><span class="dot"></span>PT Summary Register</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🧾 VAT</div>
-        <a class="dd-item"><span class="dot"></span>VAT Dashboard</a>
-        <a class="dd-item"><span class="dot"></span>VAT Working Papers</a>
-        <a class="dd-item"><span class="dot"></span>Output VAT Summary</a>
-        <a class="dd-item"><span class="dot"></span>Input VAT Summary</a>
-        <a class="dd-item"><span class="dot"></span>VAT Reconciliation</a>
-        <a class="dd-item"><span class="dot"></span>VAT Return 2550M</a>
-        <a class="dd-item"><span class="dot"></span>VAT Return 2550Q</a>
-        <a class="dd-item"><span class="dot"></span>SLS</a>
-        <a class="dd-item"><span class="dot"></span>SLP</a>
-        <a class="dd-item"><span class="dot"></span>SLSP Export</a>
-        <a class="dd-item"><span class="dot"></span>RELIEF Export</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">✂️ Withholding Tax</div>
-        <a class="dd-item"><span class="dot"></span>Withholding Tax Dashboard</a>
-        <a class="dd-item"><span class="dot"></span>EWT Working Papers</a>
-        <a class="dd-item"><span class="dot"></span>EWT Payable Summary</a>
-        <a class="dd-item"><span class="dot"></span>EWT Receivable Summary</a>
-        <a class="dd-item"><span class="dot"></span>ATC Summary</a>
-        <a class="dd-item"><span class="dot"></span>1601EQ Working Papers</a>
-        <a class="dd-item"><span class="dot"></span>1601EQ Quarterly Return</a>
-        <a class="dd-item"><span class="dot"></span>QAP</a>
-        <a class="dd-item"><span class="dot"></span>SAWT</a>
-        <a class="dd-item"><span class="dot"></span>2307 Certificates Issued</a>
-        <a class="dd-item"><span class="dot"></span>2307 Certificates Received</a>
-        <a class="dd-item"><span class="dot"></span>2306 Certificates</a>
-        <!-- Phase 2 deferred: 1604E Annual Summary filing not available in Phase 1 -->
-        <a class="dd-item" style="opacity:0.5;pointer-events:none"><span class="dot"></span>1604E Annual Summary (Phase 2)</a>
-        <div class="dd-sub-head">Final Withholding Tax</div>
-        <a class="dd-item"><span class="dot"></span>FWT Working Papers</a>
-        <a class="dd-item"><span class="dot"></span>1601FQ Working Papers</a>
-        <a class="dd-item"><span class="dot"></span>1601FQ Quarterly Return</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🏛️ Income Tax</div>
-        <a class="dd-item"><span class="dot"></span>Income Tax Dashboard</a>
-        <a class="dd-item"><span class="dot"></span>Taxable Income Computation</a>
-        <a class="dd-item"><span class="dot"></span>Book-to-Tax Reconciliation</a>
-        <a class="dd-item"><span class="dot"></span>OSD Computation</a>
-        <a class="dd-item"><span class="dot"></span>NOLCO Schedule</a>
-        <a class="dd-item"><span class="dot"></span>Tax Credits Schedule</a>
-        <div class="dd-sub-head">Individual (Sole Proprietor)</div>
-        <a class="dd-item"><span class="dot"></span>1701Q Quarterly ITR</a>
-        <a class="dd-item"><span class="dot"></span>1701 Annual ITR</a>
-        <div class="dd-sub-head">Corporate / OPC / Partnership</div>
-        <a class="dd-item"><span class="dot"></span>1702Q Quarterly ITR</a>
-        <a class="dd-item"><span class="dot"></span>1702RT Annual ITR</a>
-        <a class="dd-item"><span class="dot"></span>MCIT Computation</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">📚 BIR Books of Accounts</div>
-        <a class="dd-item"><span class="dot"></span>Books Dashboard</a>
-        <a class="dd-item"><span class="dot"></span>General Journal</a>
-        <a class="dd-item"><span class="dot"></span>General Ledger Book</a>
-        <a class="dd-item"><span class="dot"></span>Cash Receipts Book</a>
-        <a class="dd-item"><span class="dot"></span>Cash Disbursements Book</a>
-        <a class="dd-item"><span class="dot"></span>Sales Journal</a>
-        <a class="dd-item"><span class="dot"></span>Cash Sales Journal</a>
-        <a class="dd-item"><span class="dot"></span>Purchase Journal</a>
-        <a class="dd-item"><span class="dot"></span>Cash Purchases Journal</a>
-        <a class="dd-item"><span class="dot"></span>AR Subsidiary Ledger</a>
-        <a class="dd-item"><span class="dot"></span>AP Subsidiary Ledger</a>
-        <a class="dd-item"><span class="dot"></span>Inventory Subsidiary Ledger</a>
-        <a class="dd-item"><span class="dot"></span>Fixed Asset Register</a>
-      </div>
-      <div class="dd-col">
-        <div class="dd-group-head">🔍 Audit &amp; CAS</div>
-        <a class="dd-item"><span class="dot"></span>CAS Dashboard</a>
-        <a class="dd-item"><span class="dot"></span>Transaction Audit Log</a>
-        <a class="dd-item"><span class="dot"></span>Master Data Change Log</a>
-        <a class="dd-item"><span class="dot"></span>System Parameter Logs</a>
-        <a class="dd-item"><span class="dot"></span>User Activity Log</a>
-        <a class="dd-item"><span class="dot"></span>Attachment Register</a>
-        <a class="dd-item"><span class="dot"></span>Document Void Register</a>
-        <a class="dd-item"><span class="dot"></span>ATP Usage Log</a>
-        <a class="dd-item"><span class="dot"></span>DAT File Generation</a>
-        <a class="dd-item"><span class="dot"></span>CAS Audit Report</a>
-        <a class="dd-item"><span class="dot"></span>Export History</a>
+  <!-- COMPLIANCE (2-level flyout) -->
+  <div class="nav-item" data-module="compliance">
+    <div class="nav-label" onclick="go('compliance')">📑 Compliance <span class="arrow">▼</span></div>
+    <div class="mega-dd" style="right:0; left:auto">
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="compliance-cats">
+          <div class="flyout-cat active" data-panel="comp-panel-pt" onmouseenter="activateCat(this,'compliance')">
+            <span class="cat-icon">📊</span> Percentage Tax <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="comp-panel-vat" onmouseenter="activateCat(this,'compliance')">
+            <span class="cat-icon">🧾</span> VAT <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="comp-panel-wt" onmouseenter="activateCat(this,'compliance')">
+            <span class="cat-icon">✂️</span> Withholding Tax <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="comp-panel-itr" onmouseenter="activateCat(this,'compliance')">
+            <span class="cat-icon">🏛️</span> Income Tax <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="comp-panel-books" onmouseenter="activateCat(this,'compliance')">
+            <span class="cat-icon">📚</span> BIR Books <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="comp-panel-cas" onmouseenter="activateCat(this,'compliance')">
+            <span class="cat-icon">🔍</span> Audit &amp; CAS <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <!-- Percentage Tax -->
+          <div class="flyout-panel active" id="comp-panel-pt">
+            <div class="fp-head">📊 Percentage Tax</div>
+            <a class="dd-item" href="#/compliance/percentage-tax/dashboard"><span class="dot"></span>PT Dashboard</a>
+            <a class="dd-item" href="#/compliance/percentage-tax/working-papers"><span class="dot"></span>PT Working Papers</a>
+            <a class="dd-item" href="#/compliance/percentage-tax/2551q"><span class="dot"></span>PT Quarterly Return 2551Q</a>
+            <a class="dd-item" href="#/compliance/percentage-tax/reconciliation"><span class="dot"></span>PT Reconciliation</a>
+            <a class="dd-item" href="#/compliance/percentage-tax/summary-register"><span class="dot"></span>PT Summary Register</a>
+          </div>
+          <!-- VAT -->
+          <div class="flyout-panel" id="comp-panel-vat">
+            <div class="fp-head">🧾 VAT</div>
+            <a class="dd-item" href="#/compliance/vat/dashboard"><span class="dot"></span>VAT Dashboard</a>
+            <a class="dd-item" href="#/compliance/vat/working-papers"><span class="dot"></span>VAT Working Papers</a>
+            <a class="dd-item" href="#/compliance/vat/output-summary"><span class="dot"></span>Output VAT Summary</a>
+            <a class="dd-item" href="#/compliance/vat/input-summary"><span class="dot"></span>Input VAT Summary</a>
+            <a class="dd-item" href="#/compliance/vat/reconciliation"><span class="dot"></span>VAT Reconciliation</a>
+            <a class="dd-item" href="#/compliance/vat/2550m"><span class="dot"></span>VAT Return 2550M</a>
+            <a class="dd-item" href="#/compliance/vat/2550q"><span class="dot"></span>VAT Return 2550Q</a>
+            <a class="dd-item" href="#/compliance/vat/sls"><span class="dot"></span>SLS</a>
+            <a class="dd-item" href="#/compliance/vat/slp"><span class="dot"></span>SLP</a>
+            <a class="dd-item" href="#/compliance/vat/slsp-export"><span class="dot"></span>SLSP Export</a>
+            <a class="dd-item" href="#/compliance/vat/relief-export"><span class="dot"></span>RELIEF Export</a>
+          </div>
+          <!-- Withholding Tax -->
+          <div class="flyout-panel" id="comp-panel-wt">
+            <div class="fp-head">✂️ Withholding Tax</div>
+            <a class="dd-item" href="#/compliance/withholding-tax/dashboard"><span class="dot"></span>WT Dashboard</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/ewt-working-papers"><span class="dot"></span>EWT Working Papers</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/ewt-payable"><span class="dot"></span>EWT Payable Summary</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/ewt-receivable"><span class="dot"></span>EWT Receivable Summary</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/atc-summary"><span class="dot"></span>ATC Summary</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/1601eq-working"><span class="dot"></span>1601EQ Working Papers</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/1601eq"><span class="dot"></span>1601EQ Quarterly Return</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/qap"><span class="dot"></span>QAP</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/sawt"><span class="dot"></span>SAWT</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/2307-issued"><span class="dot"></span>2307 Certificates Issued</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/2307-received"><span class="dot"></span>2307 Certificates Received</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/2306"><span class="dot"></span>2306 Certificates</a>
+            <div class="dd-sub-head">Final Withholding Tax</div>
+            <a class="dd-item" href="#/compliance/withholding-tax/fwt-working-papers"><span class="dot"></span>FWT Working Papers</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/1601fq-working"><span class="dot"></span>1601FQ Working Papers</a>
+            <a class="dd-item" href="#/compliance/withholding-tax/1601fq"><span class="dot"></span>1601FQ Quarterly Return</a>
+          </div>
+          <!-- Income Tax -->
+          <div class="flyout-panel" id="comp-panel-itr">
+            <div class="fp-head">🏛️ Income Tax</div>
+            <a class="dd-item" href="#/compliance/income-tax/dashboard"><span class="dot"></span>Income Tax Dashboard</a>
+            <a class="dd-item" href="#/compliance/income-tax/taxable-income"><span class="dot"></span>Taxable Income Computation</a>
+            <a class="dd-item" href="#/compliance/income-tax/book-tax-recon"><span class="dot"></span>Book-to-Tax Reconciliation</a>
+            <a class="dd-item" href="#/compliance/income-tax/osd"><span class="dot"></span>OSD Computation</a>
+            <a class="dd-item" href="#/compliance/income-tax/nolco"><span class="dot"></span>NOLCO Schedule</a>
+            <a class="dd-item" href="#/compliance/income-tax/tax-credits"><span class="dot"></span>Tax Credits Schedule</a>
+            <div class="dd-sub-head">Individual (Sole Proprietor)</div>
+            <a class="dd-item" href="#/compliance/income-tax/1701q"><span class="dot"></span>1701Q Quarterly ITR</a>
+            <a class="dd-item" href="#/compliance/income-tax/1701"><span class="dot"></span>1701 Annual ITR</a>
+            <div class="dd-sub-head">Corporate / OPC / Partnership</div>
+            <a class="dd-item" href="#/compliance/income-tax/1702q"><span class="dot"></span>1702Q Quarterly ITR</a>
+            <a class="dd-item" href="#/compliance/income-tax/1702rt"><span class="dot"></span>1702RT Annual ITR</a>
+            <a class="dd-item" href="#/compliance/income-tax/mcit"><span class="dot"></span>MCIT Computation</a>
+          </div>
+          <!-- BIR Books -->
+          <div class="flyout-panel" id="comp-panel-books">
+            <div class="fp-head">📚 BIR Books of Accounts</div>
+            <a class="dd-item" href="#/compliance/books/dashboard"><span class="dot"></span>Books Dashboard</a>
+            <a class="dd-item" href="#/compliance/books/general-journal"><span class="dot"></span>General Journal</a>
+            <a class="dd-item" href="#/compliance/books/general-ledger"><span class="dot"></span>General Ledger Book</a>
+            <a class="dd-item" href="#/compliance/books/cash-receipts"><span class="dot"></span>Cash Receipts Book</a>
+            <a class="dd-item" href="#/compliance/books/cash-disbursements"><span class="dot"></span>Cash Disbursements Book</a>
+            <a class="dd-item" href="#/compliance/books/sales-journal"><span class="dot"></span>Sales Journal</a>
+            <a class="dd-item" href="#/compliance/books/cash-sales-journal"><span class="dot"></span>Cash Sales Journal</a>
+            <a class="dd-item" href="#/compliance/books/purchase-journal"><span class="dot"></span>Purchase Journal</a>
+            <a class="dd-item" href="#/compliance/books/cash-purchases-journal"><span class="dot"></span>Cash Purchases Journal</a>
+            <a class="dd-item" href="#/compliance/books/ar-subsidiary"><span class="dot"></span>AR Subsidiary Ledger</a>
+            <a class="dd-item" href="#/compliance/books/ap-subsidiary"><span class="dot"></span>AP Subsidiary Ledger</a>
+            <a class="dd-item" href="#/compliance/books/inventory-subsidiary"><span class="dot"></span>Inventory Subsidiary Ledger</a>
+            <a class="dd-item" href="#/compliance/books/fixed-asset-register"><span class="dot"></span>Fixed Asset Register</a>
+          </div>
+          <!-- Audit & CAS -->
+          <div class="flyout-panel" id="comp-panel-cas">
+            <div class="fp-head">🔍 Audit &amp; CAS</div>
+            <a class="dd-item" href="#/compliance/cas/dashboard"><span class="dot"></span>CAS Dashboard</a>
+            <a class="dd-item" href="#/compliance/cas/transaction-audit"><span class="dot"></span>Transaction Audit Log</a>
+            <a class="dd-item" href="#/compliance/cas/master-data-log"><span class="dot"></span>Master Data Change Log</a>
+            <a class="dd-item" href="#/compliance/cas/system-param-logs"><span class="dot"></span>System Parameter Logs</a>
+            <a class="dd-item" href="#/compliance/cas/user-activity"><span class="dot"></span>User Activity Log</a>
+            <a class="dd-item" href="#/compliance/cas/attachment-register"><span class="dot"></span>Attachment Register</a>
+            <a class="dd-item" href="#/compliance/cas/void-register"><span class="dot"></span>Document Void Register</a>
+            <a class="dd-item" href="#/compliance/cas/atp-usage-log"><span class="dot"></span>ATP Usage Log</a>
+            <a class="dd-item" href="#/compliance/cas/dat-generation"><span class="dot"></span>DAT File Generation</a>
+            <a class="dd-item" href="#/compliance/cas/cas-audit-report"><span class="dot"></span>CAS Audit Report</a>
+            <a class="dd-item" href="#/compliance/cas/export-history"><span class="dot"></span>Export History</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- REPORTS — right-aligned -->
-  <div class="nav-item" id="nav-reports">
-    <div class="nav-label">📊 Reports <span class="arrow">▼</span></div>
-    <div class="mega-dd" style="right:0">
+  <!-- REPORTS -->
+  <div class="nav-item" data-module="reports">
+    <div class="nav-label" onclick="go('reports')">📊 Reports <span class="arrow">▼</span></div>
+    <div class="mega-dd" style="right:0; left:auto">
       <div class="dd-col">
         <div class="dd-group-head">📈 Financial Statements</div>
-        <a class="dd-item"><span class="dot"></span>Balance Sheet</a>
-        <a class="dd-item"><span class="dot"></span>Income Statement</a>
-        <a class="dd-item"><span class="dot"></span>Statement of Cash Flows</a>
-        <a class="dd-item"><span class="dot"></span>Statement of Changes in Equity</a>
-        <a class="dd-item"><span class="dot"></span>Comparative Financial Statements</a>
+        <a class="dd-item" href="#/reports/balance-sheet"><span class="dot"></span>Balance Sheet</a>
+        <a class="dd-item" href="#/reports/income-statement"><span class="dot"></span>Income Statement</a>
+        <a class="dd-item" href="#/reports/cash-flows"><span class="dot"></span>Statement of Cash Flows</a>
+        <a class="dd-item" href="#/reports/changes-in-equity"><span class="dot"></span>Statement of Changes in Equity</a>
+        <a class="dd-item" href="#/reports/comparative-fs"><span class="dot"></span>Comparative Financial Statements</a>
         <div class="dd-group-head" style="margin-top:8px">⚖️ Trial Balance</div>
-        <a class="dd-item"><span class="dot"></span>Unadjusted Trial Balance</a>
-        <a class="dd-item"><span class="dot"></span>Adjusted Trial Balance</a>
-        <a class="dd-item"><span class="dot"></span>Post-Closing Trial Balance</a>
+        <a class="dd-item" href="#/reports/unadjusted-tb"><span class="dot"></span>Unadjusted Trial Balance</a>
+        <a class="dd-item" href="#/reports/adjusted-tb"><span class="dot"></span>Adjusted Trial Balance</a>
+        <a class="dd-item" href="#/reports/post-closing-tb"><span class="dot"></span>Post-Closing Trial Balance</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🧾 Tax Reports</div>
-        <a class="dd-item"><span class="dot"></span>Output VAT Summary</a>
-        <a class="dd-item"><span class="dot"></span>Input VAT Summary</a>
-        <a class="dd-item"><span class="dot"></span>Percentage Tax Summary</a>
-        <a class="dd-item"><span class="dot"></span>EWT Summary</a>
-        <a class="dd-item"><span class="dot"></span>FWT Summary</a>
-        <a class="dd-item"><span class="dot"></span>2307 Issued Listing</a>
-        <a class="dd-item"><span class="dot"></span>2307 Received Listing</a>
+        <a class="dd-item" href="#/reports/output-vat"><span class="dot"></span>Output VAT Summary</a>
+        <a class="dd-item" href="#/reports/input-vat"><span class="dot"></span>Input VAT Summary</a>
+        <a class="dd-item" href="#/reports/percentage-tax-summary"><span class="dot"></span>Percentage Tax Summary</a>
+        <a class="dd-item" href="#/reports/ewt-summary"><span class="dot"></span>EWT Summary</a>
+        <a class="dd-item" href="#/reports/fwt-summary"><span class="dot"></span>FWT Summary</a>
+        <a class="dd-item" href="#/reports/2307-issued"><span class="dot"></span>2307 Issued Listing</a>
+        <a class="dd-item" href="#/reports/2307-received"><span class="dot"></span>2307 Received Listing</a>
         <div class="dd-group-head" style="margin-top:8px">📅 Aging Reports</div>
-        <a class="dd-item"><span class="dot"></span>AR Aging</a>
-        <a class="dd-item"><span class="dot"></span>AP Aging</a>
+        <a class="dd-item" href="#/reports/ar-aging"><span class="dot"></span>AR Aging</a>
+        <a class="dd-item" href="#/reports/ap-aging"><span class="dot"></span>AP Aging</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🏦 Bank Reports</div>
-        <a class="dd-item"><span class="dot"></span>Bank Position Report</a>
-        <a class="dd-item"><span class="dot"></span>Bank Reconciliation Summary</a>
-        <a class="dd-item"><span class="dot"></span>Outstanding Checks Report</a>
+        <a class="dd-item" href="#/reports/bank-position"><span class="dot"></span>Bank Position Report</a>
+        <a class="dd-item" href="#/reports/bank-recon-summary"><span class="dot"></span>Bank Reconciliation Summary</a>
+        <a class="dd-item" href="#/reports/outstanding-checks"><span class="dot"></span>Outstanding Checks Report</a>
         <div class="dd-group-head" style="margin-top:8px">📦 Inventory Reports</div>
-        <a class="dd-item"><span class="dot"></span>Inventory Valuation</a>
-        <a class="dd-item"><span class="dot"></span>Stock Movement</a>
-        <a class="dd-item"><span class="dot"></span>Inventory Ledger</a>
-        <a class="dd-item"><span class="dot"></span>Slow Moving Inventory</a>
+        <a class="dd-item" href="#/reports/inventory-valuation"><span class="dot"></span>Inventory Valuation</a>
+        <a class="dd-item" href="#/reports/stock-movement"><span class="dot"></span>Stock Movement</a>
+        <a class="dd-item" href="#/reports/inventory-ledger"><span class="dot"></span>Inventory Ledger</a>
+        <a class="dd-item" href="#/reports/slow-moving"><span class="dot"></span>Slow Moving Inventory</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">🏗️ Fixed Asset Reports</div>
-        <a class="dd-item"><span class="dot"></span>Fixed Asset Register</a>
-        <a class="dd-item"><span class="dot"></span>Depreciation Schedule</a>
-        <a class="dd-item"><span class="dot"></span>Book vs Tax Depreciation</a>
-        <a class="dd-item"><span class="dot"></span>Asset Disposal Report</a>
+        <a class="dd-item" href="#/reports/fixed-asset-register"><span class="dot"></span>Fixed Asset Register</a>
+        <a class="dd-item" href="#/reports/depreciation-schedule"><span class="dot"></span>Depreciation Schedule</a>
+        <a class="dd-item" href="#/reports/book-vs-tax-depr"><span class="dot"></span>Book vs Tax Depreciation</a>
+        <a class="dd-item" href="#/reports/asset-disposal"><span class="dot"></span>Asset Disposal Report</a>
         <div class="dd-group-head" style="margin-top:8px">📉 Management Reports</div>
-        <a class="dd-item"><span class="dot"></span>Branch P&amp;L</a>
-        <a class="dd-item"><span class="dot"></span>Department Report</a>
-        <a class="dd-item"><span class="dot"></span>Cost Center Report</a>
-        <a class="dd-item"><span class="dot"></span>Gross Margin Analysis</a>
-        <a class="dd-item"><span class="dot"></span>Budget vs Actual (Phase 2)</a>
+        <a class="dd-item" href="#/reports/branch-pl"><span class="dot"></span>Branch P&amp;L</a>
+        <a class="dd-item" href="#/reports/department-report"><span class="dot"></span>Department Report</a>
+        <a class="dd-item" href="#/reports/cost-center-report"><span class="dot"></span>Cost Center Report</a>
+        <a class="dd-item" href="#/reports/gross-margin"><span class="dot"></span>Gross Margin Analysis</a>
       </div>
       <div class="dd-col">
         <div class="dd-group-head">📋 Transaction Registers</div>
-        <a class="dd-item"><span class="dot"></span>Journal Register</a>
-        <a class="dd-item"><span class="dot"></span>Sales Invoice Register</a>
-        <a class="dd-item"><span class="dot"></span>Receipt Register</a>
-        <a class="dd-item"><span class="dot"></span>Purchase Register</a>
-        <a class="dd-item"><span class="dot"></span>Payment Register</a>
-        <a class="dd-item"><span class="dot"></span>Credit Memo Register</a>
-        <a class="dd-item"><span class="dot"></span>Debit Memo Register</a>
-        <a class="dd-item"><span class="dot"></span>Check Register</a>
+        <a class="dd-item" href="#/reports/journal-register"><span class="dot"></span>Journal Register</a>
+        <a class="dd-item" href="#/reports/sales-invoice-register"><span class="dot"></span>Sales Invoice Register</a>
+        <a class="dd-item" href="#/reports/receipt-register"><span class="dot"></span>Receipt Register</a>
+        <a class="dd-item" href="#/reports/purchase-register"><span class="dot"></span>Purchase Register</a>
+        <a class="dd-item" href="#/reports/payment-register"><span class="dot"></span>Payment Register</a>
+        <a class="dd-item" href="#/reports/credit-memo-register"><span class="dot"></span>Credit Memo Register</a>
+        <a class="dd-item" href="#/reports/debit-memo-register"><span class="dot"></span>Debit Memo Register</a>
+        <a class="dd-item" href="#/reports/check-register"><span class="dot"></span>Check Register</a>
         <div class="dd-group-head" style="margin-top:8px">🔎 Audit Reports</div>
-        <a class="dd-item"><span class="dot"></span>Period Close Checklist</a>
-        <a class="dd-item"><span class="dot"></span>Audit Support Package</a>
-        <a class="dd-item"><span class="dot"></span>User Activity Report</a>
+        <a class="dd-item" href="#/reports/period-close-checklist"><span class="dot"></span>Period Close Checklist</a>
+        <a class="dd-item" href="#/reports/audit-support"><span class="dot"></span>Audit Support Package</a>
+        <a class="dd-item" href="#/reports/user-activity"><span class="dot"></span>User Activity Report</a>
       </div>
     </div>
   </div>
 
 </nav>
 
-<!-- CONTENT -->
-<div id="content">
-  <div class="breadcrumb">Home › <b>Dashboard</b></div>
-  <div class="page-title">PXL ERP — Dashboard</div>
+<!-- ── CONTENT ─────────────────────────────── -->
+<div id="content"></div>
 
-  <div class="dashboard-grid">
-    <div class="module-card"><div class="card-icon">⚙️</div><div class="card-title">Setup</div><div class="card-desc">Company, system controls, accounting &amp; tax setup</div></div>
-    <div class="module-card"><div class="card-icon">🗂️</div><div class="card-title">Master Data</div><div class="card-desc">Customers, suppliers, items &amp; inventory master</div></div>
-    <div class="module-card"><div class="card-icon">🛒</div><div class="card-title">Sales</div><div class="card-desc">Invoices, receipts, orders &amp; AR management</div></div>
-    <div class="module-card"><div class="card-icon">🏪</div><div class="card-title">Purchasing</div><div class="card-desc">Purchase orders, vendor bills &amp; AP management</div></div>
-    <div class="module-card"><div class="card-icon">💵</div><div class="card-title">Petty Cash</div><div class="card-desc">Petty cash funds, vouchers &amp; replenishment</div></div>
-    <div class="module-card"><div class="card-icon">🏦</div><div class="card-title">Bank</div><div class="card-desc">Transfers, reconciliation &amp; check management</div></div>
-    <div class="module-card"><div class="card-icon">📦</div><div class="card-title">Inventory</div><div class="card-desc">Stock adjustments, transfers &amp; physical count</div></div>
-    <div class="module-card"><div class="card-icon">🏗️</div><div class="card-title">Fixed Assets</div><div class="card-desc">Asset register, depreciation &amp; disposals</div></div>
-    <div class="module-card"><div class="card-icon">📒</div><div class="card-title">Accounting</div><div class="card-desc">Journal entries, ledgers &amp; period management</div></div>
-    <div class="module-card"><div class="card-icon">📑</div><div class="card-title">Compliance</div><div class="card-desc">VAT, percentage tax, withholding tax, income tax, BIR books &amp; CAS audit</div></div>
-    <div class="module-card"><div class="card-icon">📊</div><div class="card-title">Reports</div><div class="card-desc">Financial statements, tax &amp; management reports</div></div>
-  </div>
-</div>
-
-<!-- STATUS BAR -->
+<!-- ── STATUS BAR ────────────────────────── -->
 <div class="status-bar">
   <span>Company: <b>PXL Demo Corp.</b></span>
   <span>Period: <b>June 2026</b></span>
@@ -703,60 +743,525 @@
 </div>
 
 <script>
+// ── PAGE DEFINITIONS ─────────────────────────────────────────────────────────
 
-  function positionDropdown(navItem) {
-    const dd = navItem.querySelector('.mega-dd');
-    if (!dd) return;
-    dd.style.left = '';
-    dd.style.right = '';
-    const rect = navItem.getBoundingClientRect();
+const MODULE_PAGES = {
+  '': {
+    title: 'Dashboard',
+    icon: '🏠',
+    breadcrumb: [],
+    desc: 'Welcome to PXL ERP. Navigate using the top menu or select a module below.',
+    type: 'dashboard'
+  },
+  'setup': {
+    title: 'Setup',
+    icon: '⚙️',
+    breadcrumb: ['Setup'],
+    desc: 'Configure your company, branches, system controls, accounting periods, and BIR tax setup.',
+    type: 'landing',
+    cards: [
+      { icon:'🏢', title:'Organization', desc:'Company, branches, departments, cost centers', href:'#/setup/company-setup' },
+      { icon:'🔧', title:'System Controls', desc:'Number series, feature settings, approval matrix', href:'#/setup/number-series/sales' },
+      { icon:'📋', title:'Document & Validation', desc:'Document controls and validation rules', href:'#/setup/doc-controls/status' },
+      { icon:'📊', title:'Accounting Setup', desc:'Fiscal years, COA, currencies, opening balances', href:'#/setup/fiscal-years' },
+      { icon:'🧾', title:'Tax Setup', desc:'VAT, EWT, FWT, ATC codes and BIR forms', href:'#/setup/vat-codes' },
+    ]
+  },
+  'master-data': {
+    title: 'Master Data',
+    icon: '🗂️',
+    breadcrumb: ['Master Data'],
+    desc: 'Manage customers, suppliers, items, services, and inventory master data.',
+    type: 'landing',
+    cards: [
+      { icon:'👥', title:'Customers', desc:'Customer profiles, tax and credit profiles', href:'#/master-data/customers' },
+      { icon:'🏭', title:'Suppliers', desc:'Supplier profiles, tax and bank details', href:'#/master-data/suppliers' },
+      { icon:'📦', title:'Items & Services', desc:'Product catalog, service definitions, UOM', href:'#/master-data/items' },
+      { icon:'🏗️', title:'Warehouses', desc:'Warehouse setup and stock settings', href:'#/master-data/warehouses' },
+      { icon:'🤝', title:'Payment Terms', desc:'Standard payment term definitions', href:'#/master-data/payment-terms' },
+    ]
+  },
+  'sales': {
+    title: 'Sales',
+    icon: '🛒',
+    breadcrumb: ['Sales'],
+    desc: 'Manage the complete sales cycle from quotations to collections and AR reporting.',
+    type: 'landing',
+    cards: [
+      { icon:'📄', title:'Sales Invoices', desc:'Create and manage official sales invoices', href:'#/sales/invoices' },
+      { icon:'💵', title:'Cash Sales', desc:'Immediate cash collection transactions', href:'#/sales/cash-sales' },
+      { icon:'🧾', title:'Receipts', desc:'AR collection receipts and application', href:'#/sales/receipts' },
+      { icon:'🔄', title:'Sales Cycle', desc:'Quotations, orders and delivery receipts', href:'#/sales/quotations' },
+      { icon:'💰', title:'AR Aging', desc:'Outstanding receivables aging report', href:'#/sales/ar-aging' },
+      { icon:'📋', title:'SLS', desc:'Summary List of Sales for VAT compliance', href:'#/sales/sls' },
+    ]
+  },
+  'purchasing': {
+    title: 'Purchasing',
+    icon: '🏪',
+    breadcrumb: ['Purchasing'],
+    desc: 'Manage the complete purchasing cycle from orders to payments and AP reporting.',
+    type: 'landing',
+    cards: [
+      { icon:'📄', title:'Vendor Bills', desc:'Supplier invoices and bill management', href:'#/purchasing/vendor-bills' },
+      { icon:'🏗️', title:'Purchase Orders', desc:'Purchase requisitions and PO management', href:'#/purchasing/purchase-orders' },
+      { icon:'📦', title:'Receiving Reports', desc:'Goods received and RR management', href:'#/purchasing/receiving-reports' },
+      { icon:'💳', title:'Payment Vouchers', desc:'Supplier payment processing', href:'#/purchasing/payment-vouchers' },
+      { icon:'💰', title:'AP Aging', desc:'Outstanding payables aging report', href:'#/purchasing/ap-aging' },
+      { icon:'📋', title:'SLP', desc:'Summary List of Purchases for VAT compliance', href:'#/purchasing/slp' },
+    ]
+  },
+  'assets': {
+    title: 'Assets',
+    icon: '💼',
+    breadcrumb: ['Assets'],
+    desc: 'Manage cash, inventory, and fixed assets across your organization.',
+    type: 'landing',
+    cards: [
+      { icon:'💵', title:'Cash Management', desc:'Petty cash, bank transfers and reconciliation', href:'#/assets/cash-management/petty-cash-vouchers' },
+      { icon:'📦', title:'Inventory', desc:'Stock adjustments, transfers and physical count', href:'#/assets/inventory' },
+      { icon:'🏗️', title:'Fixed Assets', desc:'Asset register, depreciation and disposals', href:'#/assets/fixed-assets' },
+    ]
+  },
+  'assets/inventory': {
+    title: 'Inventory',
+    icon: '📦',
+    breadcrumb: ['Assets', 'Inventory'],
+    desc: 'Manage inventory transactions, track stock movements and monitor inventory valuation.',
+    type: 'landing',
+    cards: [
+      { icon:'📊', title:'Stock Adjustments', desc:'Quantity adjustments and corrections', href:'#/assets/inventory/stock-adjustments' },
+      { icon:'🔄', title:'Stock Transfers', desc:'Inter-warehouse stock movements', href:'#/assets/inventory/stock-transfers' },
+      { icon:'📤', title:'Goods Issues', desc:'Issue goods for production or internal use', href:'#/assets/inventory/goods-issues' },
+      { icon:'📋', title:'Physical Count', desc:'Physical inventory count and reconciliation', href:'#/assets/inventory/physical-count' },
+      { icon:'📈', title:'Inventory Movements', desc:'Full movement log and audit trail', href:'#/assets/inventory/inventory-movements' },
+      { icon:'💰', title:'Inventory Valuation', desc:'FIFO cost layers and valuation reports', href:'#/assets/inventory/inventory-valuation' },
+    ]
+  },
+  'assets/fixed-assets': {
+    title: 'Fixed Assets',
+    icon: '🏗️',
+    breadcrumb: ['Assets', 'Fixed Assets'],
+    desc: 'Manage the complete fixed asset lifecycle from acquisition to disposal.',
+    type: 'landing',
+    cards: [
+      { icon:'📋', title:'Asset Register', desc:'Complete register of all fixed assets', href:'#/assets/fixed-assets/register' },
+      { icon:'➕', title:'Asset Acquisition', desc:'Record new asset acquisitions', href:'#/assets/fixed-assets/acquisitions' },
+      { icon:'📉', title:'Depreciation', desc:'Run depreciation and review schedules', href:'#/assets/fixed-assets/depreciation' },
+      { icon:'🗑️', title:'Disposal', desc:'Asset retirement and disposal recording', href:'#/assets/fixed-assets/disposals' },
+      { icon:'🔄', title:'Transfer', desc:'Asset transfers between branches', href:'#/assets/fixed-assets/transfers' },
+      { icon:'📊', title:'Impairment', desc:'Asset impairment assessment and recording', href:'#/assets/fixed-assets/impairments' },
+    ]
+  },
+  'assets/cash-management': {
+    title: 'Cash Management',
+    icon: '💵',
+    breadcrumb: ['Assets', 'Cash Management'],
+    desc: 'Manage petty cash funds, bank transactions and bank reconciliation.',
+    type: 'landing',
+    cards: [
+      { icon:'💵', title:'Petty Cash Vouchers', desc:'Record petty cash disbursements', href:'#/assets/cash-management/petty-cash-vouchers' },
+      { icon:'🔄', title:'Replenishment', desc:'Petty cash fund replenishment requests', href:'#/assets/cash-management/petty-cash-replenishment' },
+      { icon:'💸', title:'Fund Transfers', desc:'Bank-to-bank fund transfers', href:'#/assets/cash-management/fund-transfers' },
+      { icon:'⚖️', title:'Bank Reconciliation', desc:'Monthly bank statement reconciliation', href:'#/assets/cash-management/bank-reconciliation' },
+      { icon:'✔️', title:'Outstanding Checks', desc:'Issued checks pending clearance', href:'#/assets/cash-management/outstanding-checks' },
+      { icon:'🏦', title:'Deposits in Transit', desc:'Deposits pending bank clearing', href:'#/assets/cash-management/deposits-in-transit' },
+    ]
+  },
+  'accounting': {
+    title: 'Accounting',
+    icon: '📒',
+    breadcrumb: ['Accounting'],
+    desc: 'General ledger, journal entries, subsidiary ledgers and period-end management.',
+    type: 'landing',
+    cards: [
+      { icon:'✏️', title:'Journal Entries', desc:'Manual and recurring journal entries', href:'#/accounting/journal-entries' },
+      { icon:'📖', title:'General Ledger', desc:'Account-level transaction ledger', href:'#/accounting/general-ledger' },
+      { icon:'⚖️', title:'Trial Balance', desc:'Unadjusted and adjusted trial balance', href:'#/accounting/trial-balance' },
+      { icon:'📅', title:'Period Closing', desc:'Month-end and year-end period close', href:'#/accounting/period-closing' },
+      { icon:'📋', title:'Amortization', desc:'Prepaid and deferred amortization schedules', href:'#/accounting/amortization-schedules' },
+      { icon:'📊', title:'Revenue Recognition', desc:'Deferred revenue recognition schedules', href:'#/accounting/revenue-recognition-schedules' },
+    ]
+  },
+  'compliance': {
+    title: 'Compliance',
+    icon: '📑',
+    breadcrumb: ['Compliance'],
+    desc: 'BIR tax compliance covering VAT, withholding tax, income tax, books of accounts and CAS audit.',
+    type: 'landing',
+    cards: [
+      { icon:'📊', title:'Percentage Tax', desc:'2551Q quarterly returns and working papers', href:'#/compliance/percentage-tax/dashboard' },
+      { icon:'🧾', title:'VAT', desc:'2550M/Q returns, SLSP and RELIEF exports', href:'#/compliance/vat/dashboard' },
+      { icon:'✂️', title:'Withholding Tax', desc:'EWT/FWT returns, 2307/2306 certificates', href:'#/compliance/withholding-tax/dashboard' },
+      { icon:'🏛️', title:'Income Tax', desc:'ITR computation, NOLCO and tax credits', href:'#/compliance/income-tax/dashboard' },
+      { icon:'📚', title:'BIR Books', desc:'Computerized books of accounts', href:'#/compliance/books/dashboard' },
+      { icon:'🔍', title:'Audit & CAS', desc:'CAS audit trail and DAT file generation', href:'#/compliance/cas/dashboard' },
+    ]
+  },
+  'reports': {
+    title: 'Reports',
+    icon: '📊',
+    breadcrumb: ['Reports'],
+    desc: 'Financial statements, tax reports, aging, inventory, fixed asset and management reports.',
+    type: 'landing',
+    cards: [
+      { icon:'📈', title:'Financial Statements', desc:'Balance sheet, income statement, cash flows', href:'#/reports/balance-sheet' },
+      { icon:'⚖️', title:'Trial Balance', desc:'Unadjusted, adjusted and post-closing TB', href:'#/reports/unadjusted-tb' },
+      { icon:'🧾', title:'Tax Reports', desc:'VAT, EWT, FWT and PT summaries', href:'#/reports/output-vat' },
+      { icon:'📅', title:'Aging Reports', desc:'AR and AP aging analysis', href:'#/reports/ar-aging' },
+      { icon:'📦', title:'Inventory Reports', desc:'Valuation, movement and ledger reports', href:'#/reports/inventory-valuation' },
+      { icon:'🏗️', title:'Fixed Asset Reports', desc:'Register, depreciation and disposal reports', href:'#/reports/fixed-asset-register' },
+      { icon:'📉', title:'Management Reports', desc:'Branch P&L, department and margin analysis', href:'#/reports/branch-pl' },
+      { icon:'📋', title:'Transaction Registers', desc:'Journal, sales, purchase and payment registers', href:'#/reports/journal-register' },
+    ]
+  }
+};
 
-    // Temporarily show to measure
-    const prev = dd.style.display;
-    dd.style.visibility = 'hidden';
-    dd.style.display = 'flex';
-    const ddW = dd.offsetWidth;
-    dd.style.display = prev;
-    dd.style.visibility = '';
-    if (rect.left + ddW > window.innerWidth - 8) {
-      dd.style.right = '0px';
-      dd.style.left = '';
-    } else {
-      dd.style.left = rect.left + 'px';
-      dd.style.right = '';
+// ── PAGE DESCRIPTIONS (for placeholder pages) ──────────────────────────────
+
+const PAGE_DESCRIPTIONS = {
+  // Sales
+  'sales/invoices': 'Create, edit, and manage official sales invoices. Supports VAT-inclusive and exclusive pricing, ATP number assignment, and posting to the general ledger.',
+  'sales/cash-sales': 'Record cash sale transactions with immediate collection. Generates official receipts (OR) or non-VAT receipts.',
+  'sales/receipts': 'Apply AR collections against outstanding sales invoices and debit memos. Records EWT amounts withheld by customers.',
+  'sales/credit-memos': 'Issue credit memos for sales returns, allowances, and adjustments. Reverses the original invoice VAT entries.',
+  'sales/debit-memos': 'Issue debit memos for additional charges or billing adjustments to customers.',
+  'sales/customer-returns': 'Record and process customer return transactions with inventory adjustment.',
+  'sales/quotations': 'Create and manage customer quotations before conversion to sales orders.',
+  'sales/sales-orders': 'Manage confirmed sales orders through to delivery receipt.',
+  'sales/delivery-receipts': 'Record delivery of goods and partial fulfillment of sales orders.',
+  'sales/ar-aging': 'Analyze outstanding receivables by aging bucket (current, 30, 60, 90+ days).',
+  // Purchasing
+  'purchasing/vendor-bills': 'Record supplier invoices against receiving reports. Supports input VAT classification and EWT computation.',
+  'purchasing/purchase-orders': 'Create and manage purchase orders with approval workflow.',
+  'purchasing/receiving-reports': 'Record receipt of goods against purchase orders.',
+  'purchasing/cash-purchases': 'Record immediate cash payment purchases without AP creation.',
+  'purchasing/payment-vouchers': 'Process supplier payments with EWT deduction computation.',
+  // Accounting
+  'accounting/journal-entries': 'Create and post manual journal entries. Supports recurring templates and auto-reversal.',
+  'accounting/general-ledger': 'View the full general ledger by account with fiscal period filtering.',
+  'accounting/trial-balance': 'Generate unadjusted and adjusted trial balance for any fiscal period.',
+  'accounting/period-closing': 'Execute month-end closing procedures and lock fiscal periods.',
+  // Compliance
+  'compliance/vat/dashboard': 'VAT compliance summary showing output VAT, input VAT, and VAT payable/receivable position.',
+  'compliance/vat/2550m': 'Monthly VAT return (BIR Form 2550M) computation and filing.',
+  'compliance/vat/2550q': 'Quarterly VAT return (BIR Form 2550Q) computation and filing.',
+  'compliance/vat/slsp-export': 'Generate Summary List of Sales and Purchases (SLSP) DAT file for BIR submission.',
+};
+
+// ── ROUTING ──────────────────────────────────────────────────────────────────
+
+function go(path) {
+  window.location.hash = path ? '#/' + path : '#/';
+  closeAllMenus();
+}
+
+function route() {
+  const hash = window.location.hash.replace(/^#\/?/, '') || '';
+  renderPage(hash);
+  // Mark active nav item
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const mod = item.dataset.module;
+    item.classList.toggle('active', hash === mod || hash.startsWith(mod + '/'));
+  });
+}
+
+function renderPage(path) {
+  const page = MODULE_PAGES[path];
+  const contentEl = document.getElementById('content');
+
+  if (!path || path === 'dashboard') {
+    contentEl.innerHTML = renderDashboard();
+    return;
+  }
+
+  if (page) {
+    if (page.type === 'landing') {
+      contentEl.innerHTML = renderLanding(page, path);
+      return;
     }
   }
 
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('mouseenter', () => positionDropdown(item));
+  // Generic placeholder for any deeper path
+  contentEl.innerHTML = renderPlaceholder(path);
+}
+
+// ── RENDERERS ────────────────────────────────────────────────────────────────
+
+function renderDashboard() {
+  const cards = [
+    { icon:'⚙️', title:'Setup', desc:'Company, system controls, accounting &amp; tax setup', path:'setup' },
+    { icon:'🗂️', title:'Master Data', desc:'Customers, suppliers, items &amp; inventory master', path:'master-data' },
+    { icon:'🛒', title:'Sales', desc:'Invoices, receipts, orders &amp; AR management', path:'sales' },
+    { icon:'🏪', title:'Purchasing', desc:'Purchase orders, vendor bills &amp; AP management', path:'purchasing' },
+    { icon:'💼', title:'Assets', desc:'Cash management, inventory &amp; fixed assets', path:'assets' },
+    { icon:'📒', title:'Accounting', desc:'Journal entries, ledgers &amp; period management', path:'accounting' },
+    { icon:'📑', title:'Compliance', desc:'VAT, withholding tax, income tax, BIR books &amp; CAS audit', path:'compliance' },
+    { icon:'📊', title:'Reports', desc:'Financial statements, tax &amp; management reports', path:'reports' },
+  ];
+  return `
+    <div class="breadcrumb"><a onclick="go('')">Home</a> <span class="sep">›</span> <b>Dashboard</b></div>
+    <div class="page-title">PXL ERP — Dashboard</div>
+    <div class="page-subtitle">Philippine compliance-first accounting ERP · v2.0 Phase 1</div>
+    <div class="module-grid">
+      ${cards.map(c => `
+        <a class="module-card" href="#/${c.path}">
+          <div class="card-icon">${c.icon}</div>
+          <div class="card-title">${c.title}</div>
+          <div class="card-desc">${c.desc}</div>
+        </a>`).join('')}
+    </div>`;
+}
+
+function renderBreadcrumb(page, path) {
+  const parts = [
+    `<a onclick="go('')">Home</a>`
+  ];
+  const segs = page.breadcrumb || [];
+  const paths = path.split('/');
+  let built = '';
+  segs.forEach((seg, i) => {
+    built = paths.slice(0, i + 1).join('/');
+    if (i < segs.length - 1) {
+      parts.push(`<span class="sep">›</span><a onclick="go('${built}')">${seg}</a>`);
+    } else {
+      parts.push(`<span class="sep">›</span><b>${seg}</b>`);
+    }
   });
+  return `<div class="breadcrumb">${parts.join(' ')}</div>`;
+}
 
+function renderLanding(page, path) {
+  const quickCards = page.cards.map(c => `
+    <a class="quick-card" href="${c.href}">
+      <div class="qc-icon">${c.icon}</div>
+      <div class="qc-title">${c.title}</div>
+      <div class="qc-desc">${c.desc}</div>
+    </a>`).join('');
 
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.nav-item')) {
-      document.querySelectorAll('.nav-item.pinned').forEach(el => el.classList.remove('pinned'));
+  return `
+    ${renderBreadcrumb(page, path)}
+    <div class="page-title">${page.icon} ${page.title}</div>
+    <div class="page-subtitle">${page.desc}</div>
+    <div class="section-head">Quick Access</div>
+    <div class="quick-grid">${quickCards}</div>
+    <div style="margin-top:28px; padding:14px 18px; background:#fff; border:1px solid #d4e4f0; border-radius:5px; font-size:12px; color:#7a9bb5; border-left:3px solid var(--ns-accent);">
+      <b style="color:var(--ns-dark);">PXL ERP Phase 1 Blueprint</b> — This workspace is part of the PXL ERP Phase 1 blueprint. Individual pages will be activated as modules are built out.
+    </div>`;
+}
+
+function buildBreadcrumbFromPath(path) {
+  const LABELS = {
+    'setup': 'Setup', 'master-data': 'Master Data', 'sales': 'Sales',
+    'purchasing': 'Purchasing', 'assets': 'Assets', 'accounting': 'Accounting',
+    'compliance': 'Compliance', 'reports': 'Reports',
+    'cash-management': 'Cash Management', 'inventory': 'Inventory', 'fixed-assets': 'Fixed Assets',
+    'vat': 'VAT', 'percentage-tax': 'Percentage Tax', 'withholding-tax': 'Withholding Tax',
+    'income-tax': 'Income Tax', 'books': 'BIR Books of Accounts', 'cas': 'Audit & CAS',
+    'petty-cash-funds': 'Petty Cash Fund Setup', 'petty-cash-vouchers': 'Petty Cash Vouchers',
+    'petty-cash-replenishment': 'Petty Cash Replenishment', 'cash-count-sheet': 'Cash Count Sheet',
+    'fund-transfers': 'Fund Transfers', 'inter-branch-transfers': 'Inter-Branch Transfers',
+    'bank-adjustments': 'Bank Adjustments', 'bank-reconciliation': 'Bank Reconciliation',
+    'outstanding-checks': 'Outstanding Checks', 'deposits-in-transit': 'Deposits in Transit',
+    'stock-adjustments': 'Stock Adjustments', 'stock-transfers': 'Stock Transfers',
+    'goods-issues': 'Goods Issues', 'physical-count': 'Physical Count',
+    'inventory-movements': 'Inventory Movements', 'inventory-valuation': 'Inventory Valuation',
+    'register': 'Asset Register', 'acquisitions': 'Asset Acquisition', 'depreciation': 'Depreciation',
+    'disposals': 'Disposal', 'transfers': 'Transfer', 'impairments': 'Impairment',
+    'categories': 'Asset Categories', 'depreciation-profiles': 'Depreciation Profiles',
+    'invoices': 'Sales Invoices', 'cash-sales': 'Cash Sales', 'receipts': 'Receipts',
+    'credit-memos': 'Credit Memos', 'debit-memos': 'Debit Memos', 'customer-returns': 'Customer Returns',
+    'quotations': 'Quotations', 'sales-orders': 'Sales Orders', 'delivery-receipts': 'Delivery Receipts',
+    'vendor-bills': 'Vendor Bills', 'purchase-orders': 'Purchase Orders', 'receiving-reports': 'Receiving Reports',
+    'cash-purchases': 'Cash Purchases', 'payment-vouchers': 'Payment Vouchers',
+    'vendor-credits': 'Vendor Credits', 'supplier-debit-memos': 'Debit Memos to Suppliers',
+    'purchase-returns': 'Purchase Returns',
+    'journal-entries': 'Journal Entries', 'general-ledger': 'General Ledger',
+    'trial-balance': 'Trial Balance', 'period-closing': 'Period Closing',
+    'amortization-schedules': 'Amortization Schedules', 'revenue-recognition-schedules': 'Revenue Recognition Schedules',
+    'dashboard': 'Dashboard', 'working-papers': 'Working Papers', '2550m': 'VAT Return 2550M',
+    '2550q': 'VAT Return 2550Q', '2551q': 'PT Return 2551Q', 'slsp-export': 'SLSP Export',
+    'relief-export': 'RELIEF Export', 'output-summary': 'Output VAT Summary',
+    'input-summary': 'Input VAT Summary', 'reconciliation': 'Reconciliation',
+    'sls': 'SLS', 'slp': 'SLP', '1601eq': '1601EQ Quarterly Return',
+    '1601fq': '1601FQ Quarterly Return', 'qap': 'QAP', 'sawt': 'SAWT',
+    '2307-issued': '2307 Certificates Issued', '2307-received': '2307 Certificates Received',
+    '2306': '2306 Certificates', 'nolco': 'NOLCO Schedule', 'mcit': 'MCIT Computation',
+    'customers': 'Customers', 'suppliers': 'Suppliers', 'items': 'Items',
+    'warehouses': 'Warehouses', 'payment-terms': 'Payment Terms',
+  };
+
+  const segs = path.split('/');
+  const parts = [`<a onclick="go('')">Home</a>`];
+  let built = '';
+
+  segs.forEach((seg, i) => {
+    built = segs.slice(0, i + 1).join('/');
+    const label = LABELS[seg] || seg.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    if (i < segs.length - 1) {
+      parts.push(`<span class="sep">›</span><a onclick="go('${built}')">${label}</a>`);
+    } else {
+      parts.push(`<span class="sep">›</span><b>${label}</b>`);
     }
   });
 
+  return `<div class="breadcrumb">${parts.join(' ')}</div>`;
+}
 
-  document.querySelectorAll('.nav-label').forEach(label => {
-    label.addEventListener('click', e => {
-      e.stopPropagation();
-      const item = label.closest('.nav-item');
-      positionDropdown(item);
-      const wasPinned = item.classList.contains('pinned');
-      document.querySelectorAll('.nav-item.pinned').forEach(el => el.classList.remove('pinned'));
-      if (!wasPinned) item.classList.add('pinned');
+function renderPlaceholder(path) {
+  const segs = path.split('/');
+  const lastSeg = segs[segs.length - 1];
+  const LABELS = {
+    'invoices':'Sales Invoices','cash-sales':'Cash Sales','receipts':'Receipts',
+    'credit-memos':'Sales Credit Memos','debit-memos':'Sales Debit Memos',
+    'customer-returns':'Customer Returns','quotations':'Quotations',
+    'sales-orders':'Sales Orders','delivery-receipts':'Delivery Receipts',
+    'vendor-bills':'Vendor Bills','purchase-orders':'Purchase Orders',
+    'receiving-reports':'Receiving Reports','cash-purchases':'Cash Purchases',
+    'payment-vouchers':'Payment Vouchers','vendor-credits':'Vendor Credits',
+    'supplier-debit-memos':'Debit Memos to Suppliers','purchase-returns':'Purchase Returns',
+    'journal-entries':'Journal Entries','general-ledger':'General Ledger',
+    'trial-balance':'Trial Balance','period-closing':'Period Closing',
+    'petty-cash-vouchers':'Petty Cash Vouchers','petty-cash-replenishment':'Petty Cash Replenishment',
+    'petty-cash-funds':'Petty Cash Fund Setup','cash-count-sheet':'Cash Count Sheet',
+    'fund-transfers':'Fund Transfers','bank-reconciliation':'Bank Reconciliation',
+    'outstanding-checks':'Outstanding Checks','deposits-in-transit':'Deposits in Transit',
+    'stock-adjustments':'Stock Adjustments','stock-transfers':'Stock Transfers',
+    'goods-issues':'Goods Issues','physical-count':'Physical Count',
+    'inventory-movements':'Inventory Movements','inventory-valuation':'Inventory Valuation',
+    'acquisitions':'Asset Acquisition','disposals':'Asset Disposals',
+    'transfers':'Asset Transfers','impairments':'Asset Impairments',
+    'depreciation':'Depreciation Run','register':'Asset Register',
+    'dashboard':'Dashboard','working-papers':'Working Papers',
+    '2550m':'VAT Return 2550M','2550q':'VAT Return 2550Q',
+    '2551q':'PT Return 2551Q','slsp-export':'SLSP Export',
+    'relief-export':'RELIEF Export','qap':'QAP','sawt':'SAWT',
+  };
+  const title = LABELS[lastSeg] || lastSeg.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const moduleLabel = LABELS[segs[0]] || segs[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const desc = PAGE_DESCRIPTIONS[path] || `Manage ${title.toLowerCase()} within the ${moduleLabel} module.`;
+
+  return `
+    ${buildBreadcrumbFromPath(path)}
+    <div class="page-title">${title}</div>
+    <div class="placeholder-box">
+      <div class="ph-badge">Phase 1 Blueprint</div>
+      <h2>${title}</h2>
+      <p>${desc}</p>
+      <p style="margin-top:12px; color:#9ab3cc;">This workspace is part of the PXL ERP Phase 1 blueprint. Full functionality will be available in a future release.</p>
+      <div class="ph-meta">
+        <span>Module: <b>${moduleLabel}</b></span>
+        <span>Route: <b>#/${path}</b></span>
+        <span>Status: <b>Blueprint</b></span>
+      </div>
+    </div>`;
+}
+
+// ── FLYOUT LOGIC ─────────────────────────────────────────────────────────────
+
+function activateCat(catEl, menuId) {
+  const panelId = catEl.dataset.panel;
+  const cats = catEl.closest('.flyout-cats');
+  const panelsEl = catEl.closest('.flyout-wrap').querySelector('.flyout-panels');
+
+  cats.querySelectorAll('.flyout-cat').forEach(c => c.classList.remove('active'));
+  catEl.classList.add('active');
+
+  panelsEl.querySelectorAll('.flyout-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById(panelId);
+  if (panel) panel.classList.add('active');
+}
+
+// ── MENU OPEN/CLOSE ──────────────────────────────────────────────────────────
+
+let activeMenu = null;
+let closeTimer = null;
+
+function openMenu(item) {
+  if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+  if (activeMenu && activeMenu !== item) {
+    activeMenu.classList.remove('open');
+  }
+  if (!item.classList.contains('open')) {
+    positionDropdown(item);
+    item.classList.add('open');
+    activeMenu = item;
+    // Activate first flyout category
+    const firstCat = item.querySelector('.flyout-cat');
+    if (firstCat) activateCat(firstCat, '');
+  }
+}
+
+function scheduleClose(item) {
+  closeTimer = setTimeout(() => {
+    item.classList.remove('open');
+    if (activeMenu === item) activeMenu = null;
+    closeTimer = null;
+  }, 120);
+}
+
+function closeAllMenus() {
+  document.querySelectorAll('.nav-item.open').forEach(i => i.classList.remove('open'));
+  activeMenu = null;
+}
+
+function positionDropdown(navItem) {
+  const dd = navItem.querySelector('.mega-dd');
+  if (!dd) return;
+  dd.style.left = '';
+  dd.style.right = '';
+
+  const prev = dd.style.display;
+  const prevVis = dd.style.visibility;
+  dd.style.visibility = 'hidden';
+  dd.style.display = 'flex';
+  const ddW = dd.offsetWidth;
+  dd.style.display = prev;
+  dd.style.visibility = prevVis;
+
+  const rect = navItem.getBoundingClientRect();
+  if (rect.left + ddW > window.innerWidth - 8) {
+    dd.style.right = '0px';
+    dd.style.left = '';
+  } else {
+    dd.style.left = rect.left + 'px';
+    dd.style.right = '';
+  }
+}
+
+// Attach hover listeners
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('mouseenter', () => openMenu(item));
+  item.addEventListener('mouseleave', () => scheduleClose(item));
+  const dd = item.querySelector('.mega-dd');
+  if (dd) {
+    dd.addEventListener('mouseenter', () => {
+      if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
     });
-  });
+    dd.addEventListener('mouseleave', () => scheduleClose(item));
+  }
+});
 
+// Close on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-item') && !e.target.closest('.mega-dd')) {
+    closeAllMenus();
+  }
+});
 
-  document.querySelectorAll('.module-card').forEach((card, i) => {
-    card.addEventListener('click', () => {
-      const labels = document.querySelectorAll('.nav-label');
-      if (labels[i]) labels[i].click();
-    });
-  });
+// Close when clicking a menu item link
+document.querySelectorAll('.dd-item').forEach(item => {
+  item.addEventListener('click', () => closeAllMenus());
+});
+
+// ── HASH ROUTING ─────────────────────────────────────────────────────────────
+
+window.addEventListener('hashchange', route);
+window.addEventListener('load', route);
+
+// Logo click
+document.querySelector('.logo').addEventListener('click', () => go(''));
+
 </script>
 </body>
 </html>
