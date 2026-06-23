@@ -460,4 +460,63 @@ and correct for production (service role bypasses RLS regardless of policy state
 
 ---
 
-*Last updated: Migration 016 — Pre-RLS Security & Constraints Patch*
+## Decision 016 - Owner Decision: Final Phase 1 Table Target and Adaptive Workspace Scope
+
+**Problem:**
+`PHASE1_FOUNDATION_RECONCILIATION_REPORT.md` found that the current migration set creates
+178 tables while the canonical Phase 1 architecture documents define 207 active tables.
+It also found that Adaptive Workspace Principle #15 cannot be satisfied by the existing
+fixed `company_feature_settings` booleans alone because visibility must be configuration-driven
+for modules, categories, pages, dashboards, reports, workspaces, and user preferences.
+
+**Owner decision:**
+Phase 1 will NOT be split into Phase 1A / Phase 1B.
+
+All 207 documented active tables are required for Phase 1. The 29 documented active tables
+missing from migrations must be created before CRUD or UI implementation continues.
+
+Adaptive Workspace is non-negotiable for the Phase 1 foundation. The following 11
+adaptive-workspace metadata tables are approved for Phase 1:
+- `workspace_modules`
+- `workspace_categories`
+- `workspace_pages`
+- `workspace_dashboards`
+- `workspace_reports`
+- `dashboard_widgets`
+- `workspace_definitions`
+- `workspace_items`
+- `company_feature_visibility`
+- `role_workspace_assignments`
+- `user_workspace_preferences`
+
+Final Phase 1 active table target: **218 tables**.
+
+No hardcoded roles, menus, dashboards, approval flows, or feature visibility are allowed.
+Visibility and workspace behavior must be driven by company feature settings, role permissions,
+and user preferences.
+
+Every feature must follow the complete traceability chain:
+Business Requirement -> Architecture Document -> Database Table -> Migration -> RLS Policy ->
+Backend Service -> UI Form -> Posting Engine -> Report -> Test Scenario -> User Documentation.
+
+**Migration implication:**
+Migration 018 must be a foundation reconciliation migration before CRUD/UI. Its planned scope is:
+1. Create the 29 missing documented Phase 1 tables.
+2. Create the 11 approved adaptive-workspace metadata tables.
+3. Enable RLS and create policies for every new table.
+4. Add policies for the 12 existing migrated tables that currently have RLS enabled but no policy.
+5. Include remaining foundation security cleanup required before CRUD, including line immutability,
+   service-owned mutable field protection, and filed-status guards where applicable.
+
+**CRUD / UI implication:**
+CRUD and UI implementation are blocked until the Phase 1 foundation reconciliation is complete.
+
+**Backlog:**
+Tracked by `C-018-1`, `C-018-2`, `C-018-3`, and `C-018-4` in
+`SUPABASE_FINAL_REVIEW_BACKLOG.md`.
+
+**Final status:** OWNER DECISION RECORDED - required before Migration 018 implementation.
+
+---
+
+*Last updated: Owner Decision Record before Migration 018 - Final Phase 1 Table Target*
