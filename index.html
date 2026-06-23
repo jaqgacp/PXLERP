@@ -233,14 +233,104 @@
   .placeholder-box .ph-meta { margin-top: 20px; font-size: 11px; color: #9ab3cc; border-top: 1px solid #e8f0f8; padding-top: 14px; display: flex; gap: 20px; flex-wrap: wrap; }
   .placeholder-box .ph-meta span b { color: var(--ns-dark); }
 
-  /* Status bar */
+  /* ── WORKSPACE HEADER META ──────────────────────── */
+  .ws-meta { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 18px; }
+  .ws-meta-chip {
+    background: #fff; border: 1px solid #d4e4f0; border-radius: 4px;
+    padding: 4px 10px; font-size: 11px; color: #5a7a96;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .ws-meta-chip b { color: var(--ns-dark); }
+
+  /* ── TOOLBAR ─────────────────────────────────────── */
+  .toolbar { display: flex; align-items: center; gap: 6px; padding: 0 0 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 13px; font-size: 12px; font-weight: 600;
+    border-radius: 3px; cursor: pointer; border: 1px solid transparent;
+    white-space: nowrap; text-decoration: none; line-height: 1.4;
+  }
+  .btn-primary { background: var(--ns-dark); color: #fff; border-color: var(--ns-dark); }
+  .btn-primary:hover { background: var(--ns-hover); }
+  .btn-secondary { background: #fff; color: var(--ns-dark); border-color: #c8d8e8; }
+  .btn-secondary:hover { background: var(--dd-hover); border-color: var(--ns-accent); }
+  .toolbar-sep { width: 1px; height: 22px; background: #d4e4f0; margin: 0 2px; flex-shrink: 0; }
+
+  /* ── FILTER BAR ──────────────────────────────────── */
+  .filter-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 7px 12px; background: #fff;
+    border: 1px solid #d4e4f0; border-radius: 4px; margin-bottom: 12px;
+  }
+  .filter-label { font-size: 11px; color: #7a9bb5; font-weight: 600; white-space: nowrap; }
+  .filter-bar input[type=text] {
+    border: 1px solid #c8d8e8; border-radius: 3px; padding: 4px 10px;
+    font-size: 12px; color: var(--ns-dark); outline: none; width: 176px;
+    font-family: inherit;
+  }
+  .filter-bar input[type=text]:focus { border-color: var(--ns-accent); }
+  .filter-bar select {
+    border: 1px solid #c8d8e8; border-radius: 3px; padding: 4px 8px;
+    font-size: 12px; color: var(--ns-dark); outline: none;
+    background: #fff; cursor: pointer; font-family: inherit;
+  }
+  .filter-bar select:focus { border-color: var(--ns-accent); }
+  .btn-adv { font-size: 11px; color: var(--ns-sub); cursor: pointer; margin-left: auto; white-space: nowrap; background: none; border: none; font-family: inherit; }
+  .btn-adv:hover { color: var(--ns-dark); }
+
+  /* ── DATA GRID ───────────────────────────────────── */
+  .grid-wrap { background: #fff; border: 1px solid #d4e4f0; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+  .grid-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .grid-table thead th {
+    background: #f4f8fc; color: var(--ns-dark); font-weight: 700;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+    padding: 8px 12px; text-align: left; border-bottom: 2px solid #d4e4f0;
+    white-space: nowrap;
+  }
+  .grid-table thead th:first-child { width: 32px; padding: 8px; text-align: center; }
+  .grid-table thead th:last-child { text-align: center; }
+  .grid-table tbody tr { border-bottom: 1px solid #eef4fb; }
+  .grid-table tbody tr:last-child { border-bottom: none; }
+  .grid-table tbody tr:hover { background: var(--dd-hover); }
+  .grid-table tbody td { padding: 9px 12px; color: #2a3a50; }
+  .grid-table tbody td:first-child { padding: 9px 8px; text-align: center; }
+  .grid-table tbody td:last-child { text-align: center; }
+  .grid-table input[type=checkbox] { cursor: pointer; accent-color: var(--ns-dark); }
+  .doc-link { color: var(--ns-sub); text-decoration: none; font-weight: 600; }
+  .doc-link:hover { color: var(--ns-dark); text-decoration: underline; }
+
+  /* ── STATUS CHIPS ────────────────────────────────── */
+  .status { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; }
+  .status-draft     { background: #f0f4f8; color: #5a7a96;  border: 1px solid #c8d8e8; }
+  .status-approved  { background: #e8f5e8; color: #2d7a2d;  border: 1px solid #b8d8b8; }
+  .status-posted    { background: #e8f0fb; color: #1f3a5f;  border: 1px solid #b8c8e8; }
+  .status-void      { background: #fdf0f0; color: #8b2020;  border: 1px solid #e8c0c0; }
+  .status-cancelled { background: #f8f4e8; color: #7a5a20;  border: 1px solid #e8d8a8; }
+
+  /* ── EMPTY STATE ─────────────────────────────────── */
+  .empty-state { padding: 44px 24px; text-align: center; }
+  .empty-state .es-icon { font-size: 34px; margin-bottom: 10px; opacity: .45; }
+  .empty-state .es-title { font-size: 15px; font-weight: 700; color: var(--ns-dark); margin-bottom: 5px; }
+  .empty-state .es-desc { font-size: 12px; color: #7a9bb5; margin-bottom: 18px; }
+  .empty-state .es-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+
+  /* ── PAGINATION ──────────────────────────────────── */
+  .pagination { display: flex; align-items: center; gap: 6px; padding: 6px 0 20px; font-size: 12px; color: #7a9bb5; }
+  .pagination .pg-info { margin-right: auto; }
+  .pg-btn { padding: 3px 10px; border: 1px solid #c8d8e8; border-radius: 3px; background: #fff; color: var(--ns-dark); cursor: pointer; font-size: 12px; font-family: inherit; }
+  .pg-btn:hover { background: var(--dd-hover); border-color: var(--ns-accent); }
+  .pg-btn.active { background: var(--ns-dark); color: #fff; border-color: var(--ns-dark); }
+
+  /* ── STATUS BAR (Smart Footer) ───────────────────── */
   .status-bar {
     background: var(--ns-darker); color: var(--ns-muted);
     font-size: 11px; padding: 4px 16px;
-    display: flex; gap: 20px; border-top: 1px solid #0d1f33;
+    display: flex; gap: 20px; align-items: center;
+    border-top: 1px solid #0d1f33;
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
   }
   .status-bar span b { color: var(--ns-accent); }
+  .status-bar .sb-sep { width: 1px; height: 12px; background: var(--ns-border); opacity: .4; }
 </style>
 </head>
 <body>
@@ -915,10 +1005,15 @@
 <!-- ── STATUS BAR ────────────────────────── -->
 <div class="status-bar">
   <span>Company: <b>PXL Demo Corp.</b></span>
+  <div class="sb-sep"></div>
   <span>Period: <b>June 2026</b></span>
+  <div class="sb-sep"></div>
   <span>Branch: <b>Main</b></span>
+  <div class="sb-sep"></div>
   <span>User: <b>Administrator</b></span>
-  <span style="margin-left:auto">PXL ERP v2.0 — Architecture Aligned</span>
+  <div class="sb-sep"></div>
+  <span>Env: <b>Development</b></span>
+  <span style="margin-left:auto; opacity:.6">PXL ERP v2.0 · Architecture v4.0 · Phase 1 Blueprint</span>
 </div>
 
 <script>
@@ -1295,44 +1390,183 @@ function renderPlaceholder(path) {
     'credit-memos':'Sales Credit Memos','debit-memos':'Sales Debit Memos',
     'customer-returns':'Customer Returns','quotations':'Quotations',
     'sales-orders':'Sales Orders','delivery-receipts':'Delivery Receipts',
+    'customer-ledger':'Customer Ledger','ar-aging':'AR Aging',
+    'collection-monitoring':'Collection Monitoring',
+    'output-vat-review':'Output VAT Review','percentage-tax-review':'Percentage Tax Review',
+    '2307-received':'2307 Received Review','invoice-register':'Sales Invoice Register',
+    'receipt-register':'Receipt Register','credit-memo-register':'Credit Memo Register',
+    'debit-memo-register':'Debit Memo Register','sls':'Summary List of Sales',
     'vendor-bills':'Vendor Bills','purchase-orders':'Purchase Orders',
     'receiving-reports':'Receiving Reports','cash-purchases':'Cash Purchases',
     'payment-vouchers':'Payment Vouchers','vendor-credits':'Vendor Credits',
     'supplier-debit-memos':'Debit Memos to Suppliers','purchase-returns':'Purchase Returns',
-    'journal-entries':'Journal Entries','general-ledger':'General Ledger',
-    'trial-balance':'Trial Balance','period-closing':'Period Closing',
+    'supplier-ledger':'Supplier Ledger','ap-aging':'AP Aging',
+    'payment-monitoring':'Payment Monitoring',
+    'input-vat-review':'Input VAT Review','ewt-summary':'EWT Summary',
+    '2307-issued':'2307 Issued Review','vendor-bill-register':'Vendor Bill Register',
+    'payment-register':'Payment Register','slp':'Summary List of Purchases',
+    'journal-entries':'Journal Entries','recurring-templates':'Recurring Journal Templates',
+    'general-ledger':'General Ledger','account-detail-ledger':'Account Detail Ledger',
+    'trial-balance':'Trial Balance','control-account-recon':'Control Account Reconciliation',
+    'amortization-schedules':'Amortization Schedules',
+    'revenue-recognition-schedules':'Revenue Recognition Schedules',
+    'period-closing':'Period Closing','fiscal-locks':'Fiscal Locks',
+    'posting-review':'Posting Review','reversal-review':'Reversal Review',
+    'amortization-run':'Amortization Run','revenue-recognition-run':'Revenue Recognition Run',
+    'auto-reversal-run':'Auto Reversal Run',
     'petty-cash-vouchers':'Petty Cash Vouchers','petty-cash-replenishment':'Petty Cash Replenishment',
     'petty-cash-funds':'Petty Cash Fund Setup','cash-count-sheet':'Cash Count Sheet',
-    'fund-transfers':'Fund Transfers','bank-reconciliation':'Bank Reconciliation',
+    'fund-transfers':'Fund Transfers','inter-branch-transfers':'Inter-Branch Transfers',
+    'bank-adjustments':'Bank Adjustments','bank-reconciliation':'Bank Reconciliation',
     'outstanding-checks':'Outstanding Checks','deposits-in-transit':'Deposits in Transit',
     'stock-adjustments':'Stock Adjustments','stock-transfers':'Stock Transfers',
     'goods-issues':'Goods Issues','physical-count':'Physical Count',
     'inventory-movements':'Inventory Movements','inventory-valuation':'Inventory Valuation',
     'acquisitions':'Asset Acquisition','disposals':'Asset Disposals',
     'transfers':'Asset Transfers','impairments':'Asset Impairments',
-    'depreciation':'Depreciation Run','register':'Asset Register',
+    'depreciation':'Depreciation','register':'Asset Register',
+    'categories':'Asset Categories','depreciation-profiles':'Depreciation Profiles',
     'dashboard':'Dashboard','working-papers':'Working Papers',
     '2550m':'VAT Return 2550M','2550q':'VAT Return 2550Q',
     '2551q':'PT Return 2551Q','slsp-export':'SLSP Export',
-    'relief-export':'RELIEF Export','qap':'QAP','sawt':'SAWT',
+    'relief-export':'RELIEF Export','output-summary':'Output VAT Summary',
+    'input-summary':'Input VAT Summary','reconciliation':'Reconciliation',
+    '1601eq':'1601EQ Quarterly Return','1601fq':'1601FQ Quarterly Return',
+    'ewt-working-papers':'EWT Working Papers','ewt-payable':'EWT Payable Summary',
+    'ewt-receivable':'EWT Receivable Summary','atc-summary':'ATC Summary',
+    '1601eq-working':'1601EQ Working Papers','1601fq-working':'1601FQ Working Papers',
+    'qap':'QAP','sawt':'SAWT','2306':'2306 Certificates',
+    'fwt-working-papers':'FWT Working Papers',
+    'taxable-income':'Taxable Income Computation','book-tax-recon':'Book-to-Tax Reconciliation',
+    'osd':'OSD Computation','nolco':'NOLCO Schedule','tax-credits':'Tax Credits Schedule',
+    '1701q':'1701Q Quarterly ITR','1701':'1701 Annual ITR',
+    '1702q':'1702Q Quarterly ITR','1702rt':'1702RT Annual ITR','mcit':'MCIT Computation',
+    'general-journal':'General Journal','general-ledger-book':'General Ledger Book',
+    'cash-receipts':'Cash Receipts Book','cash-disbursements':'Cash Disbursements Book',
+    'sales-journal':'Sales Journal','cash-sales-journal':'Cash Sales Journal',
+    'purchase-journal':'Purchase Journal','cash-purchases-journal':'Cash Purchases Journal',
+    'ar-subsidiary':'AR Subsidiary Ledger','ap-subsidiary':'AP Subsidiary Ledger',
+    'inventory-subsidiary':'Inventory Subsidiary Ledger','fixed-asset-register':'Fixed Asset Register',
+    'transaction-audit':'Transaction Audit Log','master-data-log':'Master Data Change Log',
+    'system-param-logs':'System Parameter Logs','user-activity':'User Activity Log',
+    'attachment-register':'Attachment Register','void-register':'Document Void Register',
+    'atp-usage-log':'ATP Usage Log','dat-generation':'DAT File Generation',
+    'cas-audit-report':'CAS Audit Report','export-history':'Export History',
+    'balance-sheet':'Balance Sheet','income-statement':'Income Statement',
+    'cash-flows':'Statement of Cash Flows','changes-in-equity':'Statement of Changes in Equity',
+    'comparative-fs':'Comparative Financial Statements',
+    'unadjusted-tb':'Unadjusted Trial Balance','adjusted-tb':'Adjusted Trial Balance',
+    'post-closing-tb':'Post-Closing Trial Balance',
+    'output-vat':'Output VAT Summary','input-vat':'Input VAT Summary',
+    'percentage-tax-summary':'Percentage Tax Summary','fwt-summary':'FWT Summary',
+    'bank-position':'Bank Position Report','bank-recon-summary':'Bank Reconciliation Summary',
+    'stock-movement':'Stock Movement','inventory-ledger':'Inventory Ledger',
+    'slow-moving':'Slow Moving Inventory','depreciation-schedule':'Depreciation Schedule',
+    'book-vs-tax-depr':'Book vs Tax Depreciation','asset-disposal':'Asset Disposal Report',
+    'branch-pl':'Branch P&L','department-report':'Department Report',
+    'cost-center-report':'Cost Center Report','gross-margin':'Gross Margin Analysis',
+    'journal-register':'Journal Register','sales-invoice-register':'Sales Invoice Register',
+    'purchase-register':'Purchase Register','check-register':'Check Register',
+    'period-close-checklist':'Period Close Checklist','audit-support':'Audit Support Package',
+    'company-setup':'Company Setup','branch-setup':'Branch Setup',
+    'departments':'Department Setup','cost-centers':'Cost Centers',
+    'cas-registrations':'CAS Registrations','company-bank-accounts':'Company Bank Accounts',
+    'compliance-profile':'Compliance Profile','atp-monitoring':'ATP Monitoring',
+    'fiscal-years':'Fiscal Years','fiscal-calendar':'Fiscal Calendar',
+    'chart-of-accounts':'Chart of Accounts','currencies':'Currency Setup',
+    'opening-balances':'Opening Balances','fs-fields':'Financial Statement Fields',
+    'gl-posting-config':'GL Posting Configuration',
+    'bir-form-config':'BIR Form Configuration','tax-codes':'Tax Codes',
+    'vat-codes':'VAT Codes','ewt-codes':'EWT Codes','fwt-codes':'FWT Codes',
+    'percentage-tax-codes':'Percentage Tax Codes','atc-codes':'ATC Codes',
+    'tax-calendar':'Tax Calendar',
+    'customers':'Customers','suppliers':'Suppliers','personnel':'Personnel',
+    'items':'Items','services':'Services','warehouses':'Warehouses',
+    'item-categories':'Item Categories','units-of-measure':'Units of Measure',
+    'warehouse-stock-settings':'Warehouse Stock Settings','payment-terms':'Payment Terms',
+    'customer-addresses':'Customer Addresses','customer-contacts':'Customer Contacts',
+    'customer-tax-profiles':'Customer Tax Profiles','customer-credit-profiles':'Customer Credit Profiles',
+    'supplier-addresses':'Supplier Addresses','supplier-contacts':'Supplier Contacts',
+    'supplier-tax-profiles':'Supplier Tax Profiles','supplier-bank-details':'Supplier Bank Details',
   };
+
+  const MODULE_ICONS = {
+    'setup':'⚙️','master-data':'🗂️','sales':'🛒','purchasing':'🏪',
+    'assets':'💼','accounting':'📒','compliance':'📑','reports':'📊'
+  };
+
   const title = LABELS[lastSeg] || lastSeg.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  const moduleLabel = LABELS[segs[0]] || segs[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const moduleKey = segs[0];
+  const moduleLabel = LABELS[moduleKey] || moduleKey.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const modIcon = MODULE_ICONS[moduleKey] || '📄';
   const desc = PAGE_DESCRIPTIONS[path] || `Manage ${title.toLowerCase()} within the ${moduleLabel} module.`;
 
   return `
     ${buildBreadcrumbFromPath(path)}
-    <div class="page-title">${title}</div>
-    <div class="placeholder-box">
-      <div class="ph-badge">Phase 1 Blueprint</div>
-      <h2>${title}</h2>
-      <p>${desc}</p>
-      <p style="margin-top:12px; color:#9ab3cc;">This workspace is part of the PXL ERP Phase 1 blueprint. Full functionality will be available in a future release.</p>
-      <div class="ph-meta">
-        <span>Module: <b>${moduleLabel}</b></span>
-        <span>Route: <b>#/${path}</b></span>
-        <span>Status: <b>Blueprint</b></span>
-      </div>
+    <div class="page-title">${modIcon} ${title}</div>
+    <div class="page-subtitle">${desc}</div>
+    <div class="ws-meta">
+      <div class="ws-meta-chip">Period: <b>June 2026</b></div>
+      <div class="ws-meta-chip">Company: <b>PXL Demo Corp.</b></div>
+      <div class="ws-meta-chip">Branch: <b>Main</b></div>
+      <div class="ws-meta-chip">Records: <b>0</b></div>
+      <div class="ws-meta-chip">Status: <b style="color:var(--ns-accent)">Blueprint</b></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary">＋ New</button>
+      <button class="btn btn-secondary">⬆ Import</button>
+      <button class="btn btn-secondary">⬇ Export</button>
+      <div class="toolbar-sep"></div>
+      <button class="btn btn-secondary">✓ Approve</button>
+      <button class="btn btn-secondary">🖨 Print</button>
+    </div>
+    <div class="filter-bar">
+      <span class="filter-label">Search</span>
+      <input type="text" placeholder="Document #, party, amount…" />
+      <select><option>All Companies</option></select>
+      <select><option>All Branches</option></select>
+      <select><option>June 2026</option></select>
+      <select><option>All Status</option></select>
+      <button class="btn-adv">Advanced Filters ▼</button>
+    </div>
+    <div class="grid-wrap">
+      <table class="grid-table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" /></th>
+            <th>Document #</th>
+            <th>Date</th>
+            <th>Party</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Created By</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="9">
+              <div class="empty-state">
+                <div class="es-icon">${modIcon}</div>
+                <div class="es-title">No ${title} found</div>
+                <div class="es-desc">Get started by creating your first record, or import from an existing file.</div>
+                <div class="es-actions">
+                  <button class="btn btn-primary">＋ New ${title}</button>
+                  <button class="btn btn-secondary">⬆ Import</button>
+                  <button class="btn btn-secondary">📖 Documentation</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span class="pg-info">0 records</span>
+      <button class="pg-btn" disabled>‹ Prev</button>
+      <button class="pg-btn active">1</button>
+      <button class="pg-btn" disabled>Next ›</button>
     </div>`;
 }
 
