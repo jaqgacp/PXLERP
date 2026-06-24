@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # PXL ERP - Final Phase 1 Foundation Reconciliation Report
 
 Reviewed repository: `PXLERP`  
@@ -428,3 +432,4 @@ PHASE 1 FOUNDATION IS NOT RECONCILED YET.
 | Period Close | 3 | 0 | 3 | Not applicable | Required before Migration 018. |
 | Party Duplicate Management | 2 | 0 | 2 | Not applicable | Required before Migration 018. |
 | Adaptive Workspace metadata | 11 recommended new | 0 | 11 | Not applicable | Required before Migration 018 by owner Principle #15. |
+

@@ -26,16 +26,16 @@ These principles apply to:
 
 | Document | Purpose |
 | --- | --- |
-| `docs/principles/01_ARCHITECTURE_PRINCIPLES.md` | Overall product and system architecture rules. |
-| `docs/principles/02_UI_PRINCIPLES.md` | UI, navigation, workspace, grid, form, dashboard, and action behavior. |
-| `docs/principles/03_DATABASE_PRINCIPLES.md` | Table, relationship, naming, migration, and verification rules. |
-| `docs/principles/04_SUPABASE_PRINCIPLES.md` | Supabase, PostgreSQL, Edge Function, Storage, Realtime, and migration rules. |
-| `docs/principles/05_SECURITY_RLS_PRINCIPLES.md` | Authentication, authorization, feature visibility, workspace visibility, RLS, and security cleanup. |
-| `docs/principles/06_POSTING_ENGINE_PRINCIPLES.md` | Posting rule, journal, ledger, reversal, fiscal lock, and accounting traceability rules. |
-| `docs/principles/07_REPORTING_PRINCIPLES.md` | Reports, dashboards, generated documents, exports, drilldown, and report visibility. |
-| `docs/principles/08_COMPLIANCE_PRINCIPLES.md` | Philippine compliance, CAS readiness, filing, tax snapshots, and regulatory traceability. |
-| `docs/principles/09_WORKSPACE_PRINCIPLES.md` | Adaptive Workspace, feature catalog, modules, pages, reports, widgets, workspaces, roles, and preferences. |
-| `docs/principles/10_DEVELOPMENT_PRINCIPLES.md` | Implementation workflow, traceability chain, review gates, tests, documentation, and release discipline. |
+| [`docs/principles/01_ARCHITECTURE_PRINCIPLES.md`](docs/principles/01_ARCHITECTURE_PRINCIPLES.md) | Overall product and system architecture rules. |
+| [`docs/principles/02_UI_PRINCIPLES.md`](docs/principles/02_UI_PRINCIPLES.md) | UI, navigation, workspace, grid, form, dashboard, and action behavior. |
+| [`docs/principles/03_DATABASE_PRINCIPLES.md`](docs/principles/03_DATABASE_PRINCIPLES.md) | Table, relationship, naming, migration, and verification rules. |
+| [`docs/principles/04_SUPABASE_PRINCIPLES.md`](docs/principles/04_SUPABASE_PRINCIPLES.md) | Supabase, PostgreSQL, Edge Function, Storage, Realtime, and migration rules. |
+| [`docs/principles/05_SECURITY_RLS_PRINCIPLES.md`](docs/principles/05_SECURITY_RLS_PRINCIPLES.md) | Authentication, authorization, feature visibility, workspace visibility, RLS, and security cleanup. |
+| [`docs/principles/06_POSTING_ENGINE_PRINCIPLES.md`](docs/principles/06_POSTING_ENGINE_PRINCIPLES.md) | Posting rule, journal, ledger, reversal, fiscal lock, and accounting traceability rules. |
+| [`docs/principles/07_REPORTING_PRINCIPLES.md`](docs/principles/07_REPORTING_PRINCIPLES.md) | Reports, dashboards, generated documents, exports, drilldown, and report visibility. |
+| [`docs/principles/08_COMPLIANCE_PRINCIPLES.md`](docs/principles/08_COMPLIANCE_PRINCIPLES.md) | Philippine compliance, CAS readiness, filing, tax snapshots, and regulatory traceability. |
+| [`docs/principles/09_WORKSPACE_PRINCIPLES.md`](docs/principles/09_WORKSPACE_PRINCIPLES.md) | Adaptive Workspace, feature catalog, modules, pages, reports, widgets, workspaces, roles, and preferences. |
+| [`docs/principles/10_DEVELOPMENT_PRINCIPLES.md`](docs/principles/10_DEVELOPMENT_PRINCIPLES.md) | Implementation workflow, traceability chain, review gates, tests, documentation, and release discipline. |
 
 ## Governing Rule
 
@@ -79,24 +79,24 @@ Decision 017 recorded that:
 
 | Source | Use |
 | --- | --- |
-| `docs/architecture/00_PXL_ARCHITECTURE_PRINCIPLES.md` | Original architecture principle source. |
-| `docs/architecture/01_DATABASE_ARCHITECTURE_OVERVIEW.md` | Database architecture overview. |
-| `docs/architecture/02_COMPLETE_TABLE_INVENTORY.md` | Canonical table inventory baseline. |
-| `docs/architecture/03_TABLE_COLUMN_SPECIFICATIONS.md` | Canonical column specifications. |
-| `docs/architecture/04_RELATIONSHIP_MAP.md` | Relationship and dependency map. |
-| `docs/architecture/05_COMPLIANCE_DATA_CAPTURE_MAP.md` | Compliance data capture and traceability. |
-| `docs/architecture/06_POSTING_ENGINE_TABLE_DESIGN.md` | Posting engine table and behavior design. |
-| `docs/architecture/07_AUDIT_AND_CAS_TABLE_DESIGN.md` | Audit and CAS requirements. |
-| `docs/architecture/08_IMPORT_EXPORT_TABLE_DESIGN.md` | Import, export, and generated document design. |
-| `docs/architecture/09_SECURITY_RLS_DESIGN.md` | Security and RLS design. |
-| `docs/architecture/10_REVIEW_CHECKLIST.md` | Review and freeze checklist. |
+| [`docs/architecture/00_PXL_ARCHITECTURE_PRINCIPLES.md`](docs/architecture/00_PXL_ARCHITECTURE_PRINCIPLES.md) | Original architecture principle source. |
+| [`docs/architecture/01_DATABASE_ARCHITECTURE_OVERVIEW.md`](docs/architecture/01_DATABASE_ARCHITECTURE_OVERVIEW.md) | Database architecture overview. |
+| [`docs/architecture/02_COMPLETE_TABLE_INVENTORY.md`](docs/architecture/02_COMPLETE_TABLE_INVENTORY.md) | Canonical table inventory baseline. |
+| [`docs/architecture/03_TABLE_COLUMN_SPECIFICATIONS.md`](docs/architecture/03_TABLE_COLUMN_SPECIFICATIONS.md) | Canonical column specifications. |
+| [`docs/architecture/04_RELATIONSHIP_MAP.md`](docs/architecture/04_RELATIONSHIP_MAP.md) | Relationship and dependency map. |
+| [`docs/architecture/05_COMPLIANCE_DATA_CAPTURE_MAP.md`](docs/architecture/05_COMPLIANCE_DATA_CAPTURE_MAP.md) | Compliance data capture and traceability. |
+| [`docs/architecture/06_POSTING_ENGINE_TABLE_DESIGN.md`](docs/architecture/06_POSTING_ENGINE_TABLE_DESIGN.md) | Posting engine table and behavior design. |
+| [`docs/architecture/07_AUDIT_AND_CAS_TABLE_DESIGN.md`](docs/architecture/07_AUDIT_AND_CAS_TABLE_DESIGN.md) | Audit and CAS requirements. |
+| [`docs/architecture/08_IMPORT_EXPORT_TABLE_DESIGN.md`](docs/architecture/08_IMPORT_EXPORT_TABLE_DESIGN.md) | Import, export, and generated document design. |
+| [`docs/architecture/09_SECURITY_RLS_DESIGN.md`](docs/architecture/09_SECURITY_RLS_DESIGN.md) | Security and RLS design. |
+| [`docs/architecture/10_REVIEW_CHECKLIST.md`](docs/architecture/10_REVIEW_CHECKLIST.md) | Review and freeze checklist. |
 | `docs/ui/` | Detailed UI layout, toolbar, grid, action, traceability, and audit standards. |
-| `supabase/SUPABASE_DECISIONS.md` | Owner decisions and architectural decision records. |
-| `SUPABASE_FINAL_REVIEW_BACKLOG.md` | Known foundation backlog and blocker tracking. |
-| `PHASE1_FOUNDATION_RECONCILIATION_REPORT.md` | Phase 1 reconciliation and target validation. |
-| `FOUNDATION_CERTIFICATION_REPORT.md` | Foundation certification findings and known gaps. |
-| `MIGRATION_018_DESIGN_PLAN.md` | Migration 018 design plan for 219-table target. |
-| `MIGRATION_018_IMPLEMENTATION_SPEC.md` | Migration 018 implementation blueprint. |
+| [`supabase/SUPABASE_DECISIONS.md`](supabase/SUPABASE_DECISIONS.md) | Owner decisions and architectural decision records. |
+| [`archive/SUPABASE_FINAL_REVIEW_BACKLOG.md`](archive/SUPABASE_FINAL_REVIEW_BACKLOG.md) | Known foundation backlog and blocker tracking. |
+| [`archive/PHASE1_FOUNDATION_RECONCILIATION_REPORT.md`](archive/PHASE1_FOUNDATION_RECONCILIATION_REPORT.md) | Phase 1 reconciliation and target validation. |
+| [`archive/FOUNDATION_CERTIFICATION_REPORT.md`](archive/FOUNDATION_CERTIFICATION_REPORT.md) | Foundation certification findings and known gaps. |
+| [`archive/MIGRATION_018_DESIGN_PLAN.md`](archive/MIGRATION_018_DESIGN_PLAN.md) | Migration 018 design plan for 219-table target. |
+| [`archive/MIGRATION_018_IMPLEMENTATION_SPEC.md`](archive/MIGRATION_018_IMPLEMENTATION_SPEC.md) | Migration 018 implementation blueprint. |
 
 ## Canonical Terminology
 
