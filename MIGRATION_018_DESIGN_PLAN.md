@@ -2,7 +2,7 @@
 
 Repository: `PXLERP`  
 Branch reviewed: `main`  
-Pre-check commit reviewed: `651efc52a85eeb1e6bf02297815f5308e1093464`  
+Pre-check commit reviewed: `fe4d633afc61a6d1fb5ae06fcccfe6d3d3e67e14`
 Plan date: 2026-06-24  
 Mode: design plan only. No SQL, migration file, UI, CRUD, backlog edit, or decision-log edit is implemented by this document.
 
@@ -10,23 +10,25 @@ Mode: design plan only. No SQL, migration file, UI, CRUD, backlog edit, or decis
 
 Migration 018 must be a Phase 1 foundation reconciliation migration. It must not introduce CRUD, UI, seed data, cron jobs, or feature implementation.
 
-Owner Decision 016 is now the controlling scope:
+Owner Decisions 016 and 017 are now the controlling scope:
 
 - Phase 1 is not split into 1A / 1B.
 - All 207 documented active architecture tables are required.
 - The 29 documented active tables missing from migrations must be created before CRUD/UI continues.
 - Adaptive Workspace is non-negotiable.
 - The 11 approved adaptive-workspace metadata tables are part of Phase 1.
-- Final Phase 1 active table target is 218 tables.
+- `feature_definitions` is approved as the canonical feature catalog.
+- Final Phase 1 active table target is 219 tables.
 - No hardcoded roles, menus, dashboards, approval flows, or feature visibility.
 
-Migration 018 therefore has five jobs:
+Migration 018 therefore has six jobs:
 
 1. Create the 29 missing documented Phase 1 tables.
 2. Create the 11 approved adaptive-workspace metadata tables.
-3. Enable RLS and create policies for every new table.
-4. Add policies for the 12 existing migrated tables with RLS enabled but no policy.
-5. Close pre-CRUD foundation security gaps: line immutability, service-owned mutable fields, and filed compliance rows.
+3. Create `feature_definitions` as the canonical feature catalog.
+4. Enable RLS and create policies for every new table.
+5. Add policies for the 12 existing migrated tables with RLS enabled but no policy.
+6. Close pre-CRUD foundation security gaps: line immutability, service-owned mutable fields, and filed compliance rows.
 
 Because this is large, the recommended implementation approach is to split the actual work into 018A-018E. This plan does not implement that split.
 
@@ -101,19 +103,20 @@ Because this is large, the recommended implementation approach is to split the a
 | `duplicate_tin_flags` | Duplicate TIN flags for customer/supplier data quality. | `companies`, `profiles` | Company-scoped SELECT; service/admin INSERT/UPDATE resolution; no DELETE. |
 | `party_merge_logs` | Auditable party merge history. | `companies`, `profiles`; polymorphic merged parties | Company-scoped SELECT; service INSERT; no UPDATE/DELETE. |
 
-### Adaptive Workspace - 11 Tables
+### Feature Catalog & Adaptive Workspace - 12 Tables
 
 | Table | Purpose | Primary dependencies | RLS posture |
 |---|---|---|---|
 | `workspace_modules` | Registry of modules shown by the app. | None or system metadata | Global/company SELECT; super admin writes. |
+| `feature_definitions` | Canonical feature catalog for modules, pages, dashboards, reports, widgets, workspaces, and company visibility. | `workspace_modules` for optional `module_id`; self for optional `parent_feature_id` | Authenticated SELECT; service/super admin INSERT/UPDATE; no authenticated DELETE. |
 | `workspace_categories` | Navigation categories inside modules. | `workspace_modules` | SELECT to authenticated; super admin writes. |
-| `workspace_pages` | Routeable pages, component keys, required permission/feature keys. | `workspace_modules`, `workspace_categories`, `permissions` | SELECT to authenticated; super admin writes. |
-| `workspace_dashboards` | Dashboard registry. | `workspace_modules`, `workspace_categories`, `permissions` | SELECT to authenticated; super admin writes. |
-| `workspace_reports` | Report registry and report route/export metadata. | `workspace_modules`, `workspace_categories`, `permissions` | SELECT to authenticated; super admin writes. |
-| `dashboard_widgets` | Widget registry for dashboards. | `workspace_dashboards`, `permissions` | SELECT to authenticated; super admin writes. |
-| `workspace_definitions` | Named workspace bundles. | Optional `companies` for tenant custom workspace | System/company SELECT; super admin or company admin writes based on ownership. |
+| `workspace_pages` | Routeable pages, component keys, required permission and feature FKs. | `workspace_modules`, `workspace_categories`, `permissions`, `feature_definitions` | SELECT to authenticated; super admin writes. |
+| `workspace_dashboards` | Dashboard registry. | `workspace_modules`, `workspace_categories`, `permissions`, `feature_definitions` | SELECT to authenticated; super admin writes. |
+| `workspace_reports` | Report registry and report route/export metadata. | `workspace_modules`, `workspace_categories`, `permissions`, `feature_definitions` | SELECT to authenticated; super admin writes. |
+| `dashboard_widgets` | Widget registry for dashboards. | `workspace_dashboards`, `permissions`, `feature_definitions` | SELECT to authenticated; super admin writes. |
+| `workspace_definitions` | Named workspace bundles. | Optional `companies` for tenant custom workspace; optional `feature_definitions` when a workspace is feature-gated | System/company SELECT; super admin or company admin writes based on ownership. |
 | `workspace_items` | Ordered page/dashboard/report/module shortcuts in a workspace. | `workspace_definitions` plus workspace content tables | SELECT to visible workspace; admin writes. |
-| `company_feature_visibility` | Company-level visibility override by module/category/page/dashboard/report/workspace. | `companies` plus workspace metadata tables | Company users SELECT; company admin writes. |
+| `company_feature_visibility` | Company-level feature visibility and optional visibility override by module/category/page/dashboard/report/widget/workspace. | `companies`, `feature_definitions`, plus workspace metadata tables | Company users SELECT; company admin writes. |
 | `role_workspace_assignments` | Assign workspaces to roles without hardcoded roles. | `companies`, `roles`, `workspace_definitions` | Company admin SELECT/INSERT/UPDATE; no DELETE. |
 | `user_workspace_preferences` | Hide/favorite/pin/layout preferences. | `companies`, `profiles`, workspace metadata tables | User can manage own preferences only; admins cannot use it to grant visibility. |
 
@@ -141,7 +144,6 @@ Use parent-first order. Do not create child tables before parents.
    - `duplicate_tin_flags`
    - `party_merge_logs`
    - `workspace_modules`
-   - `workspace_definitions`
 2. Direct child tables:
    - `field_change_history` after `audit_logs`
    - `attachment_versions` after `attachments`
@@ -152,14 +154,16 @@ Use parent-first order. Do not create child tables before parents.
    - `generated_documents` after `document_templates` and `export_jobs`
    - `period_close_tasks` after `period_close_checklists`
    - `workspace_categories` after `workspace_modules`
+   - `feature_definitions` after `workspace_modules` when `module_id` is used; `parent_feature_id` is self-referential
+   - `workspace_definitions` after `feature_definitions` when `required_feature_id` is used
 3. Grandchild or registry-dependent tables:
    - `import_validation_errors` after `import_batches` and `import_rows`
    - `notification_delivery_logs` after `notifications`
    - `generated_document_versions` after `generated_documents`
-   - `workspace_pages`, `workspace_dashboards`, `workspace_reports` after `workspace_modules`, `workspace_categories`, and `permissions`
-   - `dashboard_widgets` after `workspace_dashboards`
+   - `workspace_pages`, `workspace_dashboards`, `workspace_reports` after `workspace_modules`, `workspace_categories`, `permissions`, and `feature_definitions`
+   - `dashboard_widgets` after `workspace_dashboards`, `permissions`, and `feature_definitions`
    - `workspace_items` after `workspace_definitions` and the workspace item target tables
-   - `company_feature_visibility` after workspace metadata tables
+   - `company_feature_visibility` after `feature_definitions` and workspace metadata tables
    - `role_workspace_assignments` after `roles` and `workspace_definitions`
    - `user_workspace_preferences` after workspace metadata tables and `profiles`
 4. Existing deferred FK wiring after all parents exist:
@@ -190,6 +194,14 @@ All of the following can be wired in Migration 018 because both sides will exist
 - `period_close_checklists.fiscal_period_id -> fiscal_periods.id`
 - `period_close_tasks.checklist_id -> period_close_checklists.id`
 - `subledger_close_certifications.fiscal_period_id -> fiscal_periods.id`
+- `feature_definitions.module_id -> workspace_modules.id`
+- `feature_definitions.parent_feature_id -> feature_definitions.id`
+- `workspace_pages.required_feature_id -> feature_definitions.id`
+- `workspace_dashboards.required_feature_id -> feature_definitions.id`
+- `workspace_reports.required_feature_id -> feature_definitions.id`
+- `dashboard_widgets.required_feature_id -> feature_definitions.id`
+- `workspace_definitions.required_feature_id -> feature_definitions.id`
+- `company_feature_visibility.feature_id -> feature_definitions.id`
 - All `company_id -> companies.id` and user columns to `profiles.id`, where the source spec requires it.
 
 ### Existing Deferred FKs To `import_batches`
@@ -292,6 +304,7 @@ Common rules:
 | Generated documents/versions | Company-scoped | Service role | Service role only if expiry/status metadata exists | None |
 | Period close | Accounting/controller | Controller/accounting | Controller/accounting until closed/locked | None |
 | Party duplicate | Admin/controller/accounting | Service/admin | Resolution fields only | None |
+| Feature catalog system metadata | Authenticated read of active features; service/super admin can inspect all | Service/super admin | Service/super admin | None |
 | Adaptive workspace system metadata | Authenticated read | Super admin | Super admin | None |
 | Adaptive workspace company visibility | Company users read effective visibility | Company admin | Company admin | None |
 | User workspace preferences | User reads own | User inserts own | User updates own | User may delete own preference only if soft-delete is not required |
@@ -306,7 +319,7 @@ Common rules:
 | `chart_of_accounts` | SELECT to company users; INSERT/UPDATE to accounting setup admins/controllers; protect system/import-owned fields; no DELETE except soft-delete workflow if already documented. |
 | `company_bank_accounts` | SELECT to company users with bank/accounting visibility; INSERT/UPDATE to setup admins; no DELETE. |
 | `company_compliance_profiles` | SELECT to company users because it drives behavior; INSERT/UPDATE only with `settings.compliance_profile.manage`; no DELETE. |
-| `company_feature_settings` | SELECT to company users because it drives visibility; INSERT/UPDATE only with `settings.feature_settings.manage`; no DELETE. |
+| `company_feature_settings` | SELECT to company users because it drives high-level setup flags; INSERT/UPDATE only with `settings.feature_settings.manage`; no DELETE. This table is not the canonical feature catalog after Decision 017. |
 | `document_controls` | SELECT to company users where needed by UI/service; INSERT/UPDATE to setup/admin users; no DELETE. |
 | `exchange_rates` | SELECT to company users; prefer INSERT-only for new historical rates; UPDATE only to authorized accounting setup users before rate is used; no DELETE. |
 | `fiscal_locks` | SELECT to company accounting users; INSERT/UPDATE unlock fields by controller/accounting close permission; no DELETE. |
@@ -394,23 +407,44 @@ Required design:
 
 Final visibility must be computed as:
 
-`company feature visibility` AND `role permission visibility` AND `user preference visibility`
+`feature definition is active` AND `company feature visibility` AND `role permission visibility` AND `user preference visibility`
 
 User preference can only reduce or arrange visibility. It must never grant access.
+
+Decision 017 adds `feature_definitions` as the canonical feature catalog. Workspace
+metadata must reference `feature_definitions.id` through `required_feature_id` wherever
+feature gating is needed. Free-text `required_feature_key` is not allowed for backend,
+UI, or RLS visibility logic.
+
+Relationship rules:
+
+- `feature_definitions` owns canonical feature identity. `feature_code` is a stable
+  setup/import code, but runtime visibility should be resolved through relational rows
+  and FKs, not hardcoded strings.
+- `company_feature_settings` may remain as one-row high-level company setup flags for
+  coarse setup behavior and backward compatibility. It is not the complete feature
+  catalog and must not be the only visibility source.
+- `company_feature_visibility` references `feature_definitions.id` and records
+  company-level enablement/visibility for a feature, optionally narrowed to a module,
+  category, page, dashboard, report, widget, or workspace target.
+- Workspace metadata references `feature_definitions.id` through `required_feature_id`
+  so pages, dashboards, reports, widgets, and feature-gated workspaces can be enabled
+  later by inserting metadata rather than adding columns or hardcoded logic.
 
 ### Proposed Metadata Shape
 
 | Table | Key columns to include |
 |---|---|
 | `workspace_modules` | `id`, `module_code`, `module_name`, `description`, `icon_key`, `sort_order`, `is_system`, `is_active`, audit columns |
+| `feature_definitions` | `id`, `feature_code`, `feature_name`, `description`, `feature_group`, `parent_feature_id`, `module_id NULL`, `is_system`, `is_active`, `default_enabled`, `sort_order`, audit columns |
 | `workspace_categories` | `id`, `module_id`, `category_code`, `category_name`, `sort_order`, `is_active`, audit columns |
-| `workspace_pages` | `id`, `module_id`, `category_id`, `page_code`, `page_name`, `route_path`, `component_key`, `required_permission_id`, `required_feature_key`, `sort_order`, `is_active`, audit columns |
-| `workspace_dashboards` | `id`, `module_id`, `category_id`, `dashboard_code`, `dashboard_name`, `route_path`, `required_permission_id`, `required_feature_key`, `is_active`, audit columns |
-| `workspace_reports` | `id`, `module_id`, `category_id`, `report_code`, `report_name`, `route_path`, `export_type`, `required_permission_id`, `required_feature_key`, `is_active`, audit columns |
-| `dashboard_widgets` | `id`, `dashboard_id`, `widget_code`, `widget_name`, `component_key`, `data_source_key`, `required_permission_id`, `default_layout`, `sort_order`, `is_active`, audit columns |
-| `workspace_definitions` | `id`, `company_id NULL`, `workspace_code`, `workspace_name`, `description`, `is_system`, `is_active`, audit columns |
+| `workspace_pages` | `id`, `module_id`, `category_id`, `page_code`, `page_name`, `route_path`, `component_key`, `required_permission_id`, `required_feature_id`, `sort_order`, `is_active`, audit columns |
+| `workspace_dashboards` | `id`, `module_id`, `category_id`, `dashboard_code`, `dashboard_name`, `route_path`, `required_permission_id`, `required_feature_id`, `is_active`, audit columns |
+| `workspace_reports` | `id`, `module_id`, `category_id`, `report_code`, `report_name`, `route_path`, `export_type`, `required_permission_id`, `required_feature_id`, `is_active`, audit columns |
+| `dashboard_widgets` | `id`, `dashboard_id`, `widget_code`, `widget_name`, `component_key`, `data_source_key`, `required_permission_id`, `required_feature_id`, `default_layout`, `sort_order`, `is_active`, audit columns |
+| `workspace_definitions` | `id`, `company_id NULL`, `workspace_code`, `workspace_name`, `description`, `required_feature_id NULL`, `is_system`, `is_active`, audit columns |
 | `workspace_items` | `id`, `workspace_id`, nullable target FKs for module/category/page/dashboard/report, `sort_order`, `is_default_visible`, audit columns |
-| `company_feature_visibility` | `id`, `company_id`, nullable target FKs for module/category/page/dashboard/report/workspace, `visibility_status`, `effective_from`, `effective_to`, audit columns |
+| `company_feature_visibility` | `id`, `company_id`, `feature_id`, nullable target FKs for module/category/page/dashboard/report/widget/workspace, `visibility_status`, `effective_from`, `effective_to`, audit columns |
 | `role_workspace_assignments` | `id`, `company_id`, `role_id`, `workspace_id`, `is_default`, `is_active`, audit columns |
 | `user_workspace_preferences` | `id`, `company_id`, `user_id`, nullable target FKs, `preference_type`, `preference_value`, `sort_order`, `is_active`, audit columns |
 
@@ -418,10 +452,13 @@ User preference can only reduce or arrange visibility. It must never grant acces
 
 - Use stable codes (`module_code`, `page_code`, `report_code`) for application routing.
 - Use FK to `permissions.id` where a page/dashboard/report requires a permission.
-- Keep `required_feature_key` text-based only if feature keys are still sourced from `company_feature_settings` columns; otherwise normalize feature keys later.
+- Use FK to `feature_definitions.id` where a page/dashboard/report/widget/workspace requires a feature.
+- Do not use free-text `required_feature_key` for feature gating.
+- `company_feature_visibility.feature_id` must reference `feature_definitions.id`.
 - Prefer nullable target FKs plus CHECK exactly-one-target over generic `item_type/item_id`.
 - No hardcoded role names. Role behavior comes from `roles`, `role_permissions`, `user_roles`, and `role_workspace_assignments`.
-- No hardcoded menus. Menus are workspace metadata filtered by feature settings and permissions.
+- No hardcoded feature keys. Future modules are added by inserting `feature_definitions` and workspace metadata, not by adding new boolean columns.
+- No hardcoded menus. Menus are workspace metadata filtered by feature definitions, company visibility, company setup settings where applicable, and permissions.
 - No hardcoded dashboards/reports. Dashboards/reports are metadata records filtered by visibility.
 
 ## 12. Clean Verification Queries
@@ -437,7 +474,7 @@ WHERE table_schema = 'public'
 ```
 
 ```sql
--- Confirm all expected Migration 018 tables exist:
+-- Confirm all 41 expected Migration 018 tables exist:
 SELECT expected.table_name
 FROM (VALUES
   ('audit_logs'), ('field_change_history'), ('user_activity_logs'),
@@ -449,7 +486,7 @@ FROM (VALUES
   ('notification_delivery_logs'), ('document_templates'), ('generated_documents'),
   ('generated_document_versions'), ('period_close_checklists'), ('period_close_tasks'),
   ('subledger_close_certifications'), ('duplicate_tin_flags'), ('party_merge_logs'),
-  ('workspace_modules'), ('workspace_categories'), ('workspace_pages'),
+  ('workspace_modules'), ('feature_definitions'), ('workspace_categories'), ('workspace_pages'),
   ('workspace_dashboards'), ('workspace_reports'), ('dashboard_widgets'),
   ('workspace_definitions'), ('workspace_items'), ('company_feature_visibility'),
   ('role_workspace_assignments'), ('user_workspace_preferences')
@@ -461,6 +498,18 @@ WHERE t.table_name IS NULL;
 ```
 
 ```sql
+-- Confirm final Phase 1 active public table target is 219.
+-- This assumes removed/deferred tables are not present in public as active base tables.
+SELECT
+  219 AS expected_public_base_table_count,
+  COUNT(*) AS actual_public_base_table_count,
+  COUNT(*) = 219 AS passed
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_type = 'BASE TABLE';
+```
+
+```sql
 -- Confirm RLS enabled on every public table:
 SELECT c.relname
 FROM pg_class c
@@ -469,6 +518,23 @@ WHERE n.nspname = 'public'
   AND c.relkind = 'r'
   AND c.relrowsecurity = false
 ORDER BY c.relname;
+```
+
+```sql
+-- Confirm feature gating is FK-backed, not free-text-key-only.
+SELECT conrelid::regclass AS table_name, conname
+FROM pg_constraint
+WHERE contype = 'f'
+  AND confrelid = 'public.feature_definitions'::regclass
+  AND conrelid::regclass::text IN (
+    'workspace_pages',
+    'workspace_dashboards',
+    'workspace_reports',
+    'dashboard_widgets',
+    'workspace_definitions',
+    'company_feature_visibility'
+  )
+ORDER BY table_name::text, conname;
 ```
 
 ```sql
@@ -539,6 +605,7 @@ ORDER BY table_name::text, conname;
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Migration 018 becomes too large | Review quality drops; one failure blocks all reconciliation work. | Split into 018A-018E. |
+| Feature catalog is not wired to workspace records | UI/RLS/backend may still hardcode feature keys. | Create `feature_definitions` and use `required_feature_id` / `feature_id` FKs. |
 | Adaptive workspace tables are under-specified | UI may still hardcode visibility. | Approve table contracts before SQL. |
 | RLS policies for new tables are broad | Users may see audit, export, notification, or workspace rows outside permitted scope. | Use least-privilege policy groups and verification queries. |
 | Service-owned fields remain mutable | Accounting, inventory, asset, and compliance outputs can be corrupted. | Use SELECT-only runtime tables, column privileges, or service functions. |
@@ -559,13 +626,15 @@ Recommended split:
    - Wire existing deferred FKs to `import_batches`, `attachments`, `generated_documents`, and `export_jobs`.
    - Enable RLS on the 29 tables, but keep policies minimal or defer policies to 018C if needed.
 
-2. `018b_adaptive_workspace_tables.sql`
+2. `018b_feature_catalog_adaptive_workspace_tables.sql`
+   - Create `feature_definitions`.
    - Create the 11 adaptive-workspace metadata tables.
+   - Wire `required_feature_id` and `company_feature_visibility.feature_id` FKs to `feature_definitions`.
    - Add exact-one-target CHECK constraints where nullable target FK pattern is used.
    - Enable RLS.
 
-3. `018c_rls_missing_policies.sql`
-   - Add policies for all 40 new tables.
+3. `018c_rls_new_and_missing_policies.sql`
+   - Add policies for all 41 new tables.
    - Add policies for the 12 existing no-policy tables.
    - Confirm no unintended DELETE policies and no broad global `USING (true)` policies.
 
