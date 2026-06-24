@@ -491,6 +491,10 @@ adaptive-workspace metadata tables are approved for Phase 1:
 
 Final Phase 1 active table target: **218 tables**.
 
+**Supersession note:** Decision 017 updates the final Phase 1 active table target to
+**219 tables** after the final Migration 018 architect review identified the required
+normalized feature catalog table.
+
 No hardcoded roles, menus, dashboards, approval flows, or feature visibility are allowed.
 Visibility and workspace behavior must be driven by company feature settings, role permissions,
 and user preferences.
@@ -519,4 +523,67 @@ Tracked by `C-018-1`, `C-018-2`, `C-018-3`, and `C-018-4` in
 
 ---
 
-*Last updated: Owner Decision Record before Migration 018 - Final Phase 1 Table Target*
+## Decision 017 - Owner Decision: Normalized Feature Catalog for Adaptive Workspace
+
+**Problem:**
+`MIGRATION_018_FINAL_ARCHITECT_REVIEW.md` returned a NO-GO decision for Migration 018
+implementation because Adaptive Workspace feature visibility still depended on
+free-text feature keys or fixed `company_feature_settings` boolean columns. Without a
+normalized feature catalog, backend, UI, RLS, reports, tests, and user documentation
+would still need hardcoded feature semantics.
+
+**Owner decision:**
+Adaptive Workspace remains non-negotiable for Phase 1.
+
+Feature visibility must be relational, not text-key-only.
+
+Add one approved Phase 1 foundation table:
+- `feature_definitions`
+
+Final Phase 1 active table target: **219 tables**.
+
+`feature_definitions` is the canonical feature catalog for:
+- modules
+- pages
+- dashboards
+- reports
+- widgets
+- workspaces
+- company feature visibility
+
+Workspace records must use `required_feature_id` instead of free-text
+`required_feature_key` wherever feature gating is needed.
+
+`company_feature_visibility` must reference `feature_definitions.id`.
+
+Existing `company_feature_settings` may remain as high-level company setup flags, but
+it must not be the only feature catalog.
+
+No hardcoded feature keys are allowed in backend, UI, or RLS logic.
+
+Future modules must be added by inserting feature and workspace metadata, not by adding
+new hardcoded columns.
+
+**Migration implication:**
+Migration 018 scope is updated to include:
+1. The 29 missing documented Phase 1 tables.
+2. The 11 approved adaptive-workspace metadata tables from Decision 016.
+3. The new `feature_definitions` canonical feature catalog table.
+4. RLS and policies for all new tables.
+5. Policies for the 12 existing migrated tables that currently have RLS enabled but no policy.
+6. Remaining foundation security cleanup required before CRUD, including line immutability,
+   service-owned mutable field protection, and filed-status guards where applicable.
+
+**CRUD / UI implication:**
+CRUD and UI implementation remain blocked until Migration 018 foundation reconciliation
+passes with the 219-table target and relational feature visibility model.
+
+**Backlog:**
+Tracked by `C-018-1`, `C-018-2`, `C-018-3`, `C-018-4`, and `C-018-5` in
+`SUPABASE_FINAL_REVIEW_BACKLOG.md`.
+
+**Final status:** OWNER DECISION RECORDED - required before Migration 018 implementation.
+
+---
+
+*Last updated: Owner Decision Record before Migration 018 - Normalized Feature Catalog*
