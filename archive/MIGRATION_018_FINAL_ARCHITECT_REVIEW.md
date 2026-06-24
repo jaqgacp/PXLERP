@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # MIGRATION 018 FINAL ARCHITECT REVIEW
 
 Repository: PXLERP  
@@ -222,3 +226,4 @@ Do not write Migration 018 SQL yet.
 Required pre-implementation decision:
 
 Resolve the normalized feature catalog gap and refreeze the final Phase 1 table target before implementation begins.
+

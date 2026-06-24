@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # PXL ERP - Foundation Cleanup Plan
 
 Source reviewed: `FOUNDATION_CERTIFICATION_REPORT.md`  
@@ -92,3 +96,4 @@ After the MUST FIX BEFORE CRUD items are closed and the documentation/backlog/de
 The foundation should not be treated as production posting/compliance ready until Audit/CAS, export logging, generated document evidence, and any required attachment workflows are implemented or explicitly removed from the launch scope.
 
 If the project chooses to keep all 207 Doc02/Doc03 tables inside the immediate Phase 1 database freeze, then the 29 missing tables remain migration blockers. If the project accepts the recommended Phase 1A/Phase 1B boundary, CRUD can proceed after the security and integrity cleanup without waiting for all 29 future-workflow tables.
+

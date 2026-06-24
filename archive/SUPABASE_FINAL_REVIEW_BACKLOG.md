@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # PXL ERP — Supabase Final Review Backlog
 
 **Status:** Active — items accumulate here until the FINAL SUPABASE REVIEW PASS after all migrations are complete.
@@ -110,3 +114,4 @@
 ---
 
 *Last updated: Owner Decision Record before Migration 018 - Normalized Feature Catalog*
+

@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # PXL ERP - PH Compliance Full Scope Audit
 
 Pre-Migration 018 Tax Foundation Validation
@@ -485,3 +489,4 @@ Recommended owner action:
 Final statement:
 
 PXL PH COMPLIANCE FOUNDATION IS STRONG BUT NOT YET FREEZE-READY. MIGRATION 018 SHOULD BE UPDATED BEFORE IMPLEMENTATION.
+

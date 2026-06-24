@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # MIGRATION 018 IMPLEMENTATION SPECIFICATION
 
 Repository: `PXLERP`
@@ -381,3 +385,4 @@ Conditions for implementation:
 - Verify deferred FKs to `import_batches`, `attachments`, `generated_documents`, and `export_jobs` are wired.
 - Verify compliance filed rows cannot be updated by ordinary authenticated policies.
 - Verify line table updates are parent-status guarded or removed.
+

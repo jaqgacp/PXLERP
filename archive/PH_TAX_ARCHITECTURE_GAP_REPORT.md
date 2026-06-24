@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # PH Tax Architecture Gap Report
 
 Repository: PXLERP
@@ -746,3 +750,4 @@ NO-GO for the current Migration 018 scope as written.
 This is not a rejection of the overall architecture. The existing tax foundation is broad and mostly correct. The NO-GO is specific: Migration 018 should not start SQL implementation until the PH tax gaps above are either added to scope or formally excluded by owner decision.
 
 If the owner approves these scope changes, Migration 018 can proceed with high confidence.
+

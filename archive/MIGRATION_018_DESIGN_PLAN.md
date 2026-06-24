@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # PXL ERP - Migration 018 Design Plan
 
 Repository: `PXLERP`  
@@ -649,3 +653,4 @@ Recommended split:
    - Run clean database apply and policy inspection.
 
 Do not start CRUD/UI until all split parts are complete and verified.
+

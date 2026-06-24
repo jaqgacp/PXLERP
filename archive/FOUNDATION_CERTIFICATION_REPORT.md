@@ -1,3 +1,7 @@
+> [!WARNING]
+> **STATUS: SUPERSEDED**
+> DO NOT USE AS IMPLEMENTATION SOURCE
+> Canonical Source: FOUNDATION_FREEZE_REPORT.md
 # PXL ERP - Foundation Certification Report
 
 Reviewed branch: `main`
@@ -349,3 +353,4 @@ Recommended cleanup sequence:
 Final status:
 
 NOT APPROVED - FOUNDATION CLEANUP REQUIRED BEFORE CRUD
+
