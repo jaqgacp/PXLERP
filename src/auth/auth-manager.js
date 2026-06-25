@@ -119,6 +119,22 @@ class AuthManager {
     }
   }
 
+  async refreshCompanyContext() {
+    try {
+      const { data: companies, error: compErr } = await this.supabase
+        .from('companies')
+        .select('id, code, name');
+        
+      if (compErr) {
+        console.error('Error refreshing company context:', compErr);
+      } else {
+        this.companyContext = companies || [];
+      }
+    } catch (err) {
+      console.error('AuthManager company context refresh error:', err);
+    }
+  }
+
   setActiveCompany(companyId) {
     if (!companyId) {
       this.activeCompanyId = null;
