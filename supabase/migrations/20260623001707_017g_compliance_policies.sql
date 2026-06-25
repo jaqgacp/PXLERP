@@ -25,14 +25,14 @@
 -- import/export, or later final verification tables.
 --
 -- 017A helpers reused here:
---   - auth.user_company_ids()
---   - auth.user_branch_ids() is intentionally not used; Doc09 keeps branch
+--   - public.user_company_ids()
+--   - public.user_branch_ids() is intentionally not used; Doc09 keeps branch
 --     access as a UI/query filter in Phase 1.
---   - auth.has_permission(permission_code text, target_company_id uuid)
+--   - public.has_permission(permission_code text, target_company_id uuid)
 --   - public.is_super_admin()
 --
 -- Standard company-scoped SELECT pattern:
---   SELECT allowed when company_id is in auth.user_company_ids() or
+--   SELECT allowed when company_id is in public.user_company_ids() or
 --   public.is_super_admin() returns true.
 --
 -- Tax setup/config write pattern:
@@ -89,7 +89,7 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017g_sel', target_table);
 
@@ -106,7 +106,7 @@ BEGIN
                 TO authenticated
                 WITH CHECK (
                     public.is_super_admin()
-                    OR auth.has_permission(
+                    OR public.has_permission(
                         'settings.compliance_profile.manage',
                         company_id
                     )
@@ -126,14 +126,14 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR auth.has_permission(
+                    OR public.has_permission(
                         'settings.compliance_profile.manage',
                         company_id
                     )
                 )
                 WITH CHECK (
                     public.is_super_admin()
-                    OR auth.has_permission(
+                    OR public.has_permission(
                         'settings.compliance_profile.manage',
                         company_id
                     )
@@ -180,7 +180,7 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017g_sel', target_table);
     END LOOP;
@@ -219,7 +219,7 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017g_sel', target_table);
 
@@ -237,8 +237,8 @@ BEGIN
                 WITH CHECK (
                     public.is_super_admin()
                     OR (
-                        company_id = ANY(auth.user_company_ids())
-                        AND auth.has_permission(%L, company_id)
+                        company_id = ANY(public.user_company_ids())
+                        AND public.has_permission(%L, company_id)
                     )
                 )
         $sql$, 'p_' || target_table || '_017g_ins', target_table, permission_code);
@@ -257,15 +257,15 @@ BEGIN
                 USING (
                     public.is_super_admin()
                     OR (
-                        company_id = ANY(auth.user_company_ids())
-                        AND auth.has_permission(%L, company_id)
+                        company_id = ANY(public.user_company_ids())
+                        AND public.has_permission(%L, company_id)
                     )
                 )
                 WITH CHECK (
                     public.is_super_admin()
                     OR (
-                        company_id = ANY(auth.user_company_ids())
-                        AND auth.has_permission(%L, company_id)
+                        company_id = ANY(public.user_company_ids())
+                        AND public.has_permission(%L, company_id)
                     )
                 )
         $sql$,
@@ -308,7 +308,7 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017g_sel', target_table);
 
@@ -325,7 +325,7 @@ BEGIN
                 TO authenticated
                 WITH CHECK (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017g_ins', target_table);
 
@@ -342,11 +342,11 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
                 WITH CHECK (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017g_upd', target_table);
     END LOOP;
@@ -427,3 +427,4 @@ $migration$;
 -- =============================================================================
 -- END OF MIGRATION 017G
 -- =============================================================================
+

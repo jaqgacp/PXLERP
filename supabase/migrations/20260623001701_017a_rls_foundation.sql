@@ -29,7 +29,7 @@
 -- surprises and policy recursion.
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION auth.user_company_ids()
+CREATE OR REPLACE FUNCTION public.user_company_ids()
 RETURNS uuid[]
 LANGUAGE sql
 STABLE
@@ -46,10 +46,10 @@ AS $function$
       AND uca.revoked_at IS NULL;
 $function$;
 
-COMMENT ON FUNCTION auth.user_company_ids() IS
+COMMENT ON FUNCTION public.user_company_ids() IS
     'Returns company IDs available to the current authenticated user. SECURITY DEFINER so future RLS policies can evaluate company access even while access tables themselves have RLS enabled.';
 
-CREATE OR REPLACE FUNCTION auth.user_branch_ids()
+CREATE OR REPLACE FUNCTION public.user_branch_ids()
 RETURNS uuid[]
 LANGUAGE sql
 STABLE
@@ -73,10 +73,10 @@ AS $function$
       );
 $function$;
 
-COMMENT ON FUNCTION auth.user_branch_ids() IS
+COMMENT ON FUNCTION public.user_branch_ids() IS
     'Returns branch IDs available to the current authenticated user, limited to active company access. Used by application query filters and future optional branch-aware RLS policies.';
 
-CREATE OR REPLACE FUNCTION auth.has_permission(permission_code text, target_company_id uuid)
+CREATE OR REPLACE FUNCTION public.has_permission(permission_code text, target_company_id uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -116,7 +116,7 @@ AS $function$
     );
 $function$;
 
-COMMENT ON FUNCTION auth.has_permission(text, uuid) IS
+COMMENT ON FUNCTION public.has_permission(text, uuid) IS
     'Checks whether the current authenticated user has a permission code inside a target company. Does not grant super-admin bypass; platform bypass is handled separately by public.is_super_admin().';
 
 CREATE OR REPLACE FUNCTION public.is_super_admin()
@@ -248,12 +248,13 @@ CREATE POLICY atc_codes_select_global_authenticated
 --
 -- Smoke calls under an authenticated request context:
 --
--- SELECT auth.user_company_ids();
--- SELECT auth.user_branch_ids();
--- SELECT auth.has_permission('settings.company.read', '<company_uuid>'::uuid);
+-- SELECT public.user_company_ids();
+-- SELECT public.user_branch_ids();
+-- SELECT public.has_permission('settings.company.read', '<company_uuid>'::uuid);
 -- SELECT public.is_super_admin();
 -- =============================================================================
 
 -- =============================================================================
 -- END OF MIGRATION 017A
 -- =============================================================================
+

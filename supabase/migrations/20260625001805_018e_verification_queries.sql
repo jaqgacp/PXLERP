@@ -34,3 +34,4 @@ BEGIN
     -- If we reach here, the foundation freeze has passed verification!
     RAISE NOTICE 'SUCCESS: PXL ERP Phase 1 Foundation Freeze Verified. Active Tables: %, All RLS Enabled: TRUE.', active_table_count;
 END $$;
+
