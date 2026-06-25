@@ -14,19 +14,19 @@
 .erp-section {
   background: #ffffff;
   border: 1px solid #d4e4f0;
-  padding: 24px 28px;
-  margin-bottom: 20px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(31,58,95,0.04);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  /* Removed heavy box-shadow for a flatter, professional look */
 }
 
 .erp-section legend {
   font-weight: 700;
-  padding: 0 12px 8px 0;
+  padding: 0 0 6px 0;
   color: #1f3a5f;
   font-size: 14px;
-  border-bottom: 2px solid #e8a020;
-  margin-bottom: 18px;
+  border-bottom: 1px solid #c8d8e8;
+  margin-bottom: 12px;
   display: block;
   width: 100%;
   text-transform: uppercase;
@@ -36,8 +36,8 @@
 /* Responsive Standard Grid */
 .erp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px 24px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px 16px;
 }
 .erp-grid.single-column {
   grid-template-columns: 1fr;
@@ -68,9 +68,9 @@
 .erp-field select,
 .erp-field textarea {
   width: 100%;
-  padding: 7px 10px;
+  padding: 5px 8px;
   border: 1px solid #c8d8e8;
-  border-radius: 4px;
+  border-radius: 2px;
   font-family: "Segoe UI", Arial, sans-serif;
   font-size: 13px;
   color: #1a1a2e;
