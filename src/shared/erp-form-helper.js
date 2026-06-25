@@ -82,8 +82,10 @@ export class ErpFormHelper {
   renderShell() {
     const root = document.getElementById('content');
     // Extract inner form fields provided by form.html
-    const template = document.getElementById('erp-form-template');
-    const innerFields = template ? template.innerHTML : '<p>No form template found.</p>';
+    if (!this.cachedInnerFields) {
+      const template = document.getElementById('erp-form-template');
+      this.cachedInnerFields = template ? template.innerHTML : '<p>No form template found.</p>';
+    }
     
     const titleAction = this.mode === 'create' ? 'New' : this.mode === 'edit' ? 'Edit' : 'View';
     const pageTitle = `${titleAction} ${this.config.moduleName}`;
@@ -118,7 +120,7 @@ export class ErpFormHelper {
         </div>
         <form id="erp-form" onsubmit="return false;">
           <div class="erp-validation-summary" id="erp-validation-summary"></div>
-          ${innerFields}
+          ${this.cachedInnerFields}
         </form>
       </div>
       
