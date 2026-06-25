@@ -1,8 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
-const SUPABASE_URL = 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { authManager } from './auth-manager.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('login-form');
@@ -11,9 +7,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const successEl = document.getElementById('login-success');
 
   // Check current session
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    successEl.textContent = 'Already logged in as: ' + session.user.email;
+  if (authManager.isAuthenticated()) {
+    const user = authManager.getCurrentUser();
+    successEl.textContent = 'Already logged in as: ' + (user.email || user.id);
     successEl.style.display = 'block';
     form.style.display = 'none';
     btnLogout.style.display = 'block';
@@ -27,10 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await authManager.signInWithPassword(email, password);
 
     if (error) {
       errorEl.textContent = 'Login failed: ' + error.message;
@@ -45,7 +38,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   btnLogout.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
+    await authManager.signOut();
   });
 });

@@ -1,15 +1,10 @@
 // -----------------------------------------------------------------------------
-// PXL ERP - Reusable Setup List Helper
+// PXL ERP - Setup List Helper
 // -----------------------------------------------------------------------------
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { authManager } from '../auth/auth-manager.js';
 
-// Local Development Supabase Configuration
-const SUPABASE_URL = 'http://127.0.0.1:54321';
-// TODO: Replace with actual local anon key from `supabase start`
-const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = authManager.supabase;
 
 export function escapeHTML(str) {
   if (!str) return '';

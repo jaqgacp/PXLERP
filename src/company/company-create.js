@@ -2,11 +2,9 @@
 // PXL ERP - Company Create JS
 // -----------------------------------------------------------------------------
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { authManager } from '../auth/auth-manager.js';
 
-const SUPABASE_URL = 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = authManager.supabase;
 
 document.addEventListener('DOMContentLoaded', () => {
   initForm();
@@ -20,8 +18,8 @@ async function initForm() {
 
   statusEl.textContent = 'Loading form dependencies...';
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session || !session.user) {
+  // We rely on route protection now, but let's keep the banner as requested.
+  if (!authManager.isAuthenticated()) {
     authStatusEl.style.backgroundColor = '#f8d7da';
     authStatusEl.style.borderColor = '#f5c6cb';
     authStatusEl.style.color = '#721c24';
@@ -29,10 +27,11 @@ async function initForm() {
     btnSave.disabled = true;
     btnSaveNew.disabled = true;
   } else {
+    const user = authManager.getCurrentUser();
     authStatusEl.style.backgroundColor = '#d4edda';
     authStatusEl.style.borderColor = '#c3e6cb';
     authStatusEl.style.color = '#155724';
-    authStatusEl.textContent = 'Signed in as: ' + (session.user.email || session.user.id);
+    authStatusEl.textContent = 'Signed in as: ' + (user.email || user.id);
   }
 
   // Load currencies for the dropdown
@@ -90,15 +89,12 @@ async function saveCompany(isSaveAndNew) {
   setButtonsDisabled(true);
 
   try {
-    // 1. Get a valid user profile ID for created_by from an authenticated session
-    const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-    
-    if (sessionErr) throw sessionErr;
-    if (!session || !session.user) {
+    const user = authManager.getCurrentUser();
+    if (!user) {
       throw new Error("Cannot save company because no authenticated user is available.");
     }
 
-    const createdBy = session.user.id;
+    const createdBy = user.id;
 
     // 2. Build payload
     const payload = {

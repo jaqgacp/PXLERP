@@ -2,11 +2,9 @@
 // PXL ERP - Company View JS
 // -----------------------------------------------------------------------------
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { authManager } from '../auth/auth-manager.js';
 
-const SUPABASE_URL = 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = authManager.supabase;
 
 document.addEventListener('DOMContentLoaded', () => {
   initForm();
