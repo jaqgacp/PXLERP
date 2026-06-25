@@ -4,31 +4,35 @@
 
 /* Form Container */
 .erp-form-container {
-  padding: 20px;
-  background: #fff;
-  border: 1px solid #d4e4f0;
-  margin-top: 10px;
-  border-radius: 4px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e1e8ed;
+  margin-top: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   position: relative;
 }
 
 /* Sections */
 .erp-section {
-  border: 1px solid #ccc;
-  padding: 15px;
-  margin-bottom: 15px;
-  border-radius: 4px;
+  border: 1px solid #e1e8ed;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  background: #fdfdfd;
 }
 .erp-section legend {
-  font-weight: bold;
-  padding: 0 5px;
+  font-weight: 600;
+  padding: 0 8px;
+  color: #1f3a5f;
+  font-size: 15px;
 }
 
 /* Standard Grid */
 .erp-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  gap: 20px;
 }
 .erp-grid.single-column {
   grid-template-columns: 1fr;
@@ -41,11 +45,13 @@
 }
 .erp-field label {
   font-weight: 500;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 13px;
 }
 .erp-required::after {
   content: ' *';
-  color: red;
+  color: #dc3545;
 }
 .erp-field input[type="text"],
 .erp-field input[type="number"],
@@ -53,30 +59,33 @@
 .erp-field select,
 .erp-field textarea {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
   border-radius: 4px;
   font-family: inherit;
   font-size: 14px;
+  color: #1e293b;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 .erp-field input:focus,
 .erp-field select:focus,
 .erp-field textarea:focus {
   outline: none;
-  border-color: #0056b3;
-  box-shadow: 0 0 0 2px rgba(0, 86, 179, 0.2);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 .erp-field input:read-only,
 .erp-field select:disabled,
 .erp-field textarea:read-only {
-  background-color: #f8f9fa;
-  color: #6c757d;
+  background-color: #f1f5f9;
+  color: #94a3b8;
   cursor: not-allowed;
+  border-color: #e2e8f0;
 }
 .erp-field.has-error input,
 .erp-field.has-error select,
 .erp-field.has-error textarea {
-  border-color: red;
+  border-color: #ef4444;
 }
 
 /* Validation Summary */
@@ -84,44 +93,47 @@
   color: #721c24;
   background-color: #f8d7da;
   border: 1px solid #f5c6cb;
-  padding: 10px;
-  margin-bottom: 15px;
-  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: 6px;
   display: none;
+  font-size: 14px;
 }
 .erp-validation-summary ul {
-  margin: 5px 0 0 20px;
+  margin: 8px 0 0 20px;
   padding: 0;
 }
 
 /* Toast Notifications */
 .erp-toast-container {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 24px;
+  right: 24px;
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .erp-toast {
-  min-width: 250px;
-  padding: 15px;
-  border-radius: 4px;
+  min-width: 300px;
+  padding: 16px 20px;
+  border-radius: 6px;
   color: #fff;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
   opacity: 0;
   transform: translateX(100%);
-  transition: opacity 0.3s, transform 0.3s;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  font-weight: 500;
 }
 .erp-toast.show {
   opacity: 1;
   transform: translateX(0);
 }
-.erp-toast.success { background-color: #28a745; }
-.erp-toast.error { background-color: #dc3545; }
-.erp-toast.warning { background-color: #ffc107; color: #212529; }
-.erp-toast.info { background-color: #17a2b8; }
+.erp-toast.success { background-color: #10b981; }
+.erp-toast.error { background-color: #ef4444; }
+.erp-toast.warning { background-color: #f59e0b; color: #fff; }
+.erp-toast.info { background-color: #3b82f6; }
 
 /* Loading Overlay */
 .erp-loading-overlay {
@@ -130,23 +142,24 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 10;
   display: none;
+  border-radius: 8px;
 }
 .erp-loading-overlay.active {
   display: flex;
 }
 .erp-spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #0056b3;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #3b82f6;
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
+  width: 36px;
+  height: 36px;
+  animation: spin 0.8s linear infinite;
 }
 @keyframes spin {
   0% { transform: rotate(0deg); }
