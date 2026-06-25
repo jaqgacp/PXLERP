@@ -8,7 +8,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // Local Development Supabase Configuration
 const SUPABASE_URL = 'http://127.0.0.1:54321';
 // TODO: Replace with actual local anon key from `supabase start`
-const SUPABASE_ANON_KEY = 'PASTE_YOUR_LOCAL_ANON_KEY_HERE';
+const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
