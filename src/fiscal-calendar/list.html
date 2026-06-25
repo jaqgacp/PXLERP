@@ -16,47 +16,57 @@
     <h1>Fiscal Calendar</h1>
   </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button class="btn btn-primary" onclick="window.location.hash = '#/setup/fiscal-calendar/new'">New</button>
-  </div>
-
-  <!-- Filter Bar -->
-  <div class="filter-bar">
-    <div class="filter-group">
-      <label for="fiscal-year-filter">Fiscal Year:</label>
-      <select id="fiscal-year-filter">
-        <option value="">-- All --</option>
-      </select>
+  <!-- ERP List Container -->
+  <div class="erp-list-container">
+    
+    <!-- ERP List Toolbar -->
+    <div class="erp-list-toolbar">
+      <div class="erp-list-search" style="display: flex; gap: 1rem; align-items: center;">
+        <label for="fiscal-year-filter" style="font-size: 0.875rem; font-weight: 500;">Fiscal Year:</label>
+        <select id="fiscal-year-filter" style="padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.875rem;">
+          <option value="">-- All --</option>
+        </select>
+      </div>
+      <div class="erp-list-toolbar-actions">
+        <button class="btn-primary" onclick="window.location.hash = '#/setup/fiscal-calendar/new'">+ New Period</button>
+      </div>
     </div>
-  </div>
 
-  <!-- Data Grid -->
-  <div class="data-grid-container">
-    <table class="data-grid">
-      <thead>
-        <tr>
-          <th>Year</th>
-          <th>Period</th>
-          <th>Period Name</th>
-          <th>From Date</th>
-          <th>To Date</th>
-          <th>Quarter</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="fiscal-calendar-grid-body">
-        <tr>
-          <td colspan="8" class="text-center text-muted">Loading...</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <!-- ERP List Table -->
+    <div class="erp-list-table-wrapper">
+      <table class="erp-list-table">
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>Period</th>
+            <th>Period Name</th>
+            <th>From Date</th>
+            <th>To Date</th>
+            <th>Quarter</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="fiscal-calendar-grid-body">
+          <tr>
+            <td colspan="8" class="erp-list-state-cell">
+              <span class="erp-list-state-icon">⏳</span>
+              <div>Loading periods...</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-  <!-- Status Footer -->
-  <div class="status-footer">
-    <span class="status-text">Fiscal Calendar List Loaded</span>
+    <!-- ERP List Pagination -->
+    <div class="erp-list-pagination">
+      <span class="page-info" id="pg-info">0 records</span>
+      <div class="erp-list-pagination-controls">
+        <button disabled>Previous</button>
+        <button disabled>Next</button>
+      </div>
+    </div>
+
   </div>
 
   <script type="module" src="fiscal-calendar-list.js"></script>
