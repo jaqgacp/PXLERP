@@ -24,84 +24,197 @@
   </div>
 
   <!-- Form Sections -->
-  <div class="form-container" style="padding: 20px; background: #fff; border: 1px solid #d4e4f0; margin-top: 10px;">
+  <div class="erp-form-container">
     <form id="company-view-form">
       
-      <div id="form-error" style="color: red; margin-bottom: 15px; display: none;"></div>
+      <div id="form-error" class="erp-validation-summary"></div>
 
-      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+      <!-- SECTION 1: General Information -->
+      <fieldset class="erp-section">
         <legend>General Information</legend>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div>
-            <label>Code</label><br>
-            <input type="text" id="code" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label>Code</label>
+            <input type="text" id="code" readonly>
           </div>
-          <div>
-            <label>Name</label><br>
-            <input type="text" id="name" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          <div class="erp-field">
+            <label>Registered Name</label>
+            <input type="text" id="name" readonly>
           </div>
-          <div>
-            <label>Trade Name</label><br>
-            <input type="text" id="trade_name" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          <div class="erp-field">
+            <label>Trade Name</label>
+            <input type="text" id="trade_name" readonly>
           </div>
-          <div>
-            <label>Business Type</label><br>
-            <input type="text" id="business_type" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          <div class="erp-field">
+            <label>Base TIN (9 Digits)</label>
+            <input type="text" id="base_tin" readonly>
           </div>
-          <div>
-            <label>Industry Classification</label><br>
-            <input type="text" id="industry_classification" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          <div class="erp-field">
+            <label>Branch Code</label>
+            <input type="text" id="branch_code" readonly>
           </div>
-          <div>
-            <label>Logo URL</label><br>
-            <input type="text" id="logo_url" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
-          </div>
-        </div>
-      </fieldset>
-
-      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
-        <legend>Registration & Tax Details</legend>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div>
-            <label>TIN</label><br>
-            <input type="text" id="tin" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
-          </div>
-          <div>
-            <label>Tax Type</label><br>
-            <input type="text" id="tax_type" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
-          </div>
-          <div>
-            <label>RDO Code</label><br>
-            <input type="text" id="rdo_code" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
-          </div>
-          <div>
-            <label>SEC Registration No.</label><br>
-            <input type="text" id="sec_registration_no" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
-          </div>
-          <div>
-            <label>DTI Registration No.</label><br>
-            <input type="text" id="dti_registration_no" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
-          </div>
-          <div style="grid-column: span 2;">
-            <label>BIR Registered Address</label><br>
-            <textarea id="bir_registered_address" readonly style="width: 100%; padding: 5px; height: 60px; background: #f5f5f5;"></textarea>
+          <div class="erp-field">
+            <label>Full TIN</label>
+            <input type="text" id="full_tin" readonly>
           </div>
         </div>
       </fieldset>
 
-      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
-        <legend>Accounting & System Settings</legend>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div>
-            <label>Functional Currency</label><br>
-            <input type="text" id="functional_currency_id" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+      <!-- SECTION 2: Tax & Business Registration -->
+      <fieldset class="erp-section">
+        <legend>Tax & Business Registration</legend>
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label>Tax Type</label>
+            <input type="text" id="tax_type" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Business Type</label>
+            <input type="text" id="business_type" readonly>
+          </div>
+          <div class="erp-field">
+            <label>RDO Code</label>
+            <input type="text" id="rdo_code" readonly>
+          </div>
+          <div class="erp-field">
+            <label>BIR Registration Date</label>
+            <input type="date" id="bir_registration_date" readonly>
+          </div>
+          <div class="erp-field">
+            <label>SEC Registration No.</label>
+            <input type="text" id="sec_registration_no" readonly>
+          </div>
+          <div class="erp-field">
+            <label>DTI Registration No.</label>
+            <input type="text" id="dti_registration_no" readonly>
+          </div>
+          <div class="erp-field">
+            <label>CDA Registration No.</label>
+            <input type="text" id="cda_registration_no" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Incorporation/Registration Date</label>
+            <input type="date" id="registration_date" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Line of Business (Per COR)</label>
+            <input type="text" id="line_of_business" readonly>
+          </div>
+          <div class="erp-field">
+            <label>PSIC Code</label>
+            <input type="text" id="psic_code" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Industry Classification</label>
+            <input type="text" id="industry_classification" readonly>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 3: Address & Contact -->
+      <fieldset class="erp-section">
+        <legend>Address & Contact</legend>
+        <div class="erp-grid">
+          <div class="erp-field" style="grid-column: span 2;">
+            <label>BIR Registered Address</label>
+            <textarea id="bir_registered_address" readonly rows="2"></textarea>
+          </div>
+          <div class="erp-field">
+            <label>Zip Code</label>
+            <input type="text" id="zip_code" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Contact Person</label>
+            <input type="text" id="contact_person" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Phone</label>
+            <input type="text" id="phone" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Mobile No</label>
+            <input type="text" id="mobile_no" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Email</label>
+            <input type="email" id="email" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Website</label>
+            <input type="text" id="website" readonly>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 4: Compliance Profile & Signatory -->
+      <fieldset class="erp-section">
+        <legend>Compliance Profile & Authorized Signatory</legend>
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label style="font-weight:600; margin-bottom:10px;">Compliance Flags</label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
+              <input type="checkbox" id="is_withholding_agent" disabled> Is Withholding Agent (Top 20k/5k)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_large_taxpayer" disabled> Is Large Taxpayer
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_peza_registered" disabled> PEZA Registered
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_boi_registered" disabled> BOI Registered
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_bmbes_registered" disabled> BMBE Registered
+            </label>
           </div>
           <div>
-            <label>Fiscal Year Start Month</label><br>
-            <input type="text" id="fiscal_year_start_month" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+            <div class="erp-field" style="margin-bottom: 15px;">
+              <label>Signatory Name</label>
+              <input type="text" id="signatory_name" readonly>
+            </div>
+            <div class="erp-field" style="margin-bottom: 15px;">
+              <label>Signatory Title</label>
+              <input type="text" id="signatory_title" readonly>
+            </div>
+            <div class="erp-field">
+              <label>Signatory TIN</label>
+              <input type="text" id="signatory_tin" readonly>
+            </div>
           </div>
-          <div>
-            <label>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 5: Accounting & System Defaults -->
+      <fieldset class="erp-section">
+        <legend>Accounting & System Defaults</legend>
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label>CAS PTU Number</label>
+            <input type="text" id="ptu_cas_no" readonly>
+          </div>
+          <div class="erp-field">
+            <label>CAS PTU Date Issued</label>
+            <input type="date" id="ptu_cas_date_issued" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Accounting Method</label>
+            <input type="text" id="accounting_method" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Inventory Costing Method</label>
+            <input type="text" id="inventory_costing_method" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Functional Currency</label>
+            <input type="text" id="functional_currency_id" readonly>
+          </div>
+          <div class="erp-field">
+            <label>Fiscal Year Start Month</label>
+            <input type="text" id="fiscal_year_start_month" readonly>
+          </div>
+          <div class="erp-field">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:20px;">
               <input type="checkbox" id="is_active" disabled> Is Active
             </label>
           </div>
