@@ -30,7 +30,12 @@ export class SetupListHelper {
     if (!tbody) return;
 
     // 1. Loading State
-    tbody.innerHTML = `<tr><td colspan="${this.colSpan}" class="text-center text-muted">Loading ${this.entityName}...</td></tr>`;
+    tbody.innerHTML = `<tr>
+      <td colspan="${this.colSpan}" class="erp-list-state-cell">
+        <span class="erp-list-state-icon">⏳</span>
+        <div>Loading ${this.entityName}...</div>
+      </td>
+    </tr>`;
 
     try {
       // 2. Fetch data
@@ -38,7 +43,12 @@ export class SetupListHelper {
 
       // 3. Empty State
       if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${this.colSpan}" class="text-center text-muted">No ${this.entityName} found.</td></tr>`;
+        tbody.innerHTML = `<tr>
+          <td colspan="${this.colSpan}" class="erp-list-state-cell">
+            <span class="erp-list-state-icon">📭</span>
+            <div>No ${this.entityName} found.</div>
+          </td>
+        </tr>`;
         this.updatePaginationInfo(0);
         return;
       }
@@ -56,7 +66,12 @@ export class SetupListHelper {
     } catch (err) {
       // 5. Error State
       console.error(`Error loading ${this.entityName}:`, err);
-      tbody.innerHTML = `<tr><td colspan="${this.colSpan}" class="text-center text-danger" style="color: red;">Error loading data: ${escapeHTML(err.message)}</td></tr>`;
+      tbody.innerHTML = `<tr>
+        <td colspan="${this.colSpan}" class="erp-list-state-cell">
+          <span class="erp-list-state-icon">⚠️</span>
+          <div class="erp-list-error-text">Error loading data: ${escapeHTML(err.message)}</div>
+        </td>
+      </tr>`;
     }
   }
 

@@ -16,60 +16,58 @@
     <h1>Company Setup</h1>
   </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button class="btn btn-primary" onclick="window.location.hash = '#/setup/company-setup/new'">New</button>
-    <button class="btn" onclick="alert('Not implemented yet')">Import</button>
-    <button class="btn" onclick="alert('Not implemented yet')">Export</button>
-    <button class="btn" onclick="alert('Not implemented yet')">Generate</button>
-    <button class="btn" onclick="alert('Not implemented yet')">Approve</button>
-    <button class="btn" onclick="alert('Not implemented yet')">Print</button>
-  </div>
-
-  <!-- Filter Bar -->
-  <div class="filter-bar">
-    <div class="filter-group">
-      <label for="company-search">Search:</label>
-      <input type="text" id="company-search" placeholder="Search by code, name, or TIN">
+  <!-- ERP List Container -->
+  <div class="erp-list-container">
+    
+    <!-- ERP List Toolbar -->
+    <div class="erp-list-toolbar">
+      <div class="erp-list-search">
+        <input type="text" id="company-search" placeholder="Search by code, name, or TIN">
+      </div>
+      <div class="erp-list-toolbar-actions">
+        <button class="btn-secondary" onclick="alert('Not implemented yet')">Print</button>
+        <button class="btn-secondary" onclick="alert('Not implemented yet')">Export</button>
+        <button class="btn-primary" onclick="window.location.hash = '#/setup/company-setup/new'">+ New Company</button>
+      </div>
     </div>
-  </div>
 
-  <!-- Data Grid -->
-  <div class="data-grid-container">
-    <table class="data-grid">
-      <thead>
-        <tr>
-          <th>Code</th>
-          <th>Name</th>
-          <th>Trade Name</th>
-          <th>TIN</th>
-          <th>Tax Type</th>
-          <th>Business Type</th>
-          <th>RDO Code</th>
-          <th>Active</th>
-          <th>Created At</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="company-grid-body">
-        <!-- Data will be populated here -->
-        <tr>
-          <td colspan="10" class="text-center text-muted">No data found or not yet wired</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <!-- ERP List Table -->
+    <div class="erp-list-table-wrapper">
+      <table class="erp-list-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Trade Name</th>
+            <th>TIN</th>
+            <th>Tax Type</th>
+            <th>Business Type</th>
+            <th>RDO Code</th>
+            <th>Active</th>
+            <th>Created At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="company-grid-body">
+          <tr>
+            <td colspan="10" class="erp-list-state-cell">
+              <span class="erp-list-state-icon">⏳</span>
+              <div>Loading companies...</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-  <!-- Pagination -->
-  <div class="pagination">
-    <button class="btn btn-sm" disabled>Previous</button>
-    <span class="page-info">Page 1 of 1</span>
-    <button class="btn btn-sm" disabled>Next</button>
-  </div>
+    <!-- ERP List Pagination -->
+    <div class="erp-list-pagination">
+      <span class="page-info" id="pg-info">0 records</span>
+      <div class="erp-list-pagination-controls">
+        <button disabled>Previous</button>
+        <button disabled>Next</button>
+      </div>
+    </div>
 
-  <!-- Status Footer -->
-  <div class="status-footer">
-    <span class="status-text">Company Setup List Loaded</span>
   </div>
 
   <script type="module" src="company-list.js"></script>
