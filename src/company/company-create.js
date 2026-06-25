@@ -117,11 +117,42 @@ async function saveCompany(isSaveAndNew) {
     };
 
     // 3. Insert into public.companies
-    const { data, error } = await supabase
+    const { data: newCompany, error } = await supabase
       .from('companies')
-      .insert([payload]);
+      .insert([payload])
+      .select('id')
+      .single();
 
     if (error) throw error;
+
+    // 4. Insert into public.user_company_access
+    const ucaPayload = {
+      user_id: createdBy,
+      company_id: newCompany.id,
+      is_company_admin: true,
+      granted_by: createdBy
+    };
+    
+    const { error: ucaError } = await supabase
+      .from('user_company_access')
+      .insert([ucaPayload]);
+
+    if (ucaError) {
+      throw new Error("Company was created but access granting failed: " + ucaError.message);
+    }
+
+    // 5. Refresh Company Context and UI Selector
+    if (typeof authManager.refreshCompanyContext === 'function') {
+      await authManager.refreshCompanyContext();
+      
+      // Auto-set as active company if none was selected
+      if (!authManager.getActiveCompanyId()) {
+        authManager.setActiveCompany(newCompany.id);
+      }
+      
+      // Dispatch hashchange to force topbar updateAuthUI
+      window.dispatchEvent(new Event('hashchange'));
+    }
 
     statusEl.textContent = 'Saved successfully.';
 
