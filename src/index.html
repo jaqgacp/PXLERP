@@ -1041,6 +1041,7 @@ const MODULE_PAGES = {
       { icon:'🧾', title:'Tax Setup', desc:'VAT, EWT, FWT, ATC codes and BIR forms', href:'#/setup/vat-codes' },
     ]
   },
+  'login': { title: 'Login', icon: '🔑', breadcrumb: ['Login'], type: 'form' },
    // Company Setup
    'setup/company-setup': { title: 'Company Setup', icon: '🏢', breadcrumb: ['Setup','Company Setup'], type: 'list' },
    'setup/company-setup/new': { title: 'New Company', icon: '🏢', breadcrumb: ['Setup','Company Setup','New Company'], type: 'form' },
@@ -1236,6 +1237,8 @@ const PAGE_DESCRIPTIONS = {
   'compliance/vat/slsp-export': 'Generate Summary List of Sales and Purchases (SLSP) DAT file for BIR submission.',
 };
 
+import { authManager } from './auth/auth-manager.js';
+
 // ── ROUTING ──────────────────────────────────────────────────────────────────
 
 function go(path) {
@@ -1243,17 +1246,37 @@ function go(path) {
   closeAllMenus();
 }
 
-function route() {
+async function route() {
+  await authManager.initialize();
+
   const hash = window.location.hash.replace(/^#\/?/, '') || '';
   renderPage(hash);
+  
   // Mark active nav item
   document.querySelectorAll('.nav-item').forEach(item => {
     const mod = item.dataset.module;
     item.classList.toggle('active', hash === mod || hash.startsWith(mod + '/'));
   });
+
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const user = authManager.getCurrentUser();
+  const profile = authManager.getCurrentProfile();
+  
+  // Example of a minimal auth UI update if there's a header
+  // (We'll assume the nav has an element we can update later, 
+  // but for now, we just ensure it doesn't crash)
 }
 
 function renderPage(path) {
+  // Route Protection
+  if (!authManager.isAuthenticated() && path !== 'login') {
+    window.location.hash = '#/login';
+    return;
+  }
+
   const page = MODULE_PAGES[path];
   const contentEl = document.getElementById('content');
 
