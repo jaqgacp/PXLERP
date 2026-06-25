@@ -1358,7 +1358,28 @@ function renderPage(path) {
     return;
   }
 
-  const page = MODULE_PAGES[path];
+  let page = MODULE_PAGES[path];
+
+  // Dynamic route resolution for setup modules
+  if (!page && path.startsWith('setup/')) {
+    const parts = path.split('/');
+    const folder = parts[1];
+    const action = parts[2];
+    
+    // Auto-generate basic page info
+    const moduleName = folder.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    
+    if (!action) {
+      page = { title: moduleName, icon: '⚙️', breadcrumb: ['Setup', moduleName], type: 'list' };
+    } else if (action === 'new') {
+      page = { title: 'New ' + moduleName, icon: '⚙️', breadcrumb: ['Setup', moduleName, 'New'], type: 'form' };
+    } else if (action === 'view') {
+      page = { title: 'View ' + moduleName, icon: '⚙️', breadcrumb: ['Setup', moduleName, 'View'], type: 'form' };
+    } else if (action === 'edit') {
+      page = { title: 'Edit ' + moduleName, icon: '⚙️', breadcrumb: ['Setup', moduleName, 'Edit'], type: 'form' };
+    }
+  }
+
   const contentEl = document.getElementById('content');
 
   if (!path || path === 'dashboard') {
