@@ -359,7 +359,8 @@ CREATE TABLE IF NOT EXISTS public.duplicate_tin_flags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
     tin TEXT NOT NULL,
-    party_id UUID REFERENCES public.parties(id),
+    party_type TEXT NOT NULL CHECK (party_type IN ('customer', 'supplier', 'employee')),
+    entity_id UUID NOT NULL,
     status TEXT NOT NULL DEFAULT 'unresolved',
     created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -370,8 +371,9 @@ CREATE TABLE IF NOT EXISTS public.duplicate_tin_flags (
 CREATE TABLE IF NOT EXISTS public.party_merge_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
-    surviving_party_id UUID REFERENCES public.parties(id),
-    merged_party_id UUID,
+    party_type TEXT NOT NULL CHECK (party_type IN ('customer', 'supplier', 'employee')),
+    surviving_entity_id UUID NOT NULL,
+    merged_entity_id UUID NOT NULL,
     merged_by UUID REFERENCES auth.users(id),
     merged_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by UUID REFERENCES auth.users(id),
@@ -418,3 +420,4 @@ ALTER TABLE public.period_close_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subledger_close_certifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.duplicate_tin_flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.party_merge_logs ENABLE ROW LEVEL SECURITY;
+

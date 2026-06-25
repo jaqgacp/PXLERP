@@ -186,3 +186,4 @@ ALTER TABLE public.workspace_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.company_feature_visibility ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_workspace_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_workspace_preferences ENABLE ROW LEVEL SECURITY;
+

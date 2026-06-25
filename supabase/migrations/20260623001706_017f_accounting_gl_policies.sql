@@ -24,15 +24,15 @@
 -- or import/export tables.
 --
 -- 017A helpers reused here:
---   - auth.user_company_ids()
---   - auth.user_branch_ids() is intentionally not used; Doc09 keeps branch
+--   - public.user_company_ids()
+--   - public.user_branch_ids() is intentionally not used; Doc09 keeps branch
 --     access as a UI/query filter in Phase 1.
---   - auth.has_permission(...) is intentionally not used; 017F follows the
+--   - public.has_permission(...) is intentionally not used; 017F follows the
 --     requested company-access-only Phase 1 pattern.
 --   - public.is_super_admin()
 --
 -- Standard company-scoped pattern:
---   SELECT/INSERT/UPDATE allowed when company_id is in auth.user_company_ids()
+--   SELECT/INSERT/UPDATE allowed when company_id is in public.user_company_ids()
 --   or public.is_super_admin() returns true.
 --
 -- Editable status guard:
@@ -89,7 +89,7 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017f_sel', target_table);
     END LOOP;
@@ -126,7 +126,7 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017f_sel', target_table);
 
@@ -143,7 +143,7 @@ BEGIN
                 TO authenticated
                 WITH CHECK (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017f_ins', target_table);
 
@@ -161,7 +161,7 @@ BEGIN
                 USING (
                     (
                         public.is_super_admin()
-                        OR company_id = ANY(auth.user_company_ids())
+                        OR company_id = ANY(public.user_company_ids())
                     )
                     AND status::text NOT IN (
                         'posted',
@@ -174,7 +174,7 @@ BEGIN
                 WITH CHECK (
                     (
                         public.is_super_admin()
-                        OR company_id = ANY(auth.user_company_ids())
+                        OR company_id = ANY(public.user_company_ids())
                     )
                     AND status::text NOT IN (
                         'posted',
@@ -218,7 +218,7 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017f_sel', target_table);
 
@@ -235,7 +235,7 @@ BEGIN
                 TO authenticated
                 WITH CHECK (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017f_ins', target_table);
 
@@ -252,11 +252,11 @@ BEGIN
                 TO authenticated
                 USING (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
                 WITH CHECK (
                     public.is_super_admin()
-                    OR company_id = ANY(auth.user_company_ids())
+                    OR company_id = ANY(public.user_company_ids())
                 )
         $sql$, 'p_' || target_table || '_017f_upd', target_table);
     END LOOP;
@@ -325,3 +325,4 @@ $migration$;
 --   )
 -- ORDER BY tablename;
 -- =============================================================================
+

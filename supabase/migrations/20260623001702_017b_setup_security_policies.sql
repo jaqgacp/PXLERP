@@ -18,8 +18,8 @@
 -- master data, accounting, inventory, fixed asset, or compliance tables.
 --
 -- 017A helpers reused here:
---   - auth.user_company_ids()
---   - auth.has_permission(permission_code text, target_company_id uuid)
+--   - public.user_company_ids()
+--   - public.has_permission(permission_code text, target_company_id uuid)
 --   - public.is_super_admin()
 --
 -- Permission-code mapping uses only Doc09 canonical settings permissions:
@@ -97,7 +97,7 @@ CREATE POLICY companies_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR id = ANY(auth.user_company_ids())
+        OR id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS companies_017b_insert_super_admin
@@ -120,13 +120,13 @@ CREATE POLICY companies_017b_update_company_settings
     TO authenticated
     USING (
         public.is_super_admin()
-        OR id = ANY(auth.user_company_ids())
+        OR id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.feature_settings.manage', id)
+            id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.feature_settings.manage', id)
         )
     );
 
@@ -139,7 +139,7 @@ CREATE POLICY branches_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS branches_017b_insert_company_admin
@@ -152,8 +152,8 @@ CREATE POLICY branches_017b_insert_company_admin
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -166,13 +166,13 @@ CREATE POLICY branches_017b_update_company_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -185,7 +185,7 @@ CREATE POLICY departments_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS departments_017b_insert_company_admin
@@ -198,8 +198,8 @@ CREATE POLICY departments_017b_insert_company_admin
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -212,13 +212,13 @@ CREATE POLICY departments_017b_update_company_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -231,7 +231,7 @@ CREATE POLICY cost_centers_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS cost_centers_017b_insert_company_admin
@@ -244,8 +244,8 @@ CREATE POLICY cost_centers_017b_insert_company_admin
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -258,13 +258,13 @@ CREATE POLICY cost_centers_017b_update_company_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -281,7 +281,7 @@ CREATE POLICY fiscal_years_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS fiscal_years_017b_insert_accounting_setup
@@ -294,8 +294,8 @@ CREATE POLICY fiscal_years_017b_insert_accounting_setup
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.coa.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.coa.manage', company_id)
         )
     );
 
@@ -308,13 +308,13 @@ CREATE POLICY fiscal_years_017b_update_accounting_setup
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.coa.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.coa.manage', company_id)
         )
     );
 
@@ -327,7 +327,7 @@ CREATE POLICY fiscal_periods_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS fiscal_periods_017b_insert_accounting_setup
@@ -340,8 +340,8 @@ CREATE POLICY fiscal_periods_017b_insert_accounting_setup
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.coa.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.coa.manage', company_id)
         )
     );
 
@@ -354,13 +354,13 @@ CREATE POLICY fiscal_periods_017b_update_accounting_setup
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.coa.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.coa.manage', company_id)
         )
     );
 
@@ -373,7 +373,7 @@ CREATE POLICY system_account_config_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS system_account_config_017b_insert_accounting_setup
@@ -386,8 +386,8 @@ CREATE POLICY system_account_config_017b_insert_accounting_setup
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.coa.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.coa.manage', company_id)
         )
     );
 
@@ -400,13 +400,13 @@ CREATE POLICY system_account_config_017b_update_accounting_setup
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.coa.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.coa.manage', company_id)
         )
     );
 
@@ -424,7 +424,7 @@ CREATE POLICY roles_017b_select_company_system_or_super_admin
     USING (
         public.is_super_admin()
         OR company_id IS NULL
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS roles_017b_insert_role_manager
@@ -438,8 +438,8 @@ CREATE POLICY roles_017b_insert_role_manager
         public.is_super_admin()
         OR (
             company_id IS NOT NULL
-            AND company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.roles.manage', company_id)
+            AND company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.roles.manage', company_id)
         )
     );
 
@@ -454,16 +454,16 @@ CREATE POLICY roles_017b_update_role_manager
         public.is_super_admin()
         OR (
             company_id IS NOT NULL
-            AND company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.roles.manage', company_id)
+            AND company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.roles.manage', company_id)
         )
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
             company_id IS NOT NULL
-            AND company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.roles.manage', company_id)
+            AND company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.roles.manage', company_id)
         )
     );
 
@@ -482,7 +482,7 @@ CREATE POLICY role_permissions_017b_select_visible_roles
             WHERE r.id = role_id
               AND (
                   r.company_id IS NULL
-                  OR r.company_id = ANY(auth.user_company_ids())
+                  OR r.company_id = ANY(public.user_company_ids())
               )
         )
     );
@@ -501,8 +501,8 @@ CREATE POLICY role_permissions_017b_insert_role_manager
             FROM public.roles AS r
             WHERE r.id = role_id
               AND r.company_id IS NOT NULL
-              AND r.company_id = ANY(auth.user_company_ids())
-              AND auth.has_permission('settings.roles.manage', r.company_id)
+              AND r.company_id = ANY(public.user_company_ids())
+              AND public.has_permission('settings.roles.manage', r.company_id)
         )
     );
 
@@ -521,7 +521,7 @@ CREATE POLICY role_permissions_017b_update_role_manager
             WHERE r.id = role_id
               AND (
                   r.company_id IS NULL
-                  OR r.company_id = ANY(auth.user_company_ids())
+                  OR r.company_id = ANY(public.user_company_ids())
               )
         )
     )
@@ -532,8 +532,8 @@ CREATE POLICY role_permissions_017b_update_role_manager
             FROM public.roles AS r
             WHERE r.id = role_id
               AND r.company_id IS NOT NULL
-              AND r.company_id = ANY(auth.user_company_ids())
-              AND auth.has_permission('settings.roles.manage', r.company_id)
+              AND r.company_id = ANY(public.user_company_ids())
+              AND public.has_permission('settings.roles.manage', r.company_id)
         )
     );
 
@@ -548,8 +548,8 @@ CREATE POLICY user_roles_017b_select_self_or_role_manager
         public.is_super_admin()
         OR user_id = auth.uid()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.roles.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.roles.manage', company_id)
         )
     );
 
@@ -563,8 +563,8 @@ CREATE POLICY user_roles_017b_insert_role_manager
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.roles.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.roles.manage', company_id)
         )
     );
 
@@ -578,15 +578,15 @@ CREATE POLICY user_roles_017b_update_role_manager
     USING (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.roles.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.roles.manage', company_id)
         )
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.roles.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.roles.manage', company_id)
         )
     );
 
@@ -601,8 +601,8 @@ CREATE POLICY user_company_access_017b_select_self_or_user_manager
         public.is_super_admin()
         OR user_id = auth.uid()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -616,8 +616,8 @@ CREATE POLICY user_company_access_017b_insert_user_manager
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -631,15 +631,15 @@ CREATE POLICY user_company_access_017b_update_user_manager
     USING (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -654,8 +654,8 @@ CREATE POLICY user_branch_access_017b_select_self_or_user_manager
         public.is_super_admin()
         OR user_id = auth.uid()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -669,8 +669,8 @@ CREATE POLICY user_branch_access_017b_insert_user_manager
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -684,15 +684,15 @@ CREATE POLICY user_branch_access_017b_update_user_manager
     USING (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.users.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.users.manage', company_id)
         )
     );
 
@@ -709,7 +709,7 @@ CREATE POLICY number_series_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS number_series_017b_insert_document_setup
@@ -722,8 +722,8 @@ CREATE POLICY number_series_017b_insert_document_setup
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.document_templates.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.document_templates.manage', company_id)
         )
     );
 
@@ -736,13 +736,13 @@ CREATE POLICY number_series_017b_update_document_setup
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.document_templates.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.document_templates.manage', company_id)
         )
     );
 
@@ -755,7 +755,7 @@ CREATE POLICY number_series_atp_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS number_series_atp_017b_insert_document_setup
@@ -768,8 +768,8 @@ CREATE POLICY number_series_atp_017b_insert_document_setup
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.document_templates.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.document_templates.manage', company_id)
         )
     );
 
@@ -782,13 +782,13 @@ CREATE POLICY number_series_atp_017b_update_document_setup
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.document_templates.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.document_templates.manage', company_id)
         )
     );
 
@@ -801,7 +801,7 @@ CREATE POLICY approval_matrix_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS approval_matrix_017b_insert_approval_manager
@@ -814,8 +814,8 @@ CREATE POLICY approval_matrix_017b_insert_approval_manager
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.approval.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.approval.manage', company_id)
         )
     );
 
@@ -828,13 +828,13 @@ CREATE POLICY approval_matrix_017b_update_approval_manager
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.approval.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.approval.manage', company_id)
         )
     );
 
@@ -847,7 +847,7 @@ CREATE POLICY validation_rules_017b_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS validation_rules_017b_insert_settings_manager
@@ -860,8 +860,8 @@ CREATE POLICY validation_rules_017b_insert_settings_manager
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.approval.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.approval.manage', company_id)
         )
     );
 
@@ -874,13 +874,13 @@ CREATE POLICY validation_rules_017b_update_settings_manager
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
         OR (
-            company_id = ANY(auth.user_company_ids())
-            AND auth.has_permission('settings.approval.manage', company_id)
+            company_id = ANY(public.user_company_ids())
+            AND public.has_permission('settings.approval.manage', company_id)
         )
     );
 
@@ -931,3 +931,4 @@ CREATE POLICY validation_rules_017b_update_settings_manager
 --   )
 -- ORDER BY tablename, policyname;
 -- =============================================================================
+

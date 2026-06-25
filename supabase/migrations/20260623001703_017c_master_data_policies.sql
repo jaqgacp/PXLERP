@@ -19,15 +19,15 @@
 -- compliance, audit, or import/export tables.
 --
 -- 017A helpers reused here:
---   - auth.user_company_ids()
---   - auth.user_branch_ids() is intentionally not used; Doc09 keeps branch
+--   - public.user_company_ids()
+--   - public.user_branch_ids() is intentionally not used; Doc09 keeps branch
 --     access as a UI/query filter in Phase 1.
---   - auth.has_permission(...) is intentionally not used; 017C follows the
+--   - public.has_permission(...) is intentionally not used; 017C follows the
 --     requested company-access-only master data strategy.
 --   - public.is_super_admin()
 --
 -- Standard company-scoped pattern:
---   SELECT/INSERT/UPDATE allowed when company_id is in auth.user_company_ids()
+--   SELECT/INSERT/UPDATE allowed when company_id is in public.user_company_ids()
 --   or public.is_super_admin() returns true.
 --
 -- No DELETE policies are created in this migration.
@@ -54,7 +54,7 @@ CREATE POLICY payment_terms_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS payment_terms_017c_insert_company_or_super_admin
@@ -66,7 +66,7 @@ CREATE POLICY payment_terms_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS payment_terms_017c_update_company_or_super_admin
@@ -78,11 +78,11 @@ CREATE POLICY payment_terms_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS payment_term_lines_017c_select_parent_company_or_super_admin
@@ -98,7 +98,7 @@ CREATE POLICY payment_term_lines_017c_select_parent_company_or_super_admin
             SELECT 1
             FROM public.payment_terms AS pt
             WHERE pt.id = payment_term_id
-              AND pt.company_id = ANY(auth.user_company_ids())
+              AND pt.company_id = ANY(public.user_company_ids())
         )
     );
 
@@ -115,7 +115,7 @@ CREATE POLICY payment_term_lines_017c_insert_parent_company_or_super_admin
             SELECT 1
             FROM public.payment_terms AS pt
             WHERE pt.id = payment_term_id
-              AND pt.company_id = ANY(auth.user_company_ids())
+              AND pt.company_id = ANY(public.user_company_ids())
         )
     );
 
@@ -132,7 +132,7 @@ CREATE POLICY payment_term_lines_017c_update_parent_company_or_super_admin
             SELECT 1
             FROM public.payment_terms AS pt
             WHERE pt.id = payment_term_id
-              AND pt.company_id = ANY(auth.user_company_ids())
+              AND pt.company_id = ANY(public.user_company_ids())
         )
     )
     WITH CHECK (
@@ -141,7 +141,7 @@ CREATE POLICY payment_term_lines_017c_update_parent_company_or_super_admin
             SELECT 1
             FROM public.payment_terms AS pt
             WHERE pt.id = payment_term_id
-              AND pt.company_id = ANY(auth.user_company_ids())
+              AND pt.company_id = ANY(public.user_company_ids())
         )
     );
 
@@ -158,7 +158,7 @@ CREATE POLICY customers_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customers_017c_insert_company_or_super_admin
@@ -170,7 +170,7 @@ CREATE POLICY customers_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customers_017c_update_company_or_super_admin
@@ -182,11 +182,11 @@ CREATE POLICY customers_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_addresses_017c_select_company_or_super_admin
@@ -198,7 +198,7 @@ CREATE POLICY customer_addresses_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_addresses_017c_insert_company_or_super_admin
@@ -210,7 +210,7 @@ CREATE POLICY customer_addresses_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_addresses_017c_update_company_or_super_admin
@@ -222,11 +222,11 @@ CREATE POLICY customer_addresses_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_contacts_017c_select_company_or_super_admin
@@ -238,7 +238,7 @@ CREATE POLICY customer_contacts_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_contacts_017c_insert_company_or_super_admin
@@ -250,7 +250,7 @@ CREATE POLICY customer_contacts_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_contacts_017c_update_company_or_super_admin
@@ -262,11 +262,11 @@ CREATE POLICY customer_contacts_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_tax_profiles_017c_select_company_or_super_admin
@@ -278,7 +278,7 @@ CREATE POLICY customer_tax_profiles_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_tax_profiles_017c_insert_company_or_super_admin
@@ -290,7 +290,7 @@ CREATE POLICY customer_tax_profiles_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_tax_profiles_017c_update_company_or_super_admin
@@ -302,11 +302,11 @@ CREATE POLICY customer_tax_profiles_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_credit_profiles_017c_select_company_or_super_admin
@@ -318,7 +318,7 @@ CREATE POLICY customer_credit_profiles_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_credit_profiles_017c_insert_company_or_super_admin
@@ -330,7 +330,7 @@ CREATE POLICY customer_credit_profiles_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS customer_credit_profiles_017c_update_company_or_super_admin
@@ -342,11 +342,11 @@ CREATE POLICY customer_credit_profiles_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 -- =============================================================================
@@ -362,7 +362,7 @@ CREATE POLICY suppliers_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS suppliers_017c_insert_company_or_super_admin
@@ -374,7 +374,7 @@ CREATE POLICY suppliers_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS suppliers_017c_update_company_or_super_admin
@@ -386,11 +386,11 @@ CREATE POLICY suppliers_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_addresses_017c_select_company_or_super_admin
@@ -402,7 +402,7 @@ CREATE POLICY supplier_addresses_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_addresses_017c_insert_company_or_super_admin
@@ -414,7 +414,7 @@ CREATE POLICY supplier_addresses_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_addresses_017c_update_company_or_super_admin
@@ -426,11 +426,11 @@ CREATE POLICY supplier_addresses_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_contacts_017c_select_company_or_super_admin
@@ -442,7 +442,7 @@ CREATE POLICY supplier_contacts_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_contacts_017c_insert_company_or_super_admin
@@ -454,7 +454,7 @@ CREATE POLICY supplier_contacts_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_contacts_017c_update_company_or_super_admin
@@ -466,11 +466,11 @@ CREATE POLICY supplier_contacts_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_tax_profiles_017c_select_company_or_super_admin
@@ -482,7 +482,7 @@ CREATE POLICY supplier_tax_profiles_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_tax_profiles_017c_insert_company_or_super_admin
@@ -494,7 +494,7 @@ CREATE POLICY supplier_tax_profiles_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_tax_profiles_017c_update_company_or_super_admin
@@ -506,11 +506,11 @@ CREATE POLICY supplier_tax_profiles_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_bank_details_017c_select_company_or_super_admin
@@ -522,7 +522,7 @@ CREATE POLICY supplier_bank_details_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_bank_details_017c_insert_company_or_super_admin
@@ -534,7 +534,7 @@ CREATE POLICY supplier_bank_details_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS supplier_bank_details_017c_update_company_or_super_admin
@@ -546,11 +546,11 @@ CREATE POLICY supplier_bank_details_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 -- =============================================================================
@@ -566,7 +566,7 @@ CREATE POLICY personnel_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS personnel_017c_insert_company_or_super_admin
@@ -578,7 +578,7 @@ CREATE POLICY personnel_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS personnel_017c_update_company_or_super_admin
@@ -590,11 +590,11 @@ CREATE POLICY personnel_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 -- =============================================================================
@@ -610,7 +610,7 @@ CREATE POLICY item_categories_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS item_categories_017c_insert_company_or_super_admin
@@ -622,7 +622,7 @@ CREATE POLICY item_categories_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS item_categories_017c_update_company_or_super_admin
@@ -634,11 +634,11 @@ CREATE POLICY item_categories_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS units_of_measure_017c_select_company_or_super_admin
@@ -650,7 +650,7 @@ CREATE POLICY units_of_measure_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS units_of_measure_017c_insert_company_or_super_admin
@@ -662,7 +662,7 @@ CREATE POLICY units_of_measure_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS units_of_measure_017c_update_company_or_super_admin
@@ -674,11 +674,11 @@ CREATE POLICY units_of_measure_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS uom_conversions_017c_select_company_or_super_admin
@@ -690,7 +690,7 @@ CREATE POLICY uom_conversions_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS uom_conversions_017c_insert_company_or_super_admin
@@ -702,7 +702,7 @@ CREATE POLICY uom_conversions_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS uom_conversions_017c_update_company_or_super_admin
@@ -714,11 +714,11 @@ CREATE POLICY uom_conversions_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS items_017c_select_company_or_super_admin
@@ -730,7 +730,7 @@ CREATE POLICY items_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS items_017c_insert_company_or_super_admin
@@ -742,7 +742,7 @@ CREATE POLICY items_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS items_017c_update_company_or_super_admin
@@ -754,11 +754,11 @@ CREATE POLICY items_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS item_prices_017c_select_company_or_super_admin
@@ -770,7 +770,7 @@ CREATE POLICY item_prices_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS item_prices_017c_insert_company_or_super_admin
@@ -782,7 +782,7 @@ CREATE POLICY item_prices_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS item_prices_017c_update_company_or_super_admin
@@ -794,11 +794,11 @@ CREATE POLICY item_prices_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS services_017c_select_company_or_super_admin
@@ -810,7 +810,7 @@ CREATE POLICY services_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS services_017c_insert_company_or_super_admin
@@ -822,7 +822,7 @@ CREATE POLICY services_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS services_017c_update_company_or_super_admin
@@ -834,11 +834,11 @@ CREATE POLICY services_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 -- =============================================================================
@@ -854,7 +854,7 @@ CREATE POLICY warehouses_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS warehouses_017c_insert_company_or_super_admin
@@ -866,7 +866,7 @@ CREATE POLICY warehouses_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS warehouses_017c_update_company_or_super_admin
@@ -878,11 +878,11 @@ CREATE POLICY warehouses_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS warehouse_stock_settings_017c_select_company_or_super_admin
@@ -894,7 +894,7 @@ CREATE POLICY warehouse_stock_settings_017c_select_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS warehouse_stock_settings_017c_insert_company_or_super_admin
@@ -906,7 +906,7 @@ CREATE POLICY warehouse_stock_settings_017c_insert_company_or_super_admin
     TO authenticated
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 DROP POLICY IF EXISTS warehouse_stock_settings_017c_update_company_or_super_admin
@@ -918,11 +918,11 @@ CREATE POLICY warehouse_stock_settings_017c_update_company_or_super_admin
     TO authenticated
     USING (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     )
     WITH CHECK (
         public.is_super_admin()
-        OR company_id = ANY(auth.user_company_ids())
+        OR company_id = ANY(public.user_company_ids())
     );
 
 -- =============================================================================
@@ -985,3 +985,4 @@ CREATE POLICY warehouse_stock_settings_017c_update_company_or_super_admin
 --   AND policyname LIKE '%017c%'
 -- ORDER BY policyname;
 -- =============================================================================
+

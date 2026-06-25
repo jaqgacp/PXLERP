@@ -102,3 +102,4 @@ END $$;
 
 -- workspace_items (Linked to workspace_definitions)
 CREATE POLICY "Enable read for authenticated users" ON public.workspace_items FOR SELECT USING (auth.role() = 'authenticated');
+
