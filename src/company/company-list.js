@@ -17,18 +17,22 @@ const helper = new SetupListHelper({
     return data;
   },
   renderRow: (company) => `
-    <td>${escapeHTML(company.code || '')}</td>
+    <td><strong>${escapeHTML(company.code || '')}</strong></td>
     <td>${escapeHTML(company.name || '')}</td>
     <td>${escapeHTML(company.trade_name || '')}</td>
     <td>${escapeHTML(company.tin || '')}</td>
     <td>${escapeHTML(company.tax_type || '')}</td>
     <td>${escapeHTML(company.business_type || '')}</td>
     <td>${escapeHTML(company.rdo_code || '')}</td>
-    <td>${company.is_active ? 'Yes' : 'No'}</td>
+    <td>
+      <span class="erp-badge ${company.is_active ? 'erp-badge-success' : 'erp-badge-inactive'}">
+        ${company.is_active ? 'Active' : 'Inactive'}
+      </span>
+    </td>
     <td>${company.created_at ? new Date(company.created_at).toLocaleDateString() : ''}</td>
     <td>
-      <a href="#/setup/company-setup/view?id=${company.id}">View</a> |
-      <a href="#/setup/company-setup/edit?id=${company.id}">Edit</a>
+      <a href="#/setup/company-setup/view?id=${company.id}" class="erp-action-btn erp-action-btn-view" title="View Details">👁️ View</a>
+      <a href="#/setup/company-setup/edit?id=${company.id}" class="erp-action-btn erp-action-btn-edit" title="Edit Company">✏️ Edit</a>
     </td>
   `
 });
