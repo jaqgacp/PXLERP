@@ -59,9 +59,9 @@ BEGIN
     IF v_company_id IS NULL THEN
         v_company_id := gen_random_uuid();
         INSERT INTO public.companies (
-            id, code, name, base_currency_id, created_by
+            id, code, name, tin, bir_registered_address, tax_type, business_type, functional_currency_id, created_by
         ) VALUES (
-            v_company_id, 'HQ', 'Headquarters', v_base_currency_id, v_admin_id
+            v_company_id, 'HQ', 'Headquarters', '000-000-000-000', 'Metro Manila, Philippines', 'vat', 'corporation', v_base_currency_id, v_admin_id
         );
     END IF;
 
@@ -75,13 +75,13 @@ BEGIN
     END IF;
 
     -- 6. DEFAULT ROLE
-    SELECT id INTO v_role_id FROM public.roles WHERE role_name = 'Super Admin Role';
+    SELECT id INTO v_role_id FROM public.roles WHERE role_code = 'SUPER_ADMIN';
     IF v_role_id IS NULL THEN
         v_role_id := gen_random_uuid();
         INSERT INTO public.roles (
-            id, role_name, description, is_system, created_by
+            id, role_code, role_name, description, is_system, created_by
         ) VALUES (
-            v_role_id, 'Super Admin Role', 'System-wide super admin access', true, v_admin_id
+            v_role_id, 'SUPER_ADMIN', 'Super Admin Role', 'System-wide super admin access', true, v_admin_id
         );
     END IF;
 
