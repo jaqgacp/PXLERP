@@ -150,8 +150,10 @@ async function saveCompany(isSaveAndNew) {
         authManager.setActiveCompany(newCompany.id);
       }
       
-      // Dispatch hashchange to force topbar updateAuthUI
-      window.dispatchEvent(new Event('hashchange'));
+      // Update topbar directly instead of triggering a hashchange (which causes re-render)
+      if (typeof window.updateAuthUI === 'function') {
+        window.updateAuthUI();
+      }
     }
 
     statusEl.textContent = 'Saved successfully.';
