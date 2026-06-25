@@ -5,9 +5,10 @@
 // Import Supabase client from CDN (Requires configuration)
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-// TODO: Replace with actual Supabase project URL and anon key or inject via env variables.
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// Local Development Supabase Configuration
+const SUPABASE_URL = 'http://127.0.0.1:54321';
+// TODO: Replace with actual local anon key from `supabase start`
+const SUPABASE_ANON_KEY = 'PASTE_YOUR_LOCAL_ANON_KEY_HERE';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
