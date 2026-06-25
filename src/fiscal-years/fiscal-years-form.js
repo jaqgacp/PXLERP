@@ -6,8 +6,7 @@ import { ErpFormHelper } from '../shared/erp-form-helper.js';
 
 const supabase = authManager.supabase;
 
-document.addEventListener('DOMContentLoaded', () => {
-  const formHelper = new ErpFormHelper({
+const formHelper = new ErpFormHelper({
     moduleName: 'Fiscal Year',
     listRoute: '#/setup/fiscal-years',
     
@@ -93,4 +92,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   formHelper.init();
-});

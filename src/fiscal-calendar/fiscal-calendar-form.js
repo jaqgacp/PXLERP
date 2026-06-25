@@ -6,8 +6,7 @@ import { ErpFormHelper, Toast } from '../shared/erp-form-helper.js';
 
 const supabase = authManager.supabase;
 
-document.addEventListener('DOMContentLoaded', () => {
-  const formHelper = new ErpFormHelper({
+const formHelper = new ErpFormHelper({
     moduleName: 'Fiscal Period',
     listRoute: '#/setup/fiscal-calendar',
     
@@ -131,4 +130,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   formHelper.init();
-});
