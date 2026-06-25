@@ -54,7 +54,7 @@ class AuthManager {
     if (!this.currentUser) return;
 
     try {
-      // Load profile
+      // 1. Load profile
       const { data: profile, error: profileErr } = await this.supabase
         .from('profiles')
         .select('*')
@@ -66,9 +66,30 @@ class AuthManager {
       }
       this.currentProfile = profile || null;
 
-      // Note: If permissions, company context, etc are needed, load them here.
-      // Currently, we only load profile. The schema relies on `user_company_ids()`
-      // and `has_permission()` which are Postgres functions. 
+      // 2. Load company context
+      const { data: companies, error: compErr } = await this.supabase
+        .from('user_company_access')
+        .select('company_id, is_company_admin')
+        .eq('user_id', this.currentUser.id);
+        
+      if (compErr) {
+        console.error('Error loading company context:', compErr);
+      } else {
+        this.companyContext = companies || [];
+      }
+
+      // 3. Load permissions
+      const { data: roles, error: rolesErr } = await this.supabase
+        .from('user_roles')
+        .select('company_id, role_id')
+        .eq('user_id', this.currentUser.id);
+        
+      if (rolesErr) {
+        console.error('Error loading permissions:', rolesErr);
+      } else {
+        this.permissions = roles || [];
+      }
+
     } catch (err) {
       console.error('AuthManager profile load error:', err);
     }

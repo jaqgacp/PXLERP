@@ -344,9 +344,11 @@
     <a onclick="go('')">Home</a>
     <a>Activities</a>
     <a>Documents</a>
-    <a>Help</a>
+    <a onclick="go('help')">Help</a>
+    <a onclick="go('settings')">Settings</a>
+    <a id="nav-btn-logout" style="display:none; color:#f8d7da;">Logout</a>
   </div>
-  <div class="user-chip">👤 Admin</div>
+  <div class="user-chip" id="nav-user-chip" style="display:none;"></div>
 </div>
 
 <!-- ── NAV BAR ────────────────────────────── -->
@@ -1265,9 +1267,30 @@ function updateAuthUI() {
   const user = authManager.getCurrentUser();
   const profile = authManager.getCurrentProfile();
   
-  // Example of a minimal auth UI update if there's a header
-  // (We'll assume the nav has an element we can update later, 
-  // but for now, we just ensure it doesn't crash)
+  const chip = document.getElementById('nav-user-chip');
+  const btnLogout = document.getElementById('nav-btn-logout');
+
+  if (user) {
+    let dispName = profile?.full_name || user.email || 'User';
+    // Initials logic
+    let initials = dispName.substring(0, 2).toUpperCase();
+    if (dispName.includes(' ')) {
+      const parts = dispName.split(' ');
+      initials = parts[0][0] + parts[parts.length - 1][0];
+    }
+    
+    chip.textContent = initials;
+    chip.title = dispName;
+    chip.style.display = 'inline-block';
+    
+    btnLogout.style.display = 'inline-block';
+    btnLogout.onclick = async () => {
+      await authManager.signOut();
+    };
+  } else {
+    chip.style.display = 'none';
+    btnLogout.style.display = 'none';
+  }
 }
 
 function renderPage(path) {
