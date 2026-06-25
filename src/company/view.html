@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>View Company</title>
+</head>
+<body>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <a href="#/setup">Setup</a> &rsaquo; 
+    <a href="#/setup/company-setup">Company Setup</a> &rsaquo; View Company
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>View Company</h1>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-primary" id="btn-edit">Edit</button>
+    <button class="btn" onclick="window.location.hash = '#/setup/company-setup'">Back</button>
+  </div>
+
+  <!-- Form Sections -->
+  <div class="form-container" style="padding: 20px; background: #fff; border: 1px solid #d4e4f0; margin-top: 10px;">
+    <form id="company-view-form">
+      
+      <div id="form-error" style="color: red; margin-bottom: 15px; display: none;"></div>
+
+      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+        <legend>General Information</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label>Code</label><br>
+            <input type="text" id="code" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>Name</label><br>
+            <input type="text" id="name" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>Trade Name</label><br>
+            <input type="text" id="trade_name" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>Business Type</label><br>
+            <input type="text" id="business_type" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>Industry Classification</label><br>
+            <input type="text" id="industry_classification" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>Logo URL</label><br>
+            <input type="text" id="logo_url" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+        <legend>Registration & Tax Details</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label>TIN</label><br>
+            <input type="text" id="tin" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>Tax Type</label><br>
+            <input type="text" id="tax_type" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>RDO Code</label><br>
+            <input type="text" id="rdo_code" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>SEC Registration No.</label><br>
+            <input type="text" id="sec_registration_no" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>DTI Registration No.</label><br>
+            <input type="text" id="dti_registration_no" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div style="grid-column: span 2;">
+            <label>BIR Registered Address</label><br>
+            <textarea id="bir_registered_address" readonly style="width: 100%; padding: 5px; height: 60px; background: #f5f5f5;"></textarea>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+        <legend>Accounting & System Settings</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label>Functional Currency</label><br>
+            <input type="text" id="functional_currency_id" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>Fiscal Year Start Month</label><br>
+            <input type="text" id="fiscal_year_start_month" readonly style="width: 100%; padding: 5px; background: #f5f5f5;">
+          </div>
+          <div>
+            <label>
+              <input type="checkbox" id="is_active" disabled> Is Active
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+    </form>
+  </div>
+
+  <!-- Status Footer -->
+  <div class="status-footer">
+    <span class="status-text" id="page-status">Loading data...</span>
+  </div>
+
+  <script type="module" src="company-view.js"></script>
+</body>
+</html>

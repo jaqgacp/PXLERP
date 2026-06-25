@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Company</title>
+</head>
+<body>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <a href="#/setup">Setup</a> &rsaquo; 
+    <a href="#/setup/company-setup">Company Setup</a> &rsaquo; Edit Company
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Edit Company</h1>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-primary" id="btn-save">Save</button>
+    <button class="btn" onclick="window.location.hash = '#/setup/company-setup'">Cancel</button>
+  </div>
+
+  <!-- Form Sections -->
+  <div class="form-container" style="padding: 20px; background: #fff; border: 1px solid #d4e4f0; margin-top: 10px;">
+    <form id="company-edit-form" onsubmit="return false;">
+      
+      <div id="form-error" style="color: red; margin-bottom: 15px; display: none;"></div>
+
+      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+        <legend>General Information</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label>Code <span style="color:red">*</span></label><br>
+            <input type="text" id="code" required style="width: 100%; padding: 5px;">
+          </div>
+          <div>
+            <label>Name <span style="color:red">*</span></label><br>
+            <input type="text" id="name" required style="width: 100%; padding: 5px;">
+          </div>
+          <div>
+            <label>Trade Name</label><br>
+            <input type="text" id="trade_name" style="width: 100%; padding: 5px;">
+          </div>
+          <div>
+            <label>Business Type <span style="color:red">*</span></label><br>
+            <select id="business_type" required style="width: 100%; padding: 5px;">
+              <option value="">Select...</option>
+              <option value="corporation">Corporation</option>
+              <option value="partnership">Partnership</option>
+              <option value="sole_proprietorship">Sole Proprietorship</option>
+              <option value="cooperative">Cooperative</option>
+            </select>
+          </div>
+          <div>
+            <label>Industry Classification</label><br>
+            <input type="text" id="industry_classification" style="width: 100%; padding: 5px;">
+          </div>
+          <div>
+            <label>Logo URL</label><br>
+            <input type="text" id="logo_url" style="width: 100%; padding: 5px;">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+        <legend>Registration & Tax Details</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label>TIN <span style="color:red">*</span></label><br>
+            <input type="text" id="tin" required style="width: 100%; padding: 5px;">
+          </div>
+          <div>
+            <label>Tax Type <span style="color:red">*</span></label><br>
+            <select id="tax_type" required style="width: 100%; padding: 5px;">
+              <option value="">Select...</option>
+              <option value="vat">VAT</option>
+              <option value="non_vat">Non-VAT</option>
+            </select>
+          </div>
+          <div>
+            <label>RDO Code</label><br>
+            <input type="text" id="rdo_code" style="width: 100%; padding: 5px;">
+          </div>
+          <div>
+            <label>SEC Registration No.</label><br>
+            <input type="text" id="sec_registration_no" style="width: 100%; padding: 5px;">
+          </div>
+          <div>
+            <label>DTI Registration No.</label><br>
+            <input type="text" id="dti_registration_no" style="width: 100%; padding: 5px;">
+          </div>
+          <div style="grid-column: span 2;">
+            <label>BIR Registered Address <span style="color:red">*</span></label><br>
+            <textarea id="bir_registered_address" required style="width: 100%; padding: 5px; height: 60px;"></textarea>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+        <legend>Accounting & System Settings</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label>Functional Currency <span style="color:red">*</span></label><br>
+            <select id="functional_currency_id" required style="width: 100%; padding: 5px;">
+              <option value="">Loading currencies...</option>
+            </select>
+          </div>
+          <div>
+            <label>Fiscal Year Start Month <span style="color:red">*</span></label><br>
+            <select id="fiscal_year_start_month" required style="width: 100%; padding: 5px;">
+              <option value="1">1 - January</option>
+              <option value="2">2 - February</option>
+              <option value="3">3 - March</option>
+              <option value="4">4 - April</option>
+              <option value="5">5 - May</option>
+              <option value="6">6 - June</option>
+              <option value="7">7 - July</option>
+              <option value="8">8 - August</option>
+              <option value="9">9 - September</option>
+              <option value="10">10 - October</option>
+              <option value="11">11 - November</option>
+              <option value="12">12 - December</option>
+            </select>
+          </div>
+          <div>
+            <label>
+              <input type="checkbox" id="is_active"> Is Active
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+    </form>
+  </div>
+
+  <!-- Status Footer -->
+  <div class="status-footer">
+    <span class="status-text" id="page-status">Loading data...</span>
+  </div>
+
+  <script type="module" src="company-edit.js"></script>
+</body>
+</html>
