@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Currency Setup - List</title>
+</head>
+<body>
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <a href="#/setup">Setup</a> &rsaquo; Currency Setup
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Currency Setup</h1>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="alert('Not implemented yet')">New</button>
+    <button class="btn" onclick="alert('Not implemented yet')">Import</button>
+    <button class="btn" onclick="alert('Not implemented yet')">Export</button>
+    <button class="btn" onclick="alert('Not implemented yet')">Generate</button>
+    <button class="btn" onclick="alert('Not implemented yet')">Approve</button>
+    <button class="btn" onclick="alert('Not implemented yet')">Print</button>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label for="currency-search">Search:</label>
+      <input type="text" id="currency-search" placeholder="Search by code or name">
+    </div>
+  </div>
+
+  <!-- Data Grid -->
+  <div class="data-grid-container">
+    <table class="data-grid">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Symbol</th>
+          <th>Base Currency</th>
+          <th>Active</th>
+          <th>Created At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="currency-grid-body">
+        <!-- Data will be populated here -->
+        <tr>
+          <td colspan="7" class="text-center text-muted">No data found or not yet wired</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    <button class="btn btn-sm" disabled>Previous</button>
+    <span class="page-info" id="pg-info">Page 1 of 1</span>
+    <button class="btn btn-sm" disabled>Next</button>
+  </div>
+
+  <!-- Status Footer -->
+  <div class="status-footer">
+    <span class="status-text">Ready</span>
+  </div>
+
+  <script type="module" src="currency-list.js"></script>
+</body>
+</html>
