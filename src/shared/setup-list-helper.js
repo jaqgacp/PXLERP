@@ -31,7 +31,7 @@ export class SetupListHelper {
   }
 
   async load() {
-    const tbody = document.querySelector(this.tableId) || document.querySelector('tbody');
+    const tbody = document.querySelector(this.tableId);
     if (!tbody) return;
 
     // 1. Loading State
