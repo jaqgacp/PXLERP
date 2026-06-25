@@ -1043,6 +1043,7 @@ const MODULE_PAGES = {
   },
    // Company Setup
    'setup/company-setup': { title: 'Company Setup', icon: '🏢', breadcrumb: ['Setup','Company Setup'], type: 'list' },
+   'setup/company-setup/new': { title: 'New Company', icon: '🏢', breadcrumb: ['Setup','Company Setup','New Company'], type: 'form' },
    // Branch Setup
    'setup/branch-setup': { title: 'Branch Setup', icon: '🏢', breadcrumb: ['Setup','Branch Setup'], type: 'list' },
    // Department Setup
@@ -1264,8 +1265,8 @@ function renderPage(path) {
       contentEl.innerHTML = renderLanding(page, path);
       return;
     }
-    if (page.type === 'list') {
-      loadListHtml(path, contentEl, page);
+    if (page.type === 'list' || page.type === 'form') {
+      loadModuleHtml(path, contentEl, page);
       return;
     }
   }
@@ -1274,15 +1275,18 @@ function renderPage(path) {
   contentEl.innerHTML = renderPlaceholder(path);
 }
 
-async function loadListHtml(path, contentEl, page) {
+async function loadModuleHtml(path, contentEl, page) {
   contentEl.innerHTML = '<div style="padding: 20px;">Loading ' + escapeHtml(page.title) + '...</div>';
   try {
     const parts = path.split('/');
     let folder = parts[1];
     if (folder && folder.endsWith('-setup')) folder = folder.replace('-setup', '');
 
-    const htmlUrl = `./${folder}/list.html`;
-    const jsUrl = `./${folder}/${folder}-list.js`;
+    let action = 'list';
+    if (parts[2] === 'new') action = 'create';
+
+    const htmlUrl = `./${folder}/${action}.html`;
+    const jsUrl = `./${folder}/${folder}-${action}.js`;
 
     const res = await fetch(htmlUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -1306,7 +1310,7 @@ async function loadListHtml(path, contentEl, page) {
     }));
 
   } catch (err) {
-    console.error('Error loading list HTML:', err);
+    console.error('Error loading module HTML:', err);
     contentEl.innerHTML = `<div style="padding: 20px; color: red;">Failed to load ${escapeHtml(page.title)}: ${escapeHtml(err.message)}</div>`;
   }
 }
