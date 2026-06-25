@@ -59,9 +59,9 @@ BEGIN
     IF v_company_id IS NULL THEN
         v_company_id := gen_random_uuid();
         INSERT INTO public.companies (
-            id, code, name, tin, bir_registered_address, tax_type, business_type, functional_currency_id, created_by
+            id, code, name, tin, base_tin, branch_code, bir_registered_address, tax_type, business_type, functional_currency_id, created_by
         ) VALUES (
-            v_company_id, 'HQ', 'Headquarters', '000-000-000-000', 'Metro Manila, Philippines', 'vat', 'corporation', v_base_currency_id, v_admin_id
+            v_company_id, 'HQ', 'Headquarters', '000-000-000-000', '000-000-000', '00000', 'Metro Manila, Philippines', 'vat', 'corporation', v_base_currency_id, v_admin_id
         );
     END IF;
 
