@@ -29,29 +29,57 @@
   </div>
 
   <!-- Form Sections -->
-  <div class="form-container" style="padding: 20px; background: #fff; border: 1px solid #d4e4f0; margin-top: 10px;">
+  <div class="erp-form-container">
     <form id="company-edit-form" onsubmit="return false;">
       
-      <div id="form-error" style="color: red; margin-bottom: 15px; display: none;"></div>
+      <div id="form-error" class="erp-validation-summary"></div>
 
-      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
+      <!-- SECTION 1: General Information -->
+      <fieldset class="erp-section">
         <legend>General Information</legend>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div>
-            <label>Code <span style="color:red">*</span></label><br>
-            <input type="text" id="code" required style="width: 100%; padding: 5px;">
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label class="erp-required">Code</label>
+            <input type="text" id="code" required>
           </div>
-          <div>
-            <label>Name <span style="color:red">*</span></label><br>
-            <input type="text" id="name" required style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label class="erp-required">Registered Name</label>
+            <input type="text" id="name" required>
           </div>
-          <div>
-            <label>Trade Name</label><br>
-            <input type="text" id="trade_name" style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label>Trade Name</label>
+            <input type="text" id="trade_name">
           </div>
-          <div>
-            <label>Business Type <span style="color:red">*</span></label><br>
-            <select id="business_type" required style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label class="erp-required">Base TIN (9 Digits)</label>
+            <input type="text" id="base_tin" required placeholder="e.g. 123-456-789" maxlength="15">
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Branch Code</label>
+            <input type="text" id="branch_code" required value="00000" maxlength="5" pattern="\d{5}" title="Must be exactly 5 digits">
+          </div>
+          <div class="erp-field">
+            <label>Full TIN</label>
+            <input type="text" id="full_tin" readonly placeholder="Generated automatically">
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 2: Tax & Business Registration -->
+      <fieldset class="erp-section">
+        <legend>Tax & Business Registration</legend>
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label class="erp-required">Tax Type</label>
+            <select id="tax_type" required>
+              <option value="">Select...</option>
+              <option value="vat">VAT</option>
+              <option value="non_vat">Non-VAT</option>
+            </select>
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Business Type</label>
+            <select id="business_type" required>
               <option value="">Select...</option>
               <option value="corporation">Corporation</option>
               <option value="partnership">Partnership</option>
@@ -59,63 +87,154 @@
               <option value="cooperative">Cooperative</option>
             </select>
           </div>
-          <div>
-            <label>Industry Classification</label><br>
-            <input type="text" id="industry_classification" style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label>RDO Code</label>
+            <input type="text" id="rdo_code">
           </div>
-          <div>
-            <label>Logo URL</label><br>
-            <input type="text" id="logo_url" style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label>BIR Registration Date</label>
+            <input type="date" id="bir_registration_date">
+          </div>
+          <div class="erp-field">
+            <label>SEC Registration No.</label>
+            <input type="text" id="sec_registration_no">
+          </div>
+          <div class="erp-field">
+            <label>DTI Registration No.</label>
+            <input type="text" id="dti_registration_no">
+          </div>
+          <div class="erp-field">
+            <label>CDA Registration No.</label>
+            <input type="text" id="cda_registration_no">
+          </div>
+          <div class="erp-field">
+            <label>Incorporation/Registration Date</label>
+            <input type="date" id="registration_date">
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Line of Business (Per COR)</label>
+            <input type="text" id="line_of_business" required>
+          </div>
+          <div class="erp-field">
+            <label>PSIC Code</label>
+            <input type="text" id="psic_code">
+          </div>
+          <div class="erp-field">
+            <label>Industry Classification</label>
+            <input type="text" id="industry_classification">
           </div>
         </div>
       </fieldset>
 
-      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
-        <legend>Registration & Tax Details</legend>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div>
-            <label>TIN <span style="color:red">*</span></label><br>
-            <input type="text" id="tin" required style="width: 100%; padding: 5px;">
+      <!-- SECTION 3: Address & Contact -->
+      <fieldset class="erp-section">
+        <legend>Address & Contact</legend>
+        <div class="erp-grid">
+          <div class="erp-field" style="grid-column: span 2;">
+            <label class="erp-required">BIR Registered Address</label>
+            <textarea id="bir_registered_address" required rows="2"></textarea>
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Zip Code</label>
+            <input type="text" id="zip_code" required>
+          </div>
+          <div class="erp-field">
+            <label>Contact Person</label>
+            <input type="text" id="contact_person">
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Phone</label>
+            <input type="text" id="phone" required>
+          </div>
+          <div class="erp-field">
+            <label>Mobile No</label>
+            <input type="text" id="mobile_no">
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Email</label>
+            <input type="email" id="email" required>
+          </div>
+          <div class="erp-field">
+            <label>Website</label>
+            <input type="text" id="website">
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 4: Compliance Profile & Signatory -->
+      <fieldset class="erp-section">
+        <legend>Compliance Profile & Authorized Signatory</legend>
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label style="font-weight:600; margin-bottom:10px;">Compliance Flags</label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
+              <input type="checkbox" id="is_withholding_agent"> Is Withholding Agent (Top 20k/5k)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_large_taxpayer"> Is Large Taxpayer
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_peza_registered"> PEZA Registered
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_boi_registered"> BOI Registered
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
+              <input type="checkbox" id="is_bmbes_registered"> BMBE Registered
+            </label>
           </div>
           <div>
-            <label>Tax Type <span style="color:red">*</span></label><br>
-            <select id="tax_type" required style="width: 100%; padding: 5px;">
-              <option value="">Select...</option>
-              <option value="vat">VAT</option>
-              <option value="non_vat">Non-VAT</option>
+            <div class="erp-field" style="margin-bottom: 15px;">
+              <label class="erp-required">Signatory Name</label>
+              <input type="text" id="signatory_name" required>
+            </div>
+            <div class="erp-field" style="margin-bottom: 15px;">
+              <label class="erp-required">Signatory Title</label>
+              <input type="text" id="signatory_title" required>
+            </div>
+            <div class="erp-field">
+              <label class="erp-required">Signatory TIN</label>
+              <input type="text" id="signatory_tin" required>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 5: Accounting & System Defaults -->
+      <fieldset class="erp-section">
+        <legend>Accounting & System Defaults</legend>
+        <div class="erp-grid">
+          <div class="erp-field">
+            <label>CAS PTU Number</label>
+            <input type="text" id="ptu_cas_no">
+          </div>
+          <div class="erp-field">
+            <label>CAS PTU Date Issued</label>
+            <input type="date" id="ptu_cas_date_issued">
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Accounting Method</label>
+            <select id="accounting_method" required>
+              <option value="Accrual">Accrual</option>
+              <option value="Cash">Cash</option>
             </select>
           </div>
-          <div>
-            <label>RDO Code</label><br>
-            <input type="text" id="rdo_code" style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label class="erp-required">Inventory Costing Method</label>
+            <select id="inventory_costing_method" required>
+              <option value="Weighted Average">Weighted Average</option>
+              <option value="FIFO">FIFO</option>
+            </select>
           </div>
-          <div>
-            <label>SEC Registration No.</label><br>
-            <input type="text" id="sec_registration_no" style="width: 100%; padding: 5px;">
-          </div>
-          <div>
-            <label>DTI Registration No.</label><br>
-            <input type="text" id="dti_registration_no" style="width: 100%; padding: 5px;">
-          </div>
-          <div style="grid-column: span 2;">
-            <label>BIR Registered Address <span style="color:red">*</span></label><br>
-            <textarea id="bir_registered_address" required style="width: 100%; padding: 5px; height: 60px;"></textarea>
-          </div>
-        </div>
-      </fieldset>
-
-      <fieldset style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px;">
-        <legend>Accounting & System Settings</legend>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div>
-            <label>Functional Currency <span style="color:red">*</span></label><br>
-            <select id="functional_currency_id" required style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label class="erp-required">Functional Currency</label>
+            <select id="functional_currency_id" required>
               <option value="">Loading currencies...</option>
             </select>
           </div>
-          <div>
-            <label>Fiscal Year Start Month <span style="color:red">*</span></label><br>
-            <select id="fiscal_year_start_month" required style="width: 100%; padding: 5px;">
+          <div class="erp-field">
+            <label class="erp-required">Fiscal Year Start Month</label>
+            <select id="fiscal_year_start_month" required>
               <option value="1">1 - January</option>
               <option value="2">2 - February</option>
               <option value="3">3 - March</option>
@@ -130,8 +249,8 @@
               <option value="12">12 - December</option>
             </select>
           </div>
-          <div>
-            <label>
+          <div class="erp-field">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:20px;">
               <input type="checkbox" id="is_active"> Is Active
             </label>
           </div>
