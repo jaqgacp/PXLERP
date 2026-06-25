@@ -6,9 +6,7 @@ import { authManager } from '../auth/auth-manager.js';
 
 const supabase = authManager.supabase;
 
-document.addEventListener('DOMContentLoaded', () => {
-  initForm();
-});
+initForm();
 
 async function initForm() {
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
