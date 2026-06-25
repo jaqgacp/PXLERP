@@ -14,6 +14,7 @@ class AuthManager {
     this.currentProfile = null;
     this.roleContext = null;
     this.companyContext = null;
+    this.activeCompanyId = null;
     this.initialized = false;
   }
 
@@ -66,14 +67,14 @@ class AuthManager {
       }
       this.currentProfile = profile || null;
 
-      // 2. Load company context
+      // 2. Load company context (directly from companies table to leverage RLS naturally)
       const { data: companies, error: compErr } = await this.supabase
-        .from('user_company_access')
-        .select('company_id, is_company_admin')
-        .eq('user_id', this.currentUser.id);
+        .from('companies')
+        .select('id, code, name');
         
       if (compErr) {
         console.error('Error loading company context:', compErr);
+        this.companyContext = [];
       } else {
         this.companyContext = companies || [];
       }
@@ -90,9 +91,58 @@ class AuthManager {
         this.roleContext = roles || [];
       }
 
+      this.restoreActiveCompany();
+
     } catch (err) {
       console.error('AuthManager profile load error:', err);
     }
+  }
+
+  restoreActiveCompany() {
+    if (!this.companyContext || this.companyContext.length === 0) {
+      this.activeCompanyId = null;
+      localStorage.removeItem('pxl_active_company_id');
+      return;
+    }
+
+    const savedId = localStorage.getItem('pxl_active_company_id');
+    const isValid = this.companyContext.some(c => c.id === savedId);
+
+    if (isValid) {
+      this.activeCompanyId = savedId;
+    } else if (this.companyContext.length === 1) {
+      this.activeCompanyId = this.companyContext[0].id;
+      localStorage.setItem('pxl_active_company_id', this.activeCompanyId);
+    } else {
+      this.activeCompanyId = null;
+      localStorage.removeItem('pxl_active_company_id');
+    }
+  }
+
+  setActiveCompany(companyId) {
+    if (!companyId) {
+      this.activeCompanyId = null;
+      localStorage.removeItem('pxl_active_company_id');
+      return;
+    }
+
+    const isValid = this.companyContext?.some(c => c.id === companyId);
+    if (!isValid) {
+      console.warn('Attempted to set an invalid active company ID:', companyId);
+      return;
+    }
+
+    this.activeCompanyId = companyId;
+    localStorage.setItem('pxl_active_company_id', companyId);
+  }
+
+  getActiveCompanyId() {
+    return this.activeCompanyId;
+  }
+
+  getActiveCompany() {
+    if (!this.activeCompanyId || !this.companyContext) return null;
+    return this.companyContext.find(c => c.id === this.activeCompanyId) || null;
   }
 
   clearState() {
@@ -101,6 +151,8 @@ class AuthManager {
     this.currentProfile = null;
     this.roleContext = null;
     this.companyContext = null;
+    this.activeCompanyId = null;
+    localStorage.removeItem('pxl_active_company_id');
   }
 
   isAuthenticated() {

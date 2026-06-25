@@ -341,6 +341,7 @@
   <div class="divider"></div>
   <input class="search-box" type="text" placeholder="🔍  Search transactions, records…" />
   <div class="top-links">
+    <select id="nav-company-selector" style="display:none; margin-right:15px; padding:2px 5px; border-radius:3px; border:1px solid var(--ns-border); background:var(--ns-dark); color:#fff; font-size:11px; outline:none; max-width:200px;"></select>
     <a onclick="go('')">Home</a>
     <a>Activities</a>
     <a>Documents</a>
@@ -1006,7 +1007,7 @@
 
 <!-- ── STATUS BAR ────────────────────────── -->
 <div class="status-bar">
-  <span>Company: <b>PXL Demo Corp.</b></span>
+  <span>Company: <b id="sb-company-name">-</b></span>
   <div class="sb-sep"></div>
   <span>Period: <b>June 2026</b></span>
   <div class="sb-sep"></div>
@@ -1269,10 +1270,13 @@ function updateAuthUI() {
   
   const chip = document.getElementById('nav-user-chip');
   const btnLogout = document.getElementById('nav-btn-logout');
+  const selector = document.getElementById('nav-company-selector');
+
+  // Also update status bar
+  const sbCompany = document.getElementById('sb-company-name');
 
   if (user) {
     let dispName = profile?.full_name || user.email || 'User';
-    // Initials logic
     let initials = dispName.substring(0, 2).toUpperCase();
     if (dispName.includes(' ')) {
       const parts = dispName.split(' ');
@@ -1287,9 +1291,63 @@ function updateAuthUI() {
     btnLogout.onclick = async () => {
       await authManager.signOut();
     };
+
+    // Handle Company Selector
+    const companies = authManager.getCompanyContext();
+    if (companies && companies.length > 0) {
+      selector.innerHTML = '';
+      if (companies.length > 1 && !authManager.getActiveCompanyId()) {
+        selector.innerHTML = `<option value="">-- Select Company --</option>`;
+      }
+      companies.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name || c.code;
+        selector.appendChild(opt);
+      });
+      
+      selector.value = authManager.getActiveCompanyId() || '';
+      selector.style.display = 'inline-block';
+      
+      selector.onchange = (e) => {
+        authManager.setActiveCompany(e.target.value);
+        window.location.reload(); // Hard reload to reset all states on company change
+      };
+
+      // Update status bar
+      if (sbCompany) {
+        const activeComp = authManager.getActiveCompany();
+        if (activeComp) {
+          sbCompany.textContent = activeComp.name || activeComp.code;
+        } else {
+          sbCompany.textContent = 'None Selected';
+        }
+      }
+
+      const wsCompany = document.getElementById('ws-company-name');
+      if (wsCompany) {
+        const activeComp = authManager.getActiveCompany();
+        if (activeComp) {
+          wsCompany.textContent = activeComp.name || activeComp.code;
+        } else {
+          wsCompany.textContent = 'None Selected';
+        }
+      }
+
+    } else {
+      selector.style.display = 'none';
+      if (sbCompany) sbCompany.textContent = 'No Access';
+      const wsCompany = document.getElementById('ws-company-name');
+      if (wsCompany) wsCompany.textContent = 'No Access';
+    }
+
   } else {
     chip.style.display = 'none';
     btnLogout.style.display = 'none';
+    selector.style.display = 'none';
+    if (sbCompany) sbCompany.textContent = '-';
+    const wsCompany = document.getElementById('ws-company-name');
+    if (wsCompany) wsCompany.textContent = '-';
   }
 }
 
@@ -1636,7 +1694,7 @@ function renderPlaceholder(path) {
     <div class="page-subtitle">${desc}</div>
     <div class="ws-meta">
       <div class="ws-meta-chip">Period: <b>June 2026</b></div>
-      <div class="ws-meta-chip">Company: <b>PXL Demo Corp.</b></div>
+      <div class="ws-meta-chip">Company: <b id="ws-company-name">-</b></div>
       <div class="ws-meta-chip">Branch: <b>Main</b></div>
       <div class="ws-meta-chip">Records: <b>0</b></div>
       <div class="ws-meta-chip">Status: <b style="color:var(--ns-accent)">Blueprint</b></div>
