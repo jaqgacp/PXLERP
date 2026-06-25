@@ -1019,7 +1019,7 @@
   <span style="margin-left:auto; opacity:.6">PXL ERP v2.0 · Architecture v4.0 · Phase 1 Blueprint</span>
 </div>
 
-<script>
+<script type="module">
 // ── PAGE DEFINITIONS ─────────────────────────────────────────────────────────
 
 const MODULE_PAGES = {
@@ -1861,6 +1861,10 @@ window.addEventListener('load', route);
 
 // Logo click
 document.querySelector('.logo').addEventListener('click', () => go(''));
+
+// ── GLOBAL EXPORTS FOR INLINE HTML HANDLERS ──────────────────────────────────
+window.go = go;
+window.activateCat = activateCat;
 
 </script>
 </body>
