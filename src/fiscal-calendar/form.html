@@ -1,0 +1,40 @@
+<template id="erp-form-template">
+  <details class="erp-section" open>
+    <summary><legend>General Information</legend></summary>
+    <div class="erp-grid">
+      <div class="erp-field">
+        <label class="erp-required">Fiscal Year</label>
+        <select id="fiscal_year_id" required>
+          <option value="">Loading...</option>
+        </select>
+      </div>
+      <div class="erp-field">
+        <label class="erp-required">Period Number</label>
+        <input type="number" id="period_number" min="1" max="12" required>
+      </div>
+      <div class="erp-field">
+        <label class="erp-required">Period Name</label>
+        <input type="text" id="period_name" required placeholder="e.g. Jan 2026">
+      </div>
+      <div class="erp-field">
+        <label class="erp-required">Quarter</label>
+        <input type="number" id="quarter" min="1" max="4" required readonly tabindex="-1">
+      </div>
+      <div class="erp-field">
+        <label class="erp-required">Date From</label>
+        <input type="date" id="date_from" required>
+      </div>
+      <div class="erp-field">
+        <label class="erp-required">Date To</label>
+        <input type="date" id="date_to" required>
+      </div>
+      <div class="erp-field">
+        <label>Status</label>
+        <select id="status">
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+    </div>
+  </details>
+</template>
