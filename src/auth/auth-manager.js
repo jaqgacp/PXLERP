@@ -145,6 +145,15 @@ class AuthManager {
     return this.companyContext.find(c => c.id === this.activeCompanyId) || null;
   }
 
+  requireActiveCompany() {
+    const id = this.getActiveCompanyId();
+    if (!id) {
+      alert('Action blocked: No active company selected. Please select a company from the top navigation menu before proceeding.');
+      throw new Error('No active company selected. Action blocked.');
+    }
+    return id;
+  }
+
   clearState() {
     this.session = null;
     this.currentUser = null;
