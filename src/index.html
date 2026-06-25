@@ -1281,16 +1281,35 @@ async function loadModuleHtml(path, contentEl, page) {
   contentEl.innerHTML = '<div style="padding: 20px;">Loading ' + escapeHtml(page.title) + '...</div>';
   try {
     const parts = path.split('/');
-    let folder = parts[1];
-    if (folder && folder.endsWith('-setup')) folder = folder.replace('-setup', '');
-
+    let folder = parts[0]; // e.g. 'setup' or 'auth'
     let action = 'list';
-    if (parts[2] === 'new') action = 'create';
-    else if (parts[2] === 'view') action = 'view';
-    else if (parts[2] === 'edit') action = 'edit';
+
+    // Handle nested paths like setup/company-setup/new
+    if (parts.length >= 2) {
+      if (parts[0] === 'setup') {
+        folder = parts[1];
+        if (folder && folder.endsWith('-setup')) folder = folder.replace('-setup', '');
+        action = 'list';
+        if (parts[2] === 'new') action = 'create';
+        else if (parts[2] === 'view') action = 'view';
+        else if (parts[2] === 'edit') action = 'edit';
+      } else if (parts[0] === 'auth') {
+        folder = 'auth';
+        action = parts[1]; // 'login'
+      }
+    } else if (parts[0] === 'login') {
+      folder = 'auth';
+      action = 'login';
+    }
+
+    let jsUrl;
+    if (parts[0] === 'setup') {
+      jsUrl = `./${folder}/${folder}-${action}.js`;
+    } else {
+      jsUrl = `./${folder}/${action}.js`;
+    }
 
     const htmlUrl = `./${folder}/${action}.html`;
-    const jsUrl = `./${folder}/${folder}-${action}.js`;
 
     const res = await fetch(htmlUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
