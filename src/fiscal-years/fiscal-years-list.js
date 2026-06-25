@@ -1,4 +1,5 @@
 import { supabase, SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
+import { authManager } from '../auth/auth-manager.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const helper = new SetupListHelper({
@@ -9,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 1. Ensure Active Company
       let companyId;
       try {
-        companyId = window.authManager.requireActiveCompany();
+        companyId = authManager.requireActiveCompany();
       } catch(err) {
         return [];
       }
