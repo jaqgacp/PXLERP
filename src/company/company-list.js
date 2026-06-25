@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchData: async () => {
       const { data, error } = await supabase
         .from('companies')
-        .select('code, name, trade_name, tin, tax_type, business_type, rdo_code, is_active, created_at')
+        .select('id, code, name, trade_name, tin, tax_type, business_type, rdo_code, is_active, created_at')
         .order('code', { ascending: true });
       if (error) throw error;
       return data;
@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <td>${company.is_active ? 'Yes' : 'No'}</td>
       <td>${company.created_at ? new Date(company.created_at).toLocaleDateString() : ''}</td>
       <td>
-        <a href="#" onclick="alert('View placeholder'); return false;">View</a> |
-        <a href="#" onclick="alert('Edit placeholder'); return false;">Edit</a> |
+        <a href="#/setup/company-setup/view?id=${company.id}">View</a> |
+        <a href="#/setup/company-setup/edit?id=${company.id}">Edit</a> |
         <a href="#" onclick="alert('Audit Trail placeholder'); return false;">Audit Trail</a>
       </td>
     `

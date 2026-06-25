@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// PXL ERP - Company Create JS
+// PXL ERP - Company Edit JS
 // -----------------------------------------------------------------------------
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -8,24 +8,26 @@ const SUPABASE_URL = 'http://127.0.0.1:54321';
 const SUPABASE_ANON_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+let currentCompanyId = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   initForm();
 });
 
 async function initForm() {
+  const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+  currentCompanyId = urlParams.get('id');
+
+  if (!currentCompanyId) {
+    showError('No company ID provided.');
+    return;
+  }
+
   const btnSave = document.getElementById('btn-save');
-  const btnSaveNew = document.getElementById('btn-save-new');
-  const statusEl = document.getElementById('page-status');
+  btnSave.addEventListener('click', () => saveCompany());
 
-  statusEl.textContent = 'Loading form dependencies...';
-
-  // Load currencies for the dropdown
   await loadCurrencies();
-
-  btnSave.addEventListener('click', () => saveCompany(false));
-  btnSaveNew.addEventListener('click', () => saveCompany(true));
-
-  statusEl.textContent = 'Ready';
+  await loadCompany(currentCompanyId);
 }
 
 async function loadCurrencies() {
@@ -53,8 +55,45 @@ async function loadCurrencies() {
   }
 }
 
-async function saveCompany(isSaveAndNew) {
-  const form = document.getElementById('company-create-form');
+async function loadCompany(id) {
+  const statusEl = document.getElementById('page-status');
+  try {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    if (!data) throw new Error('Company not found.');
+
+    document.getElementById('code').value = data.code || '';
+    document.getElementById('name').value = data.name || '';
+    document.getElementById('trade_name').value = data.trade_name || '';
+    document.getElementById('business_type').value = data.business_type || '';
+    document.getElementById('industry_classification').value = data.industry_classification || '';
+    document.getElementById('logo_url').value = data.logo_url || '';
+    document.getElementById('tin').value = data.tin || '';
+    document.getElementById('tax_type').value = data.tax_type || '';
+    document.getElementById('rdo_code').value = data.rdo_code || '';
+    document.getElementById('sec_registration_no').value = data.sec_registration_no || '';
+    document.getElementById('dti_registration_no').value = data.dti_registration_no || '';
+    document.getElementById('bir_registered_address').value = data.bir_registered_address || '';
+    
+    document.getElementById('functional_currency_id').value = data.functional_currency_id || '';
+    document.getElementById('fiscal_year_start_month').value = data.fiscal_year_start_month || '';
+    document.getElementById('is_active').checked = data.is_active;
+
+    statusEl.textContent = 'Ready';
+  } catch (err) {
+    console.error('Load error:', err);
+    showError('Failed to load company details: ' + err.message);
+    statusEl.textContent = 'Error loading data.';
+  }
+}
+
+async function saveCompany() {
+  const form = document.getElementById('company-edit-form');
   if (!form.reportValidity()) {
     return;
   }
@@ -67,7 +106,7 @@ async function saveCompany(isSaveAndNew) {
   setButtonsDisabled(true);
 
   try {
-    // 1. Get a valid user profile ID for created_by from an authenticated session
+    // 1. Get a valid user profile ID for updated_by from an authenticated session
     const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
     
     if (sessionErr) throw sessionErr;
@@ -75,7 +114,7 @@ async function saveCompany(isSaveAndNew) {
       throw new Error("Cannot save company because no authenticated user is available.");
     }
 
-    const createdBy = session.user.id;
+    const updatedBy = session.user.id;
 
     // 2. Build payload
     const payload = {
@@ -94,26 +133,22 @@ async function saveCompany(isSaveAndNew) {
       functional_currency_id: document.getElementById('functional_currency_id').value,
       fiscal_year_start_month: parseInt(document.getElementById('fiscal_year_start_month').value, 10),
       is_active: document.getElementById('is_active').checked,
-      created_by: createdBy
+      updated_by: updatedBy,
+      updated_at: new Date().toISOString()
     };
 
-    // 3. Insert into public.companies
-    const { data, error } = await supabase
+    // 3. Update public.companies
+    const { error } = await supabase
       .from('companies')
-      .insert([payload]);
+      .update(payload)
+      .eq('id', currentCompanyId);
 
     if (error) throw error;
 
     statusEl.textContent = 'Saved successfully.';
 
-    if (isSaveAndNew) {
-      form.reset();
-      setButtonsDisabled(false);
-      statusEl.textContent = 'Ready for next company.';
-    } else {
-      // Navigate back to list
-      window.location.hash = '#/setup/company-setup';
-    }
+    // Navigate back to list
+    window.location.hash = '#/setup/company-setup';
 
   } catch (err) {
     console.error('Save error:', err);
@@ -131,5 +166,4 @@ function showError(msg) {
 
 function setButtonsDisabled(disabled) {
   document.getElementById('btn-save').disabled = disabled;
-  document.getElementById('btn-save-new').disabled = disabled;
 }

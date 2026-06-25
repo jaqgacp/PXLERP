@@ -1044,6 +1044,8 @@ const MODULE_PAGES = {
    // Company Setup
    'setup/company-setup': { title: 'Company Setup', icon: '🏢', breadcrumb: ['Setup','Company Setup'], type: 'list' },
    'setup/company-setup/new': { title: 'New Company', icon: '🏢', breadcrumb: ['Setup','Company Setup','New Company'], type: 'form' },
+   'setup/company-setup/view': { title: 'View Company', icon: '🏢', breadcrumb: ['Setup','Company Setup','View Company'], type: 'form' },
+   'setup/company-setup/edit': { title: 'Edit Company', icon: '🏢', breadcrumb: ['Setup','Company Setup','Edit Company'], type: 'form' },
    // Branch Setup
    'setup/branch-setup': { title: 'Branch Setup', icon: '🏢', breadcrumb: ['Setup','Branch Setup'], type: 'list' },
    // Department Setup
@@ -1284,6 +1286,8 @@ async function loadModuleHtml(path, contentEl, page) {
 
     let action = 'list';
     if (parts[2] === 'new') action = 'create';
+    else if (parts[2] === 'view') action = 'view';
+    else if (parts[2] === 'edit') action = 'edit';
 
     const htmlUrl = `./${folder}/${action}.html`;
     const jsUrl = `./${folder}/${folder}-${action}.js`;
