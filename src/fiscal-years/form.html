@@ -1,0 +1,32 @@
+<template id="erp-form-template">
+  <details class="erp-section" open>
+    <summary><legend>General Information</legend></summary>
+    <div class="erp-grid">
+      <div class="erp-field">
+        <label class="erp-required">Year Code</label>
+        <input type="text" id="year_code" required placeholder="e.g. 2026">
+      </div>
+      <div class="erp-field">
+        <label>Status</label>
+        <select id="status">
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+      <div class="erp-field">
+        <label class="erp-required">Date From</label>
+        <input type="date" id="date_from" required>
+      </div>
+      <div class="erp-field">
+        <label class="erp-required">Date To</label>
+        <input type="date" id="date_to" required>
+      </div>
+      <div class="erp-field">
+        <label>Current Fiscal Year?</label>
+        <label style="display:flex; align-items:center; gap:5px; margin-top:5px; cursor:pointer;">
+          <input type="checkbox" id="is_current"> Yes, set as the current fiscal year
+        </label>
+      </div>
+    </div>
+  </details>
+</template>
