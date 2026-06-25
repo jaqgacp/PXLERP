@@ -24,6 +24,22 @@ async function initForm() {
   }
 
   const btnSave = document.getElementById('btn-save');
+  const authStatusEl = document.getElementById('auth-status');
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session || !session.user) {
+    authStatusEl.style.backgroundColor = '#f8d7da';
+    authStatusEl.style.borderColor = '#f5c6cb';
+    authStatusEl.style.color = '#721c24';
+    authStatusEl.textContent = 'Not signed in — company save disabled';
+    btnSave.disabled = true;
+  } else {
+    authStatusEl.style.backgroundColor = '#d4edda';
+    authStatusEl.style.borderColor = '#c3e6cb';
+    authStatusEl.style.color = '#155724';
+    authStatusEl.textContent = 'Signed in as: ' + (session.user.email || session.user.id);
+  }
+
   btnSave.addEventListener('click', () => saveCompany());
 
   await loadCurrencies();
