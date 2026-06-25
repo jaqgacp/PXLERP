@@ -29,7 +29,7 @@
       
       <!-- SECTION 1: General Information -->
       <fieldset class="erp-section">
-        <legend>General Information</legend>
+        <legend>🏢 General Information</legend>
         <div class="erp-grid">
           <div class="erp-field">
             <label>Code</label>
@@ -55,10 +55,13 @@
             <label>Full TIN</label>
             <input type="text" id="full_tin" readonly disabled>
           </div>
-          <div class="erp-field">
-            <label>RDO Code</label>
-            <input type="text" id="rdo_code" readonly disabled>
-          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 2: Tax & Business Registration -->
+      <fieldset class="erp-section">
+        <legend>📑 Registration & Tax Details</legend>
+        <div class="erp-grid">
           <div class="erp-field">
             <label>Tax Type</label>
             <select id="tax_type" readonly disabled>
@@ -75,13 +78,14 @@
               <option value="cooperative">Cooperative</option>
             </select>
           </div>
-        </div>
-      </fieldset>
-
-      <!-- SECTION 2: Tax & Business Registration -->
-      <fieldset class="erp-section">
-        <legend>Tax & Business Registration</legend>
-        <div class="erp-grid">
+          <div class="erp-field">
+            <label>RDO Code</label>
+            <input type="text" id="rdo_code" readonly disabled>
+          </div>
+          <div class="erp-field">
+            <label>BIR Registration Date</label>
+            <input type="date" id="bir_registration_date" readonly disabled>
+          </div>
           <div class="erp-field">
             <label>SEC Registration No.</label>
             <input type="text" id="sec_registration_no" readonly disabled>
@@ -97,10 +101,6 @@
           <div class="erp-field">
             <label>Registration Date</label>
             <input type="date" id="registration_date" readonly disabled>
-          </div>
-          <div class="erp-field">
-            <label>BIR Registration Date</label>
-            <input type="date" id="bir_registration_date" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Line of Business (Per COR)</label>
@@ -119,7 +119,7 @@
 
       <!-- SECTION 3: Address & Contact -->
       <fieldset class="erp-section">
-        <legend>Address & Contact</legend>
+        <legend>📍 Address & Contact</legend>
         <div class="erp-grid">
           <div class="erp-field" style="grid-column: span 2;">
             <label>BIR Registered Address</label>
@@ -154,31 +154,33 @@
 
       <!-- SECTION 4: Compliance Profile -->
       <fieldset class="erp-section">
-        <legend>Compliance Profile</legend>
+        <legend>🛡 Compliance Profile</legend>
         <div class="erp-grid">
           <div class="erp-field" style="grid-column: span 2;">
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
-              <input type="checkbox" id="is_withholding_agent" readonly disabled> Is Withholding Agent (Top 20k/5k)
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_large_taxpayer" readonly disabled> Is Large Taxpayer
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_peza_registered" readonly disabled> PEZA Registered
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_boi_registered" readonly disabled> BOI Registered
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_bmbes_registered" readonly disabled> BMBE Registered
-            </label>
+            <div class="erp-checkbox-group">
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_withholding_agent" readonly disabled> Withholding Agent (Top 20k/5k)
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_large_taxpayer" readonly disabled> Large Taxpayer
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_peza_registered" readonly disabled> PEZA Registered
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_boi_registered" readonly disabled> BOI Registered
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_bmbes_registered" readonly disabled> BMBE Registered
+              </label>
+            </div>
           </div>
         </div>
       </fieldset>
 
       <!-- SECTION 5: Authorized Signatory -->
       <fieldset class="erp-section">
-        <legend>Authorized Signatory</legend>
+        <legend>👤 Authorized Signatory</legend>
         <div class="erp-grid">
           <div class="erp-field">
             <label>Signatory Name</label>
@@ -197,7 +199,7 @@
 
       <!-- SECTION 6: Accounting & CAS Defaults -->
       <fieldset class="erp-section">
-        <legend>Accounting & CAS Defaults</legend>
+        <legend>⚙ Accounting & Future CAS</legend>
         <div class="erp-grid">
           <div class="erp-field">
             <label>Functional Currency</label>
@@ -245,9 +247,11 @@
             <input type="date" id="ptu_cas_date_issued" readonly disabled>
           </div>
           <div class="erp-field" style="grid-column: span 2;">
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:20px;">
-              <input type="checkbox" id="is_active" readonly disabled> Is Active
-            </label>
+            <div class="erp-checkbox-group" style="margin-top: 12px;">
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_active" readonly disabled> Is Active
+              </label>
+            </div>
           </div>
         </div>
       </fieldset>

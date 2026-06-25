@@ -35,6 +35,24 @@ async function initForm() {
   // Load currencies for the dropdown
   await loadCurrencies();
 
+  // Live update for Full TIN
+  const baseTinInput = document.getElementById('base_tin');
+  const branchCodeInput = document.getElementById('branch_code');
+  const fullTinInput = document.getElementById('full_tin');
+
+  const updateFullTin = () => {
+    const base = baseTinInput.value.trim();
+    const branch = branchCodeInput.value.trim();
+    if (base) {
+      fullTinInput.value = base + '-' + (branch || '00000');
+    } else {
+      fullTinInput.value = '';
+    }
+  };
+
+  baseTinInput.addEventListener('input', updateFullTin);
+  branchCodeInput.addEventListener('input', updateFullTin);
+
   btnSave.addEventListener('click', () => saveCompany(false));
   btnSaveNew.addEventListener('click', () => saveCompany(true));
 
