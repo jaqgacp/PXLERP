@@ -7,9 +7,7 @@ import { authManager } from '../auth/auth-manager.js';
 const supabase = authManager.supabase;
 let currentCompanyId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-  initForm();
-});
+initForm();
 
 async function initForm() {
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
@@ -154,6 +152,14 @@ async function saveCompany() {
       .eq('id', currentCompanyId);
 
     if (error) throw error;
+
+    // 4. Refresh Company Context and UI Selector (in case name/code changed)
+    if (typeof authManager.refreshCompanyContext === 'function') {
+      await authManager.refreshCompanyContext();
+      if (typeof window.updateAuthUI === 'function') {
+        window.updateAuthUI();
+      }
+    }
 
     statusEl.textContent = 'Saved successfully.';
 
