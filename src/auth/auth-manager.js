@@ -12,7 +12,7 @@ class AuthManager {
     this.session = null;
     this.currentUser = null;
     this.currentProfile = null;
-    this.permissions = null;
+    this.roleContext = null;
     this.companyContext = null;
     this.initialized = false;
   }
@@ -78,16 +78,16 @@ class AuthManager {
         this.companyContext = companies || [];
       }
 
-      // 3. Load permissions
+      // 3. Load role context
       const { data: roles, error: rolesErr } = await this.supabase
         .from('user_roles')
         .select('company_id, role_id')
         .eq('user_id', this.currentUser.id);
         
       if (rolesErr) {
-        console.error('Error loading permissions:', rolesErr);
+        console.error('Error loading role context:', rolesErr);
       } else {
-        this.permissions = roles || [];
+        this.roleContext = roles || [];
       }
 
     } catch (err) {
@@ -99,7 +99,7 @@ class AuthManager {
     this.session = null;
     this.currentUser = null;
     this.currentProfile = null;
-    this.permissions = null;
+    this.roleContext = null;
     this.companyContext = null;
   }
 
@@ -113,6 +113,14 @@ class AuthManager {
 
   getCurrentProfile() {
     return this.currentProfile;
+  }
+
+  getCompanyContext() {
+    return this.companyContext;
+  }
+
+  getRoleContext() {
+    return this.roleContext;
   }
 
   async signInWithPassword(email, password) {
