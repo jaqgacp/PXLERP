@@ -16,8 +16,24 @@ async function initForm() {
   const btnSave = document.getElementById('btn-save');
   const btnSaveNew = document.getElementById('btn-save-new');
   const statusEl = document.getElementById('page-status');
+  const authStatusEl = document.getElementById('auth-status');
 
   statusEl.textContent = 'Loading form dependencies...';
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session || !session.user) {
+    authStatusEl.style.backgroundColor = '#f8d7da';
+    authStatusEl.style.borderColor = '#f5c6cb';
+    authStatusEl.style.color = '#721c24';
+    authStatusEl.textContent = 'Not signed in — company save disabled';
+    btnSave.disabled = true;
+    btnSaveNew.disabled = true;
+  } else {
+    authStatusEl.style.backgroundColor = '#d4edda';
+    authStatusEl.style.borderColor = '#c3e6cb';
+    authStatusEl.style.color = '#155724';
+    authStatusEl.textContent = 'Signed in as: ' + (session.user.email || session.user.id);
+  }
 
   // Load currencies for the dropdown
   await loadCurrencies();
@@ -38,6 +54,13 @@ async function loadCurrencies() {
       .order('code', { ascending: true });
 
     if (error) throw error;
+    
+    if (!data || data.length === 0) {
+      showError('Create or seed Currency first before creating Company.');
+      select.innerHTML = '<option value="">No currencies found</option>';
+      setButtonsDisabled(true);
+      return;
+    }
 
     select.innerHTML = '<option value="">Select...</option>';
     data.forEach(c => {
