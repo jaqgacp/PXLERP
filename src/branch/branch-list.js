@@ -4,9 +4,48 @@
 
 import { authManager } from '../auth/auth-manager.js';
 import { SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
+import { ErpImportHelper } from '../shared/import/erp-import-helper.js';
 
 export async function init() {
   const supabase = authManager.supabase;
+
+  const importHelper = new ErpImportHelper({
+    entityName: 'Branch',
+    tableName: 'branches',
+    activeCompanyRequired: true,
+    requiredColumns: ['code', 'name'],
+    optionalColumns: [
+      'short_name', 'tin_suffix', 'bir_registered', 'is_head_office', 'is_active',
+      'rdo_code', 'line_of_business', 'ptu_cas_no', 'ptu_cas_date_issued',
+      'address', 'zip_code', 'contact_person', 'phone', 'email'
+    ],
+    duplicateCheckFields: ['company_id', 'code'],
+    columnMapping: {
+      'Branch Code': 'code',
+      'Branch Name': 'name',
+      'Short Name': 'short_name',
+      'TIN Suffix': 'tin_suffix',
+      'BIR Registered': 'bir_registered',
+      'Head Office': 'is_head_office',
+      'Active': 'is_active',
+      'RDO Code': 'rdo_code',
+      'Line of Business': 'line_of_business',
+      'PTU/CAS No': 'ptu_cas_no',
+      'PTU/CAS Date Issued': 'ptu_cas_date_issued',
+      'Address': 'address',
+      'Zip Code': 'zip_code',
+      'Contact Person': 'contact_person',
+      'Phone': 'phone',
+      'Email': 'email'
+    }
+  });
+
+  const btnDownload = document.getElementById('btn-download-template');
+  if (btnDownload) {
+    btnDownload.onclick = () => {
+      importHelper.downloadTemplate();
+    };
+  }
   
   const helper = new SetupListHelper({
     tableId: '#branch-grid-body',
