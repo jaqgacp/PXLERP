@@ -14,6 +14,8 @@ export class ErpImportHelper {
     this.parsedRows = [];
     this.validRows = [];
     this.invalidRows = [];
+    this.originalFileName = null;
+    this.fileSizeBytes = null;
     
     if (!document.getElementById('erp-import-css')) {
       const link = document.createElement('link');
@@ -65,6 +67,9 @@ export class ErpImportHelper {
     const file = e.target.files[0];
     if (!file) return;
 
+    this.originalFileName = file.name;
+    this.fileSizeBytes = file.size;
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
@@ -109,6 +114,51 @@ export class ErpImportHelper {
     await this.validateRows(data, headers);
   }
 
+  normalizeForDatabase(row) {
+    const normalized = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (value === undefined || value === null) {
+        normalized[key] = null;
+        continue;
+      }
+      
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed === '') {
+          normalized[key] = null;
+          continue;
+        }
+
+        // Date detection (YYYY-MM-DD)
+        const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (isoRegex.test(trimmed)) {
+          const d = new Date(trimmed);
+          if (!isNaN(d.getTime())) {
+            normalized[key] = trimmed;
+            continue;
+          }
+        }
+        
+        // Boolean detection (Strict set)
+        const lower = trimmed.toLowerCase();
+        if (['yes', 'true', 'y', 'true', 'false', 'no', 'n'].includes(lower)) {
+          normalized[key] = ['yes', 'true', 'y'].includes(lower);
+          continue;
+        }
+        
+        // Numeric detection (Optional: be careful not to cast strings like "00001" to 1)
+        // We will leave numeric-looking strings that might be codes (like "00001") as strings 
+        // to prevent data loss. Only true numbers (if passed) are preserved.
+        
+        normalized[key] = trimmed;
+      } else {
+        // If it's already a number or boolean
+        normalized[key] = value;
+      }
+    }
+    return normalized;
+  }
+
   async validateRows(data, originalHeaders) {
     this.validRows = [];
     this.invalidRows = [];
@@ -134,10 +184,13 @@ export class ErpImportHelper {
         }
       }
 
+      // Framework Normalization (BEFORE validation)
+      const normalizedRow = this.normalizeForDatabase(dbRow);
+
       if (this.config.validators) {
         for (const [col, validatorFn] of Object.entries(this.config.validators)) {
-          if (dbRow[col] !== undefined && dbRow[col] !== '') {
-            const res = validatorFn(dbRow[col]);
+          if (normalizedRow[col] !== null && normalizedRow[col] !== undefined && normalizedRow[col] !== '') {
+            const res = validatorFn(normalizedRow[col]);
             if (res !== true) {
               errors.push(`'${Object.keys(this.config.columnMapping).find(k => this.config.columnMapping[k] === col)}': ${res}`);
             }
@@ -145,10 +198,19 @@ export class ErpImportHelper {
         }
       }
 
+      // Temporary Lifecycle Trace Log (First Row Only)
+      if (i === 0) {
+         console.log("--- ERP Import Framework Lifecycle Trace (Row 1) ---");
+         console.log("1. CSV Raw / Parsed:", csvRow);
+         console.log("2. Mapped:", dbRow);
+         console.log("3. Normalized:", normalizedRow);
+         console.log("4. Errors:", errors);
+      }
+
       tempParsed.push({
         index: i + 1,
         original: csvRow,
-        mapped: dbRow,
+        mapped: normalizedRow,
         errors
       });
     }
@@ -187,16 +249,6 @@ export class ErpImportHelper {
 
       if (otherField && dbDuplicates.includes(row.mapped[otherField])) {
         row.errors.push(`Record with this '${otherField}' already exists in the database.`);
-      }
-
-      if (row.errors.length === 0) {
-        if (this.config.transformRow) {
-           try {
-             row.mapped = this.config.transformRow(row.mapped);
-           } catch(e) {
-             row.errors.push("Failed to transform row: " + e.message);
-           }
-        }
       }
 
       this.parsedRows.push(row);
@@ -320,35 +372,127 @@ export class ErpImportHelper {
       return;
     }
 
-    const payloads = this.validRows.map(r => {
-      let payload = { ...r.mapped };
-      payload = this.normalizeForDatabase(payload);
-      if (activeCompanyId) payload.company_id = activeCompanyId;
-      payload.created_by = user.id;
-      return payload;
-    });
+    const startTime = performance.now();
+    
+    // Generate deterministic batch number: IMP-YYYYMMDD-HHMMSS
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
+    const timeStr = now.toISOString().split('T')[1].split('.')[0].replace(/:/g, '');
+    const batchNo = `IMP-${dateStr}-${timeStr}`;
 
-    console.log("=== ERP Import Framework: Payload Preview ===");
-    console.table(payloads);
-    if (payloads.length > 0) {
-      console.log("Sample Payload for DB Insert:", JSON.stringify(payloads[0], null, 2));
-    }
+    let batchId = null;
 
     try {
-      const { error } = await supabase
-        .from(this.config.tableName)
-        .insert(payloads);
+      // 1. Create the Import Batch Record FIRST
+      const { data: batchData, error: batchError } = await supabase
+        .from('import_batches')
+        .insert([{
+          batch_no: batchNo,
+          entity_name: this.config.entityName || 'Unknown',
+          company_id: activeCompanyId,
+          imported_by: user.id,
+          status: 'pending',
+          original_filename: this.originalFileName,
+          file_size_bytes: this.fileSizeBytes,
+          total_rows: this.parsedRows.length,
+          valid_rows: this.validRows.length,
+          invalid_rows: this.invalidRows.length,
+          source_type: 'csv'
+        }])
+        .select('id')
+        .single();
 
-      if (error) throw error;
-
-      Toast.success(`Successfully imported ${payloads.length} ${this.config.entityName}(s).`);
-      this.closePreview();
+      if (batchError || !batchData) {
+        throw new Error(`Failed to create import batch: ${batchError?.message || 'Unknown error'}`);
+      }
       
-      // Call standard load on current list page to refresh
-      window.location.reload(); 
-    } catch (err) {
-      console.error(err);
-      Toast.error(`Import failed: ${err.message}`);
+      batchId = batchData.id;
+
+      // 2. Prepare Payloads with import_batch_id
+      const payloads = this.validRows.map(r => {
+        let payload = { ...r.mapped };
+        if (activeCompanyId) payload.company_id = activeCompanyId;
+        payload.created_by = user.id;
+        payload.import_batch_id = batchId;
+        return payload;
+      });
+
+      if (payloads.length > 0) {
+        console.log(`5. Final DB Payload (Row 1 for Batch ${batchNo}):`, payloads[0]);
+      }
+
+      // 3. Insert Valid Rows
+      if (payloads.length > 0) {
+        const { data, error } = await supabase
+          .from(this.config.tableName)
+          .insert(payloads)
+          .select();
+
+        if (error) {
+          throw error;
+        }
+        
+        console.log("6. Database Response (First Row Inserted):", data && data.length > 0 ? data[0] : null);
+      }
+
+      const durationMs = Math.round(performance.now() - startTime);
+
+      // 4. Update Batch as Completed
+      await supabase
+        .from('import_batches')
+        .update({
+          status: 'completed',
+          inserted_rows: payloads.length,
+          failed_rows: 0,
+          duration_ms: durationMs,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', batchId);
+
+      Toast.success(`Successfully imported ${payloads.length} record(s) in Batch ${batchNo}.`);
+      
+      // Update UI
+      const titleEl = document.getElementById('erp-import-title');
+      if (titleEl) {
+        titleEl.textContent = `Import Complete (Batch: ${batchNo})`;
+      }
+      
+      const tbody = document.getElementById('erp-import-tbody');
+      if (tbody) {
+         tbody.innerHTML = `<tr><td colspan="100%" style="text-align:center; padding: 20px;">
+           <h3>Import Successful</h3>
+           <p><strong>Batch No:</strong> ${batchNo}</p>
+           <p><strong>${payloads.length}</strong> records were successfully inserted into the database.</p>
+           <p><strong>${this.invalidRows.length}</strong> records were rejected during validation.</p>
+           <button id="erp-import-success-close" style="margin-top: 15px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Close & Refresh</button>
+         </td></tr>`;
+         
+         document.getElementById('erp-import-success-close').onclick = () => {
+           window.location.reload();
+         };
+      }
+      
+      btn.style.display = 'none';
+      window.dispatchEvent(new CustomEvent('erp-import-success'));
+
+    } catch (error) {
+      console.error("Supabase Insert Error:", error);
+      
+      if (batchId) {
+        // Mark batch as failed
+        await supabase
+          .from('import_batches')
+          .update({
+            status: 'failed',
+            failed_rows: this.validRows.length,
+            error_summary: { message: error.message, details: error.details || null },
+            duration_ms: Math.round(performance.now() - startTime),
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', batchId);
+      }
+
+      Toast.error("Import failed during database insert: " + error.message);
       btn.disabled = false;
       btn.textContent = 'Confirm Import';
     }
