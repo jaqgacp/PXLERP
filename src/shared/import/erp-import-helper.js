@@ -288,6 +288,23 @@ export class ErpImportHelper {
     }
   }
 
+  normalizeForDatabase(payload) {
+    const normalized = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (value === undefined || value === '' || Number.isNaN(value)) {
+        normalized[key] = null;
+      } else if (typeof value === 'string') {
+        normalized[key] = value.trim();
+        if (normalized[key] === '') {
+          normalized[key] = null;
+        }
+      } else {
+        normalized[key] = value;
+      }
+    }
+    return normalized;
+  }
+
   async confirmImport() {
     const btn = document.getElementById('erp-import-confirm');
     btn.disabled = true;
@@ -304,11 +321,18 @@ export class ErpImportHelper {
     }
 
     const payloads = this.validRows.map(r => {
-      const payload = { ...r.mapped };
+      let payload = { ...r.mapped };
+      payload = this.normalizeForDatabase(payload);
       if (activeCompanyId) payload.company_id = activeCompanyId;
       payload.created_by = user.id;
       return payload;
     });
+
+    console.log("=== ERP Import Framework: Payload Preview ===");
+    console.table(payloads);
+    if (payloads.length > 0) {
+      console.log("Sample Payload for DB Insert:", JSON.stringify(payloads[0], null, 2));
+    }
 
     try {
       const { error } = await supabase
