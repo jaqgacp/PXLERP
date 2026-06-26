@@ -139,10 +139,10 @@ export class ErpImportHelper {
           }
         }
         
-        // Boolean detection (Strict set)
-        const lower = trimmed.toLowerCase();
-        if (['yes', 'true', 'y', 'true', 'false', 'no', 'n'].includes(lower)) {
-          normalized[key] = ['yes', 'true', 'y'].includes(lower);
+        // Boolean detection (Strict set via CsvParser)
+        const boolVal = CsvParser.parseBoolean(trimmed);
+        if (boolVal !== null) {
+          normalized[key] = boolVal;
           continue;
         }
         
@@ -340,22 +340,7 @@ export class ErpImportHelper {
     }
   }
 
-  normalizeForDatabase(payload) {
-    const normalized = {};
-    for (const [key, value] of Object.entries(payload)) {
-      if (value === undefined || value === '' || Number.isNaN(value)) {
-        normalized[key] = null;
-      } else if (typeof value === 'string') {
-        normalized[key] = value.trim();
-        if (normalized[key] === '') {
-          normalized[key] = null;
-        }
-      } else {
-        normalized[key] = value;
-      }
-    }
-    return normalized;
-  }
+
 
   async confirmImport() {
     const btn = document.getElementById('erp-import-confirm');

@@ -45,36 +45,34 @@ export async function init() {
         return /^\d{5}$/.test(val) || 'TIN Suffix must be exactly 5 digits.';
       },
       'bir_registered': (val) => {
-        if (!val) return true;
-        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value (Yes/No, TRUE/FALSE, 1/0, Y/N).';
+        if (val === null || val === undefined || val === '') return true;
+        if (typeof val === 'boolean') return true;
+        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value (Yes/No, TRUE/FALSE, Y/N, 1/0).';
       },
       'is_head_office': (val) => {
-        if (!val) return true;
+        if (val === null || val === undefined || val === '') return true;
+        if (typeof val === 'boolean') return true;
         return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value.';
       },
       'is_active': (val) => {
-        if (!val) return true;
+        if (val === null || val === undefined || val === '') return true;
+        if (typeof val === 'boolean') return true;
         return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value.';
       },
       'ptu_cas_date_issued': (val) => {
         if (!val) return true;
-        return CsvParser.parseDate(val) !== 'INVALID_DATE' || 'Date must be valid (YYYY-MM-DD).';
+        // The value is already normalized by the framework. We just need to check if it's a valid date string.
+        const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+        return isoRegex.test(val) || 'Date must be valid (YYYY-MM-DD).';
       }
-    },
-    transformRow: (row) => {
-      if (row.bir_registered) row.bir_registered = CsvParser.parseBoolean(row.bir_registered);
-      if (row.is_head_office) row.is_head_office = CsvParser.parseBoolean(row.is_head_office);
-      if (row.is_active) row.is_active = CsvParser.parseBoolean(row.is_active);
-      if (row.ptu_cas_date_issued) row.ptu_cas_date_issued = CsvParser.parseDate(row.ptu_cas_date_issued);
-      return row;
     }
   });
 
   const btnDownload = document.getElementById('btn-download-template');
   if (btnDownload) {
-    btnDownload.onclick = () => {
+    btnDownload.addEventListener('click', () => {
       importHelper.downloadTemplate();
-    };
+    });
   }
 
   const btnImport = document.getElementById('btn-import');
