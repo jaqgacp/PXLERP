@@ -1,38 +1,43 @@
 /* -------------------------------------------------------------------------- */
-/* PXL ERP - Standard Form Framework CSS                                      */
+/* PXL ERP - Standard Form Framework CSS (Golden Reference)                   */
 /* -------------------------------------------------------------------------- */
 
 /* Form Container */
 .erp-form-container {
-  padding: 24px;
-  background: #ffffff;
-  border: 1px solid #e1e8ed;
-  margin-top: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-  position: relative;
+  padding: 16px 0;
+  background: transparent;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
-/* Sections */
+/* Sections as ERP Cards */
 .erp-section {
-  border: 1px solid #e1e8ed;
-  padding: 20px;
-  margin-bottom: 20px;
-  border-radius: 6px;
-  background: #fdfdfd;
-}
-.erp-section legend {
-  font-weight: 600;
-  padding: 0 8px;
-  color: #1f3a5f;
-  font-size: 15px;
+  background: #ffffff;
+  border: 1px solid #d4e4f0;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  /* Removed heavy box-shadow for a flatter, professional look */
 }
 
-/* Standard Grid */
+.erp-section legend {
+  font-weight: 700;
+  padding: 0 0 6px 0;
+  color: #1f3a5f;
+  font-size: 14px;
+  border-bottom: 1px solid #c8d8e8;
+  margin-bottom: 12px;
+  display: block;
+  width: 100%;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive Standard Grid */
 .erp-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px 16px;
 }
 .erp-grid.single-column {
   grid-template-columns: 1fr;
@@ -44,60 +49,139 @@
   flex-direction: column;
 }
 .erp-field label {
-  font-weight: 500;
-  margin-bottom: 6px;
-  color: #334155;
-  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #2a3a50;
+  font-size: 12px;
 }
 .erp-required::after {
   content: ' *';
-  color: #dc3545;
+  color: #d93025;
+  font-weight: bold;
 }
+
+/* Inputs */
 .erp-field input[type="text"],
 .erp-field input[type="number"],
+.erp-field input[type="email"],
 .erp-field input[type="date"],
 .erp-field select,
 .erp-field textarea {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 14px;
-  color: #1e293b;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  padding: 5px 8px;
+  border: 1px solid #c8d8e8;
+  border-radius: 2px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  color: #1a1a2e;
+  background-color: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
+
 .erp-field input:focus,
 .erp-field select:focus,
 .erp-field textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #3a6ea8;
+  box-shadow: 0 0 0 2px rgba(58, 110, 168, 0.15);
 }
-.erp-field input:read-only,
+
+.erp-field input::placeholder,
+.erp-field textarea::placeholder {
+  color: #9ab3cc;
+}
+
+/* Helper Text */
+.erp-help-text {
+  font-size: 11px;
+  color: #7a9bb5;
+  margin-top: 4px;
+}
+
+/* Readonly vs Disabled Fields */
+.erp-field input:disabled,
 .erp-field select:disabled,
-.erp-field textarea:read-only {
-  background-color: #f1f5f9;
-  color: #94a3b8;
+.erp-field textarea:disabled {
+  background-color: #f4f8fc;
+  color: #5a7a96;
   cursor: not-allowed;
-  border-color: #e2e8f0;
+  border-color: #dce9f5;
 }
+
+.erp-field input[readonly]:not(:disabled),
+.erp-field textarea[readonly]:not(:disabled) {
+  background-color: #fdfdfd;
+  color: #2a3a50;
+  border: 1px solid transparent;
+  border-bottom: 1px solid #dce9f5;
+  padding-left: 0;
+  padding-right: 0;
+  font-weight: 500;
+  border-radius: 0;
+}
+.erp-field select[readonly]:not(:disabled) {
+  background-color: #fdfdfd;
+  color: #2a3a50;
+  border: 1px solid transparent;
+  border-bottom: 1px solid #dce9f5;
+  padding-left: 0;
+  font-weight: 500;
+  border-radius: 0;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.erp-field input[readonly]:not(:disabled):focus,
+.erp-field textarea[readonly]:not(:disabled):focus {
+  box-shadow: none;
+  border-bottom-color: #3a6ea8;
+}
+
+/* Checkbox Groups */
+.erp-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.erp-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #1a1a2e;
+  cursor: pointer;
+}
+.erp-checkbox-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #1f3a5f;
+}
+.erp-checkbox-item input[type="checkbox"]:disabled,
+.erp-checkbox-item input[type="checkbox"][readonly] {
+  accent-color: #9ab3cc;
+  cursor: not-allowed;
+}
+
+/* Validation */
 .erp-field.has-error input,
 .erp-field.has-error select,
 .erp-field.has-error textarea {
-  border-color: #ef4444;
+  border-color: #d93025;
 }
 
 /* Validation Summary */
 .erp-validation-summary {
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
+  color: #8b2020;
+  background-color: #fdf0f0;
+  border: 1px solid #e8c0c0;
   padding: 12px 16px;
   margin-bottom: 20px;
-  border-radius: 6px;
+  border-radius: 4px;
   display: none;
-  font-size: 14px;
+  font-size: 13px;
 }
 .erp-validation-summary ul {
   margin: 8px 0 0 20px;
@@ -116,24 +200,24 @@
 }
 .erp-toast {
   min-width: 300px;
-  padding: 16px 20px;
-  border-radius: 6px;
+  padding: 14px 18px;
+  border-radius: 4px;
   color: #fff;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
   opacity: 0;
   transform: translateX(100%);
-  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 14px;
+  transition: opacity 0.3s, transform 0.3s;
+  font-size: 13px;
   font-weight: 500;
 }
 .erp-toast.show {
   opacity: 1;
   transform: translateX(0);
 }
-.erp-toast.success { background-color: #10b981; }
-.erp-toast.error { background-color: #ef4444; }
-.erp-toast.warning { background-color: #f59e0b; color: #fff; }
-.erp-toast.info { background-color: #3b82f6; }
+.erp-toast.success { background-color: #2d7a2d; }
+.erp-toast.error { background-color: #d93025; }
+.erp-toast.warning { background-color: #e8a020; color: #1a1a2e; }
+.erp-toast.info { background-color: #3a6ea8; }
 
 /* Loading Overlay */
 .erp-loading-overlay {
@@ -142,23 +226,23 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.75);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 10;
   display: none;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 .erp-loading-overlay.active {
   display: flex;
 }
 .erp-spinner {
-  border: 3px solid #e2e8f0;
-  border-top: 3px solid #3b82f6;
+  border: 3px solid #e8eef5;
+  border-top: 3px solid #1f3a5f;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin {

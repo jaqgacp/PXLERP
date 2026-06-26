@@ -52,12 +52,14 @@
             <input type="text" id="trade_name">
           </div>
           <div class="erp-field">
-            <label class="erp-required">Base TIN (9 Digits)</label>
+            <label class="erp-required">Base TIN</label>
             <input type="text" id="base_tin" required placeholder="e.g. 123-456-789" maxlength="15">
+            <span class="erp-help-text">Enter the registered Base TIN. Example: 123-456-789</span>
           </div>
           <div class="erp-field">
             <label class="erp-required">Branch Code</label>
-            <input type="text" id="branch_code" required value="00000" maxlength="5" pattern="\d{5}" title="Must be exactly 5 digits">
+            <input type="text" id="branch_code" required value="00000" maxlength="5" pattern="\d{5}">
+            <span class="erp-help-text">BIR 5-digit Branch Code. Example: 00000</span>
           </div>
           <div class="erp-field">
             <label>Full TIN</label>
@@ -68,7 +70,7 @@
 
       <!-- SECTION 2: Tax & Business Registration -->
       <fieldset class="erp-section">
-        <legend>Tax & Business Registration</legend>
+        <legend>Registration & Tax Details</legend>
         <div class="erp-grid">
           <div class="erp-field">
             <label class="erp-required">Tax Type</label>
@@ -109,7 +111,7 @@
             <input type="text" id="cda_registration_no">
           </div>
           <div class="erp-field">
-            <label>Incorporation/Registration Date</label>
+            <label>Registration Date</label>
             <input type="date" id="registration_date">
           </div>
           <div class="erp-field">
@@ -117,12 +119,13 @@
             <input type="text" id="line_of_business" required>
           </div>
           <div class="erp-field">
-            <label>PSIC Code</label>
-            <input type="text" id="psic_code">
-          </div>
-          <div class="erp-field">
             <label>Industry Classification</label>
             <input type="text" id="industry_classification">
+          </div>
+          <div class="erp-field">
+            <label>PSIC Code</label>
+            <input type="text" id="psic_code">
+            <span class="erp-help-text">Philippine Standard Industrial Classification.</span>
           </div>
         </div>
       </fieldset>
@@ -148,7 +151,7 @@
             <input type="text" id="phone" required>
           </div>
           <div class="erp-field">
-            <label>Mobile No</label>
+            <label>Mobile No.</label>
             <input type="text" id="mobile_no">
           </div>
           <div class="erp-field">
@@ -162,71 +165,55 @@
         </div>
       </fieldset>
 
-      <!-- SECTION 4: Compliance Profile & Signatory -->
+      <!-- SECTION 4: Compliance Profile -->
       <fieldset class="erp-section">
-        <legend>Compliance Profile & Authorized Signatory</legend>
+        <legend>Compliance Profile</legend>
         <div class="erp-grid">
-          <div class="erp-field">
-            <label style="font-weight:600; margin-bottom:10px;">Compliance Flags</label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
-              <input type="checkbox" id="is_withholding_agent"> Is Withholding Agent (Top 20k/5k)
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_large_taxpayer"> Is Large Taxpayer
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_peza_registered"> PEZA Registered
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_boi_registered"> BOI Registered
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_bmbes_registered"> BMBE Registered
-            </label>
-          </div>
-          <div>
-            <div class="erp-field" style="margin-bottom: 15px;">
-              <label class="erp-required">Signatory Name</label>
-              <input type="text" id="signatory_name" required>
-            </div>
-            <div class="erp-field" style="margin-bottom: 15px;">
-              <label class="erp-required">Signatory Title</label>
-              <input type="text" id="signatory_title" required>
-            </div>
-            <div class="erp-field">
-              <label class="erp-required">Signatory TIN</label>
-              <input type="text" id="signatory_tin" required>
+          <div class="erp-field" style="grid-column: span 2;">
+            <div class="erp-checkbox-group">
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_withholding_agent"> Withholding Agent (Top 20k/5k)
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_large_taxpayer"> Large Taxpayer
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_peza_registered"> PEZA Registered
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_boi_registered"> BOI Registered
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_bmbes_registered"> BMBE Registered
+              </label>
             </div>
           </div>
         </div>
       </fieldset>
 
-      <!-- SECTION 5: Accounting & System Defaults -->
+      <!-- SECTION 5: Authorized Signatory -->
       <fieldset class="erp-section">
-        <legend>Accounting & System Defaults</legend>
+        <legend>Authorized Signatory</legend>
         <div class="erp-grid">
           <div class="erp-field">
-            <label>CAS PTU Number</label>
-            <input type="text" id="ptu_cas_no">
+            <label class="erp-required">Signatory Name</label>
+            <input type="text" id="signatory_name" required>
           </div>
           <div class="erp-field">
-            <label>CAS PTU Date Issued</label>
-            <input type="date" id="ptu_cas_date_issued">
+            <label class="erp-required">Signatory TIN</label>
+            <input type="text" id="signatory_tin" required>
           </div>
           <div class="erp-field">
-            <label class="erp-required">Accounting Method</label>
-            <select id="accounting_method" required>
-              <option value="Accrual">Accrual</option>
-              <option value="Cash">Cash</option>
-            </select>
+            <label class="erp-required">Signatory Title</label>
+            <input type="text" id="signatory_title" required>
           </div>
-          <div class="erp-field">
-            <label class="erp-required">Inventory Costing Method</label>
-            <select id="inventory_costing_method" required>
-              <option value="Weighted Average">Weighted Average</option>
-              <option value="FIFO">FIFO</option>
-            </select>
-          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 6: Accounting & CAS Defaults -->
+      <fieldset class="erp-section">
+        <legend>Accounting & Future CAS</legend>
+        <div class="erp-grid">
           <div class="erp-field">
             <label class="erp-required">Functional Currency</label>
             <select id="functional_currency_id" required>
@@ -251,9 +238,34 @@
             </select>
           </div>
           <div class="erp-field">
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:20px;">
-              <input type="checkbox" id="is_active" checked> Is Active
-            </label>
+            <label class="erp-required">Accounting Method</label>
+            <select id="accounting_method" required>
+              <option value="Accrual">Accrual</option>
+              <option value="Cash">Cash</option>
+            </select>
+          </div>
+          <div class="erp-field">
+            <label class="erp-required">Inventory Costing Method</label>
+            <select id="inventory_costing_method" required>
+              <option value="Weighted Average">Weighted Average</option>
+              <option value="FIFO">FIFO</option>
+            </select>
+          </div>
+          <div class="erp-field">
+            <label>PTU/CAS No.</label>
+            <input type="text" id="ptu_cas_no">
+            <span class="erp-help-text">Future CAS Readiness.</span>
+          </div>
+          <div class="erp-field">
+            <label>PTU/CAS Date Issued</label>
+            <input type="date" id="ptu_cas_date_issued">
+          </div>
+          <div class="erp-field" style="grid-column: span 2;">
+            <div class="erp-checkbox-group" style="margin-top: 12px;">
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_active" checked> Is Active
+              </label>
+            </div>
           </div>
         </div>
       </fieldset>

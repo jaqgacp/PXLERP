@@ -25,88 +25,94 @@
 
   <!-- Form Sections -->
   <div class="erp-form-container">
-    <form id="company-view-form">
+    <form id="company-view-form" onsubmit="return false;">
       
-      <div id="form-error" class="erp-validation-summary"></div>
-
       <!-- SECTION 1: General Information -->
       <fieldset class="erp-section">
         <legend>General Information</legend>
         <div class="erp-grid">
           <div class="erp-field">
             <label>Code</label>
-            <input type="text" id="code" readonly>
+            <input type="text" id="code" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Registered Name</label>
-            <input type="text" id="name" readonly>
+            <input type="text" id="name" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Trade Name</label>
-            <input type="text" id="trade_name" readonly>
+            <input type="text" id="trade_name" readonly disabled>
           </div>
           <div class="erp-field">
-            <label>Base TIN (9 Digits)</label>
-            <input type="text" id="base_tin" readonly>
+            <label>Base TIN</label>
+            <input type="text" id="base_tin" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Branch Code</label>
-            <input type="text" id="branch_code" readonly>
+            <input type="text" id="branch_code" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Full TIN</label>
-            <input type="text" id="full_tin" readonly>
+            <input type="text" id="full_tin" readonly disabled>
           </div>
         </div>
       </fieldset>
 
       <!-- SECTION 2: Tax & Business Registration -->
       <fieldset class="erp-section">
-        <legend>Tax & Business Registration</legend>
+        <legend>Registration & Tax Details</legend>
         <div class="erp-grid">
           <div class="erp-field">
             <label>Tax Type</label>
-            <input type="text" id="tax_type" readonly>
+            <select id="tax_type" readonly disabled>
+              <option value="vat">VAT</option>
+              <option value="non_vat">Non-VAT</option>
+            </select>
           </div>
           <div class="erp-field">
             <label>Business Type</label>
-            <input type="text" id="business_type" readonly>
+            <select id="business_type" readonly disabled>
+              <option value="corporation">Corporation</option>
+              <option value="partnership">Partnership</option>
+              <option value="sole_proprietorship">Sole Proprietorship</option>
+              <option value="cooperative">Cooperative</option>
+            </select>
           </div>
           <div class="erp-field">
             <label>RDO Code</label>
-            <input type="text" id="rdo_code" readonly>
+            <input type="text" id="rdo_code" readonly disabled>
           </div>
           <div class="erp-field">
             <label>BIR Registration Date</label>
-            <input type="date" id="bir_registration_date" readonly>
+            <input type="date" id="bir_registration_date" readonly disabled>
           </div>
           <div class="erp-field">
             <label>SEC Registration No.</label>
-            <input type="text" id="sec_registration_no" readonly>
+            <input type="text" id="sec_registration_no" readonly disabled>
           </div>
           <div class="erp-field">
             <label>DTI Registration No.</label>
-            <input type="text" id="dti_registration_no" readonly>
+            <input type="text" id="dti_registration_no" readonly disabled>
           </div>
           <div class="erp-field">
             <label>CDA Registration No.</label>
-            <input type="text" id="cda_registration_no" readonly>
+            <input type="text" id="cda_registration_no" readonly disabled>
           </div>
           <div class="erp-field">
-            <label>Incorporation/Registration Date</label>
-            <input type="date" id="registration_date" readonly>
+            <label>Registration Date</label>
+            <input type="date" id="registration_date" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Line of Business (Per COR)</label>
-            <input type="text" id="line_of_business" readonly>
-          </div>
-          <div class="erp-field">
-            <label>PSIC Code</label>
-            <input type="text" id="psic_code" readonly>
+            <input type="text" id="line_of_business" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Industry Classification</label>
-            <input type="text" id="industry_classification" readonly>
+            <input type="text" id="industry_classification" readonly disabled>
+          </div>
+          <div class="erp-field">
+            <label>PSIC Code</label>
+            <input type="text" id="psic_code" readonly disabled>
           </div>
         </div>
       </fieldset>
@@ -117,106 +123,133 @@
         <div class="erp-grid">
           <div class="erp-field" style="grid-column: span 2;">
             <label>BIR Registered Address</label>
-            <textarea id="bir_registered_address" readonly rows="2"></textarea>
+            <textarea id="bir_registered_address" readonly disabled rows="2"></textarea>
           </div>
           <div class="erp-field">
             <label>Zip Code</label>
-            <input type="text" id="zip_code" readonly>
+            <input type="text" id="zip_code" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Contact Person</label>
-            <input type="text" id="contact_person" readonly>
+            <input type="text" id="contact_person" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Phone</label>
-            <input type="text" id="phone" readonly>
+            <input type="text" id="phone" readonly disabled>
           </div>
           <div class="erp-field">
-            <label>Mobile No</label>
-            <input type="text" id="mobile_no" readonly>
+            <label>Mobile No.</label>
+            <input type="text" id="mobile_no" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Email</label>
-            <input type="email" id="email" readonly>
+            <input type="email" id="email" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Website</label>
-            <input type="text" id="website" readonly>
+            <input type="text" id="website" readonly disabled>
           </div>
         </div>
       </fieldset>
 
-      <!-- SECTION 4: Compliance Profile & Signatory -->
+      <!-- SECTION 4: Compliance Profile -->
       <fieldset class="erp-section">
-        <legend>Compliance Profile & Authorized Signatory</legend>
+        <legend>Compliance Profile</legend>
         <div class="erp-grid">
-          <div class="erp-field">
-            <label style="font-weight:600; margin-bottom:10px;">Compliance Flags</label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
-              <input type="checkbox" id="is_withholding_agent" disabled> Is Withholding Agent (Top 20k/5k)
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_large_taxpayer" disabled> Is Large Taxpayer
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_peza_registered" disabled> PEZA Registered
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_boi_registered" disabled> BOI Registered
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:5px;">
-              <input type="checkbox" id="is_bmbes_registered" disabled> BMBE Registered
-            </label>
-          </div>
-          <div>
-            <div class="erp-field" style="margin-bottom: 15px;">
-              <label>Signatory Name</label>
-              <input type="text" id="signatory_name" readonly>
-            </div>
-            <div class="erp-field" style="margin-bottom: 15px;">
-              <label>Signatory Title</label>
-              <input type="text" id="signatory_title" readonly>
-            </div>
-            <div class="erp-field">
-              <label>Signatory TIN</label>
-              <input type="text" id="signatory_tin" readonly>
+          <div class="erp-field" style="grid-column: span 2;">
+            <div class="erp-checkbox-group">
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_withholding_agent" readonly disabled> Withholding Agent (Top 20k/5k)
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_large_taxpayer" readonly disabled> Large Taxpayer
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_peza_registered" readonly disabled> PEZA Registered
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_boi_registered" readonly disabled> BOI Registered
+              </label>
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_bmbes_registered" readonly disabled> BMBE Registered
+              </label>
             </div>
           </div>
         </div>
       </fieldset>
 
-      <!-- SECTION 5: Accounting & System Defaults -->
+      <!-- SECTION 5: Authorized Signatory -->
       <fieldset class="erp-section">
-        <legend>Accounting & System Defaults</legend>
+        <legend>Authorized Signatory</legend>
         <div class="erp-grid">
           <div class="erp-field">
-            <label>CAS PTU Number</label>
-            <input type="text" id="ptu_cas_no" readonly>
+            <label>Signatory Name</label>
+            <input type="text" id="signatory_name" readonly disabled>
           </div>
           <div class="erp-field">
-            <label>CAS PTU Date Issued</label>
-            <input type="date" id="ptu_cas_date_issued" readonly>
+            <label>Signatory TIN</label>
+            <input type="text" id="signatory_tin" readonly disabled>
           </div>
           <div class="erp-field">
-            <label>Accounting Method</label>
-            <input type="text" id="accounting_method" readonly>
+            <label>Signatory Title</label>
+            <input type="text" id="signatory_title" readonly disabled>
           </div>
-          <div class="erp-field">
-            <label>Inventory Costing Method</label>
-            <input type="text" id="inventory_costing_method" readonly>
-          </div>
+        </div>
+      </fieldset>
+
+      <!-- SECTION 6: Accounting & CAS Defaults -->
+      <fieldset class="erp-section">
+        <legend>Accounting & Future CAS</legend>
+        <div class="erp-grid">
           <div class="erp-field">
             <label>Functional Currency</label>
-            <input type="text" id="functional_currency_id" readonly>
+            <input type="text" id="functional_currency_id" readonly disabled>
           </div>
           <div class="erp-field">
             <label>Fiscal Year Start Month</label>
-            <input type="text" id="fiscal_year_start_month" readonly>
+            <select id="fiscal_year_start_month" readonly disabled>
+              <option value="1">1 - January</option>
+              <option value="2">2 - February</option>
+              <option value="3">3 - March</option>
+              <option value="4">4 - April</option>
+              <option value="5">5 - May</option>
+              <option value="6">6 - June</option>
+              <option value="7">7 - July</option>
+              <option value="8">8 - August</option>
+              <option value="9">9 - September</option>
+              <option value="10">10 - October</option>
+              <option value="11">11 - November</option>
+              <option value="12">12 - December</option>
+            </select>
           </div>
           <div class="erp-field">
-            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:20px;">
-              <input type="checkbox" id="is_active" disabled> Is Active
-            </label>
+            <label>Accounting Method</label>
+            <select id="accounting_method" readonly disabled>
+              <option value="Accrual">Accrual</option>
+              <option value="Cash">Cash</option>
+            </select>
+          </div>
+          <div class="erp-field">
+            <label>Inventory Costing Method</label>
+            <select id="inventory_costing_method" readonly disabled>
+              <option value="Weighted Average">Weighted Average</option>
+              <option value="FIFO">FIFO</option>
+            </select>
+          </div>
+          <div class="erp-field">
+            <label>PTU/CAS No.</label>
+            <input type="text" id="ptu_cas_no" readonly disabled>
+          </div>
+          <div class="erp-field">
+            <label>PTU/CAS Date Issued</label>
+            <input type="date" id="ptu_cas_date_issued" readonly disabled>
+          </div>
+          <div class="erp-field" style="grid-column: span 2;">
+            <div class="erp-checkbox-group" style="margin-top: 12px;">
+              <label class="erp-checkbox-item">
+                <input type="checkbox" id="is_active" readonly disabled> Is Active
+              </label>
+            </div>
           </div>
         </div>
       </fieldset>
