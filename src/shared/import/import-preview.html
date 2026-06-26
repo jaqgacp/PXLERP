@@ -1,0 +1,45 @@
+<!-- 
+  PXL ERP - Import Framework Preview Modal 
+  This HTML is dynamically injected by ErpImportHelper
+-->
+<div id="erp-import-overlay" class="erp-import-overlay">
+  <div class="erp-import-modal">
+    <div class="erp-import-header">
+      <h3 id="erp-import-title">Import Preview</h3>
+      <button class="erp-import-close" id="erp-import-close">&times;</button>
+    </div>
+    
+    <div class="erp-import-body">
+      <div class="erp-import-summary">
+        <div class="erp-import-summary-item">
+          <div class="erp-import-summary-value" id="erp-import-total">0</div>
+          <div class="erp-import-summary-label">Total Rows</div>
+        </div>
+        <div class="erp-import-summary-item valid">
+          <div class="erp-import-summary-value" id="erp-import-valid">0</div>
+          <div class="erp-import-summary-label">Valid Rows</div>
+        </div>
+        <div class="erp-import-summary-item invalid">
+          <div class="erp-import-summary-value" id="erp-import-invalid">0</div>
+          <div class="erp-import-summary-label">Invalid Rows</div>
+        </div>
+      </div>
+
+      <div class="erp-import-table-container">
+        <table class="erp-import-table">
+          <thead id="erp-import-thead">
+            <!-- Headers injected dynamically -->
+          </thead>
+          <tbody id="erp-import-tbody">
+            <!-- Rows injected dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div class="erp-import-footer">
+      <button class="btn" id="erp-import-cancel">Cancel</button>
+      <button class="btn btn-primary" id="erp-import-confirm">Confirm Import</button>
+    </div>
+  </div>
+</div>

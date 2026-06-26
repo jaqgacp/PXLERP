@@ -4,9 +4,85 @@
 
 import { authManager } from '../auth/auth-manager.js';
 import { SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
+import { ErpImportHelper } from '../shared/import/erp-import-helper.js';
+import { CsvParser } from '../shared/import/csv-parser.js';
 
 export async function init() {
   const supabase = authManager.supabase;
+
+  const importHelper = new ErpImportHelper({
+    entityName: 'Branch',
+    tableName: 'branches',
+    activeCompanyRequired: true,
+    requiredColumns: ['code', 'name'],
+    optionalColumns: [
+      'short_name', 'tin_suffix', 'bir_registered', 'is_head_office', 'is_active',
+      'rdo_code', 'line_of_business', 'ptu_cas_no', 'ptu_cas_date_issued',
+      'address', 'zip_code', 'contact_person', 'phone', 'email'
+    ],
+    duplicateCheckFields: ['company_id', 'code'],
+    columnMapping: {
+      'Branch Code': 'code',
+      'Branch Name': 'name',
+      'Short Name': 'short_name',
+      'TIN Suffix': 'tin_suffix',
+      'BIR Registered': 'bir_registered',
+      'Head Office': 'is_head_office',
+      'Active': 'is_active',
+      'RDO Code': 'rdo_code',
+      'Line of Business': 'line_of_business',
+      'PTU/CAS No': 'ptu_cas_no',
+      'PTU/CAS Date Issued': 'ptu_cas_date_issued',
+      'Address': 'address',
+      'Zip Code': 'zip_code',
+      'Contact Person': 'contact_person',
+      'Phone': 'phone',
+      'Email': 'email'
+    },
+    validators: {
+      'tin_suffix': (val) => {
+        if (!val) return true;
+        return /^\d{5}$/.test(val) || 'TIN Suffix must be exactly 5 digits.';
+      },
+      'bir_registered': (val) => {
+        if (!val) return true;
+        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value (Yes/No, TRUE/FALSE, 1/0, Y/N).';
+      },
+      'is_head_office': (val) => {
+        if (!val) return true;
+        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value.';
+      },
+      'is_active': (val) => {
+        if (!val) return true;
+        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value.';
+      },
+      'ptu_cas_date_issued': (val) => {
+        if (!val) return true;
+        return CsvParser.parseDate(val) !== 'INVALID_DATE' || 'Date must be valid (YYYY-MM-DD).';
+      }
+    },
+    transformRow: (row) => {
+      if (row.bir_registered) row.bir_registered = CsvParser.parseBoolean(row.bir_registered);
+      if (row.is_head_office) row.is_head_office = CsvParser.parseBoolean(row.is_head_office);
+      if (row.is_active) row.is_active = CsvParser.parseBoolean(row.is_active);
+      if (row.ptu_cas_date_issued) row.ptu_cas_date_issued = CsvParser.parseDate(row.ptu_cas_date_issued);
+      return row;
+    }
+  });
+
+  const btnDownload = document.getElementById('btn-download-template');
+  if (btnDownload) {
+    btnDownload.onclick = () => {
+      importHelper.downloadTemplate();
+    };
+  }
+
+  const btnImport = document.getElementById('btn-import');
+  if (btnImport) {
+    btnImport.onclick = () => {
+      importHelper.openFilePicker();
+    };
+  }
   
   const helper = new SetupListHelper({
     tableId: '#branch-grid-body',

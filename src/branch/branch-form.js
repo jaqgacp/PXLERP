@@ -54,6 +54,19 @@ export async function init() {
       if (!currentRecordId) throw new Error("No record ID provided");
       
       const activeCompanyId = authManager.getActiveCompanyId();
+      if (!activeCompanyId) {
+        const formFields = document.getElementById('erp-form-fields');
+        if (formFields) {
+          formFields.innerHTML = `
+            <div style="padding: 60px 20px; text-align: center;">
+              <div style="font-size: 34px; margin-bottom: 12px; opacity: 0.8;">🏢</div>
+              <div style="font-size: 15px; font-weight: 700; color: var(--ns-dark); margin-bottom: 6px;">Action Blocked</div>
+              <div style="font-size: 13px; color: var(--ns-dark);">Please select a company to view or edit this branch.</div>
+            </div>
+          `;
+        }
+        throw new Error("No active company selected. Action blocked.");
+      }
 
       const { data, error } = await supabase
         .from('branches')
