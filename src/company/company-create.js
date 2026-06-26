@@ -170,38 +170,25 @@ async function saveCompany(isSaveAndNew) {
       created_by: createdBy
     };
 
-    // 3. Insert into public.companies
-    const { data: newCompany, error } = await supabase
-      .from('companies')
-      .insert([payload])
-      .select('id')
-      .single();
+    // 3. Transactional Insert via RPC
+    const { data: newCompanyId, error } = await supabase
+      .rpc('create_company', { payload });
 
-    if (error) throw error;
-
-    // 4. Insert into public.user_company_access
-    const ucaPayload = {
-      user_id: createdBy,
-      company_id: newCompany.id,
-      is_company_admin: true,
-      granted_by: createdBy
-    };
-    
-    const { error: ucaError } = await supabase
-      .from('user_company_access')
-      .insert([ucaPayload]);
-
-    if (ucaError) {
-      throw new Error("Company was created but access granting failed: " + ucaError.message);
+    if (error) {
+      throw new Error("Company creation failed: " + error.message);
     }
 
-    // 5. Refresh Company Context and UI Selector
+    if (!newCompanyId) {
+      throw new Error("Company creation failed: No ID returned.");
+    }
+
+    // 4. Refresh Company Context and UI Selector
     if (typeof authManager.refreshCompanyContext === 'function') {
       await authManager.refreshCompanyContext();
       
       // Auto-set as active company if none was selected
       if (!authManager.getActiveCompanyId()) {
-        authManager.setActiveCompany(newCompany.id);
+        authManager.setActiveCompany(newCompanyId);
       }
       
       // Update topbar directly instead of triggering a hashchange (which causes re-render)
