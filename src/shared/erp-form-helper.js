@@ -49,7 +49,7 @@ export class ErpFormHelper {
   }
 
   determineMode() {
-    const hash = window.location.hash;
+    const hash = window.location.hash.split('?')[0];
     if (hash.endsWith('/new')) return 'create';
     if (hash.endsWith('/edit')) return 'edit';
     if (hash.endsWith('/view')) return 'view';

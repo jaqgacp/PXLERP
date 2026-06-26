@@ -31,8 +31,8 @@ const helper = new SetupListHelper({
     </td>
     <td>${company.created_at ? new Date(company.created_at).toLocaleDateString() : ''}</td>
     <td>
-      <a href="#/setup/company-setup/view?id=${company.id}" class="erp-action-btn erp-action-btn-view" title="View Details">👁️ View</a>
-      <a href="#/setup/company-setup/edit?id=${company.id}" class="erp-action-btn erp-action-btn-edit" title="Edit Company">✏️ Edit</a>
+      <a href="#/setup/company-setup/view?id=${company.id}" class="erp-action-btn erp-action-btn-view" title="View Details">View</a>
+      <a href="#/setup/company-setup/edit?id=${company.id}" class="erp-action-btn erp-action-btn-edit" title="Edit Company">Edit</a>
     </td>
   `
 });
