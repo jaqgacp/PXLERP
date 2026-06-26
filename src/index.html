@@ -1469,13 +1469,20 @@ async function loadModuleHtml(path, contentEl, page) {
     contentEl.innerHTML = html;
 
     // Dynamically load the JS module
-    await import(jsUrl + '?t=' + Date.now());
+    const module = await import(jsUrl + '?t=' + Date.now());
 
-    // Dispatch DOMContentLoaded to trigger the script's event listener
-    window.document.dispatchEvent(new Event('DOMContentLoaded', {
-      bubbles: true,
-      cancelable: true
-    }));
+    // Check for standard lifecycle hooks
+    if (module.init && typeof module.init === 'function') {
+      await module.init();
+    } else if (module.mount && typeof module.mount === 'function') {
+      await module.mount();
+    } else {
+      // Dispatch DOMContentLoaded to trigger the script's event listener (fallback)
+      window.document.dispatchEvent(new Event('DOMContentLoaded', {
+        bubbles: true,
+        cancelable: true
+      }));
+    }
 
   } catch (err) {
     console.error('Error loading module HTML:', err);
