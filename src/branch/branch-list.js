@@ -25,11 +25,11 @@ export async function init() {
     },
     renderRow: (branch) => {
       const statusBadge = branch.is_active 
-        ? '<span class="status status-approved">Active</span>'
-        : '<span class="status status-void">Inactive</span>';
+        ? '<span class="erp-badge erp-badge-success">Active</span>'
+        : '<span class="erp-badge erp-badge-inactive">Inactive</span>';
         
       const headOfficeBadge = branch.is_head_office 
-        ? '<span class="status status-posted">HQ</span>'
+        ? '<span class="erp-badge">HQ</span>'
         : '';
         
       const addressText = branch.address ? branch.address : (branch.short_name ? `(${branch.short_name})` : '');
@@ -37,16 +37,15 @@ export async function init() {
       return `
         <td>${escapeHTML(branch.code || '')}</td>
         <td><strong>${escapeHTML(branch.name || '')}</strong> ${headOfficeBadge}</td>
-        <td><span class="text-muted" style="font-size:11px">${escapeHTML(addressText)}</span></td>
+        <td>${escapeHTML(addressText)}</td>
         <td>${escapeHTML(branch.tin_suffix || '')}</td>
         <td>${branch.bir_registered ? 'Yes' : 'No'}</td>
         <td>${branch.is_head_office ? 'Yes' : 'No'}</td>
         <td>${statusBadge}</td>
-        <td><span class="text-muted" style="font-size:11px">${branch.created_at ? new Date(branch.created_at).toLocaleDateString() : ''}</span></td>
+        <td>${branch.created_at ? new Date(branch.created_at).toLocaleDateString() : ''}</td>
         <td>
-          <a class="doc-link" href="#/setup/branch-setup/view?id=${branch.id}">View</a>
-          <span class="toolbar-sep"></span>
-          <a class="doc-link" href="#/setup/branch-setup/edit?id=${branch.id}">Edit</a>
+          <a href="#/setup/branch-setup/view?id=${branch.id}" class="erp-action-btn erp-action-btn-view" title="View Details">View</a>
+          <a href="#/setup/branch-setup/edit?id=${branch.id}" class="erp-action-btn erp-action-btn-edit" title="Edit Branch">Edit</a>
         </td>
       `;
     }
