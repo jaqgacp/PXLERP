@@ -70,11 +70,6 @@ export async function init() {
     }
   });
 
-  // Temporarily disable confirmImport for Commit 3
-  importHelper.confirmImport = async () => {
-    alert("Import insertion is disabled for Commit 3. Validation is complete.");
-  };
-
   const btnDownload = document.getElementById('btn-download-template');
   if (btnDownload) {
     btnDownload.onclick = () => {
