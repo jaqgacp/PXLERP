@@ -19,7 +19,7 @@ export class ErpImportHelper {
       const link = document.createElement('link');
       link.id = 'erp-import-css';
       link.rel = 'stylesheet';
-      link.href = 'src/shared/import/import-preview.css';
+      link.href = new URL('./import-preview.css', import.meta.url).href;
       document.head.appendChild(link);
     }
   }
@@ -67,8 +67,18 @@ export class ErpImportHelper {
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
-      const text = evt.target.result;
-      await this.parseFile(text);
+      try {
+        const text = evt.target.result;
+        await this.parseFile(text);
+      } catch (err) {
+        console.error("Import Framework Error:", err);
+        Toast.error("Import failed: " + err.message);
+        alert("Import Framework Error: " + err.message);
+      } finally {
+        if (this.fileInput) {
+          this.fileInput.value = '';
+        }
+      }
     };
     reader.readAsText(file);
   }
@@ -202,7 +212,8 @@ export class ErpImportHelper {
 
   async renderPreview(headers) {
     if (!document.getElementById('erp-import-overlay')) {
-      const resp = await fetch('src/shared/import/import-preview.html');
+      const htmlUrl = new URL('./import-preview.html', import.meta.url).href;
+      const resp = await fetch(htmlUrl);
       const html = await resp.text();
       const div = document.createElement('div');
       div.innerHTML = html;
