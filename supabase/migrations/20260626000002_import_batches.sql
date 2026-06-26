@@ -3,7 +3,12 @@
 -- Description: Phase 4 ERP Import History & Rollback Framework
 -- =============================================================================
 
--- 1. Create import_batches table
+-- 1. Replace existing stub tables from 018a
+DROP TABLE IF EXISTS public.import_validation_errors CASCADE;
+DROP TABLE IF EXISTS public.import_rows CASCADE;
+DROP TABLE IF EXISTS public.import_batches CASCADE;
+
+-- 2. Create import_batches table
 CREATE TABLE public.import_batches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     batch_no TEXT NOT NULL UNIQUE,
@@ -48,7 +53,9 @@ CREATE INDEX idx_import_batches_status ON public.import_batches(status);
 CREATE INDEX idx_import_batches_entity_name ON public.import_batches(entity_name);
 CREATE INDEX idx_import_batches_started_at ON public.import_batches(started_at);
 
--- 3. Grants (Consistent with 018f_grant_access.sql but omitting DELETE for authenticated)
+-- 3. Grants (Consistent with 018f_grant_access.sql but explicitly omitting/revoking DELETE for authenticated)
+-- 018f_grant_access sets default privileges to include DELETE, so we must explicitly REVOKE it here.
+REVOKE DELETE ON public.import_batches FROM authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.import_batches TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.import_batches TO service_role;
 

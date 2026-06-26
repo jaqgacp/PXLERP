@@ -23,12 +23,12 @@ BEGIN
         EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
         -- Basic Company-scoped SELECT policy
         EXECUTE format(
-            'CREATE POLICY "Enable read access for company users" ON public.%I FOR SELECT USING (company_id = (auth.jwt()->>''company_id'')::uuid);',
+            'CREATE POLICY "Enable read access for company users" ON public.%I FOR SELECT USING (company_id = ANY(public.user_company_ids()));',
             tbl
         );
         -- Basic Company-scoped ALL policy (for simplified foundational access, to be tightened per role later if needed)
         EXECUTE format(
-            'CREATE POLICY "Enable write access for company users" ON public.%I FOR ALL USING (company_id = (auth.jwt()->>''company_id'')::uuid);',
+            'CREATE POLICY "Enable write access for company users" ON public.%I FOR ALL USING (company_id = ANY(public.user_company_ids()));',
             tbl
         );
     END LOOP;
@@ -52,8 +52,8 @@ DECLARE
 BEGIN
     FOREACH tbl IN ARRAY new_core_tables
     LOOP
-        EXECUTE format('CREATE POLICY "Enable read access for company users" ON public.%I FOR SELECT USING (company_id = (auth.jwt()->>''company_id'')::uuid);', tbl);
-        EXECUTE format('CREATE POLICY "Enable write access for company users" ON public.%I FOR ALL USING (company_id = (auth.jwt()->>''company_id'')::uuid);', tbl);
+        EXECUTE format('CREATE POLICY "Enable read access for company users" ON public.%I FOR SELECT USING (company_id = ANY(public.user_company_ids()));', tbl);
+        EXECUTE format('CREATE POLICY "Enable write access for company users" ON public.%I FOR ALL USING (company_id = ANY(public.user_company_ids()));', tbl);
     END LOOP;
 END $$;
 
@@ -95,8 +95,8 @@ DECLARE
 BEGIN
     FOREACH tbl IN ARRAY workspace_company_tables
     LOOP
-        EXECUTE format('CREATE POLICY "Enable read access for company users" ON public.%I FOR SELECT USING (company_id = (auth.jwt()->>''company_id'')::uuid);', tbl);
-        EXECUTE format('CREATE POLICY "Enable write access for company users" ON public.%I FOR ALL USING (company_id = (auth.jwt()->>''company_id'')::uuid);', tbl);
+        EXECUTE format('CREATE POLICY "Enable read access for company users" ON public.%I FOR SELECT USING (company_id = ANY(public.user_company_ids()));', tbl);
+        EXECUTE format('CREATE POLICY "Enable write access for company users" ON public.%I FOR ALL USING (company_id = ANY(public.user_company_ids()));', tbl);
     END LOOP;
 END $$;
 
