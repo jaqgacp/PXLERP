@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Branch Form</title>
+</head>
+<body>
+  <template id="erp-form-template">
+    <!-- SECTION 1: General Information -->
+    <fieldset class="erp-section">
+      <legend>General Information</legend>
+      <div class="erp-grid">
+        <div class="erp-field">
+          <label class="erp-required">Code</label>
+          <input type="text" id="code" name="code" required>
+        </div>
+        <div class="erp-field">
+          <label class="erp-required">Name</label>
+          <input type="text" id="name" name="name" required>
+        </div>
+        <div class="erp-field">
+          <label>Short Name</label>
+          <input type="text" id="short_name" name="short_name">
+        </div>
+        <div class="erp-field">
+          <label class="erp-required">Head Office?</label>
+          <select id="is_head_office" name="is_head_office" required>
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+        <div class="erp-field">
+          <label class="erp-required">BIR Registered?</label>
+          <select id="bir_registered" name="bir_registered" required>
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+        <div class="erp-field erp-field-wide">
+          <div class="erp-checkbox-group erp-checkbox-group-spaced">
+            <label class="erp-checkbox-item">
+              <input type="checkbox" id="is_active" name="is_active" checked> Is Active
+            </label>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SECTION 2: BIR Registration -->
+    <fieldset class="erp-section">
+      <legend>BIR Registration</legend>
+      <div class="erp-grid">
+        <div class="erp-field">
+          <label>TIN Suffix / Branch Code</label>
+          <input type="text" id="tin_suffix" name="tin_suffix" placeholder="e.g. 00001" maxlength="5" pattern="\d{5}">
+        </div>
+        <div class="erp-field">
+          <label>Derived Full TIN</label>
+          <input type="text" id="full_tin" name="full_tin" readonly placeholder="Calculated from Company Base TIN" style="background:#f4f8fc">
+        </div>
+        <div class="erp-field">
+          <label>RDO Code</label>
+          <input type="text" id="rdo_code" name="rdo_code">
+        </div>
+        <div class="erp-field">
+          <label>Line of Business (Per COR)</label>
+          <input type="text" id="line_of_business" name="line_of_business">
+        </div>
+        <div class="erp-field">
+          <label>PTU/CAS No.</label>
+          <input type="text" id="ptu_cas_no" name="ptu_cas_no">
+        </div>
+        <div class="erp-field">
+          <label>PTU/CAS Date Issued</label>
+          <input type="date" id="ptu_cas_date_issued" name="ptu_cas_date_issued">
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SECTION 3: Address & Contact -->
+    <fieldset class="erp-section">
+      <legend>Address & Contact</legend>
+      <div class="erp-grid">
+        <div class="erp-field erp-field-wide">
+          <label>Address</label>
+          <textarea id="address" name="address" rows="2"></textarea>
+        </div>
+        <div class="erp-field">
+          <label>Zip Code</label>
+          <input type="text" id="zip_code" name="zip_code">
+        </div>
+        <div class="erp-field">
+          <label>Contact Person</label>
+          <input type="text" id="contact_person" name="contact_person">
+        </div>
+        <div class="erp-field">
+          <label>Phone</label>
+          <input type="text" id="phone" name="phone">
+        </div>
+        <div class="erp-field">
+          <label>Email</label>
+          <input type="email" id="email" name="email">
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SECTION 4: System Information -->
+    <fieldset class="erp-section" id="section-system-info" style="display:none;">
+      <legend>System Information</legend>
+      <div class="erp-grid">
+        <div class="erp-field">
+          <label>Created At</label>
+          <input type="text" id="created_at" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Created By</label>
+          <input type="text" id="created_by" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Updated At</label>
+          <input type="text" id="updated_at" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Updated By</label>
+          <input type="text" id="updated_by" readonly>
+        </div>
+      </div>
+    </fieldset>
+  </template>
+</body>
+</html>
