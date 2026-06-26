@@ -5,6 +5,7 @@
 import { authManager } from '../auth/auth-manager.js';
 import { SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
 import { ErpImportHelper } from '../shared/import/erp-import-helper.js';
+import { CsvParser } from '../shared/import/csv-parser.js';
 
 export async function init() {
   const supabase = authManager.supabase;
@@ -37,13 +38,54 @@ export async function init() {
       'Contact Person': 'contact_person',
       'Phone': 'phone',
       'Email': 'email'
+    },
+    validators: {
+      'tin_suffix': (val) => {
+        if (!val) return true;
+        return /^\d{5}$/.test(val) || 'TIN Suffix must be exactly 5 digits.';
+      },
+      'bir_registered': (val) => {
+        if (!val) return true;
+        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value (Yes/No, TRUE/FALSE, 1/0, Y/N).';
+      },
+      'is_head_office': (val) => {
+        if (!val) return true;
+        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value.';
+      },
+      'is_active': (val) => {
+        if (!val) return true;
+        return CsvParser.parseBoolean(val) !== null || 'Invalid boolean value.';
+      },
+      'ptu_cas_date_issued': (val) => {
+        if (!val) return true;
+        return CsvParser.parseDate(val) !== 'INVALID_DATE' || 'Date must be valid (YYYY-MM-DD).';
+      }
+    },
+    transformRow: (row) => {
+      if (row.bir_registered) row.bir_registered = CsvParser.parseBoolean(row.bir_registered);
+      if (row.is_head_office) row.is_head_office = CsvParser.parseBoolean(row.is_head_office);
+      if (row.is_active) row.is_active = CsvParser.parseBoolean(row.is_active);
+      if (row.ptu_cas_date_issued) row.ptu_cas_date_issued = CsvParser.parseDate(row.ptu_cas_date_issued);
+      return row;
     }
   });
+
+  // Temporarily disable confirmImport for Commit 3
+  importHelper.confirmImport = async () => {
+    alert("Import insertion is disabled for Commit 3. Validation is complete.");
+  };
 
   const btnDownload = document.getElementById('btn-download-template');
   if (btnDownload) {
     btnDownload.onclick = () => {
       importHelper.downloadTemplate();
+    };
+  }
+
+  const btnImport = document.getElementById('btn-import');
+  if (btnImport) {
+    btnImport.onclick = () => {
+      importHelper.openFilePicker();
     };
   }
   
