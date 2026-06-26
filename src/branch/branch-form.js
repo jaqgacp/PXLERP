@@ -27,7 +27,7 @@ export async function init() {
       });
 
       if (mode === 'view' || mode === 'edit') {
-        document.getElementById('section-system-info').style.display = 'block';
+        document.getElementById('section-system-info').classList.remove('erp-hidden');
       }
 
       const activeCompanyId = authManager.getActiveCompanyId();
