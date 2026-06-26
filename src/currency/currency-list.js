@@ -4,7 +4,7 @@
 
 import { supabase, SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+export async function init() {
   const helper = new SetupListHelper({
     tableId: '#currency-grid-body',
     entityName: 'currencies',
@@ -32,5 +32,5 @@ document.addEventListener('DOMContentLoaded', () => {
     `
   });
 
-  helper.load();
-});
+  await helper.load();
+}
