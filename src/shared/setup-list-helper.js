@@ -17,17 +17,34 @@ export function escapeHTML(str) {
 }
 
 export class SetupListHelper {
-  constructor({ tableId, entityName, colSpan, fetchData, renderRow }) {
+  constructor({ tableId, entityName, colSpan, fetchData, renderRow, requireActiveCompany = false, activeCompanyMessage = 'Please select a company to view these records.' }) {
     this.tableId = tableId;
     this.entityName = entityName;
     this.colSpan = colSpan;
     this.fetchData = fetchData;
     this.renderRow = renderRow;
+    this.requireActiveCompany = requireActiveCompany;
+    this.activeCompanyMessage = activeCompanyMessage;
   }
 
   async load() {
     const tbody = document.querySelector(this.tableId);
     if (!tbody) return;
+
+    let activeCompanyId = null;
+    if (this.requireActiveCompany) {
+      activeCompanyId = authManager.getActiveCompanyId();
+      if (!activeCompanyId) {
+        tbody.innerHTML = `<tr>
+          <td colspan="${this.colSpan}" class="erp-list-state-cell">
+            <span class="erp-list-state-icon">🏢</span>
+            <div class="erp-list-error-text" style="color: var(--ns-dark);">${escapeHTML(this.activeCompanyMessage)}</div>
+          </td>
+        </tr>`;
+        this.updatePaginationInfo(0);
+        return;
+      }
+    }
 
     // 1. Loading State
     tbody.innerHTML = `<tr>
@@ -39,7 +56,7 @@ export class SetupListHelper {
 
     try {
       // 2. Fetch data
-      const data = await this.fetchData();
+      const data = await this.fetchData(activeCompanyId);
 
       // 3. Empty State
       if (!data || data.length === 0) {
