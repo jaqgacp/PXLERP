@@ -1440,11 +1440,12 @@ async function loadModuleHtml(path, contentEl, page) {
       jsUrl = `./${folder}/${action}.js`;
     }
 
-    let htmlUrl = `./${folder}/${action}.html`;
+    const ts = Date.now();
+    let htmlUrl = `./${folder}/${action}.html?t=${ts}`;
     let res;
 
     if (['create', 'edit', 'view'].includes(action)) {
-      const formHtmlUrl = `./${folder}/form.html`;
+      const formHtmlUrl = `./${folder}/form.html?t=${ts}`;
       res = await fetch(formHtmlUrl);
       if (res.ok) {
         htmlUrl = formHtmlUrl;

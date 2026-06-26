@@ -24,8 +24,7 @@
     <button class="btn" onclick="window.location.hash = '#/setup/company-setup'">Cancel</button>
   </div>
 
-  <!-- Session Indicator -->
-  <div id="auth-status" style="padding: 10px; margin-top: 10px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; font-size: 14px;">
+  <div id="auth-status" class="erp-auth-status" style="display: none;">
     Checking auth state...
   </div>
 
@@ -134,7 +133,7 @@
       <fieldset class="erp-section">
         <legend>Address & Contact</legend>
         <div class="erp-grid">
-          <div class="erp-field" style="grid-column: span 2;">
+          <div class="erp-field erp-field-wide">
             <label class="erp-required">BIR Registered Address</label>
             <textarea id="bir_registered_address" required rows="2"></textarea>
           </div>
@@ -169,7 +168,7 @@
       <fieldset class="erp-section">
         <legend>Compliance Profile</legend>
         <div class="erp-grid">
-          <div class="erp-field" style="grid-column: span 2;">
+          <div class="erp-field erp-field-wide">
             <div class="erp-checkbox-group">
               <label class="erp-checkbox-item">
                 <input type="checkbox" id="is_withholding_agent"> Withholding Agent (Top 20k/5k)
@@ -260,8 +259,8 @@
             <label>PTU/CAS Date Issued</label>
             <input type="date" id="ptu_cas_date_issued">
           </div>
-          <div class="erp-field" style="grid-column: span 2;">
-            <div class="erp-checkbox-group" style="margin-top: 12px;">
+          <div class="erp-field erp-field-wide">
+            <div class="erp-checkbox-group erp-checkbox-group-spaced">
               <label class="erp-checkbox-item">
                 <input type="checkbox" id="is_active" checked> Is Active
               </label>

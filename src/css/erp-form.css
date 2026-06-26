@@ -249,3 +249,11 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Added for layout control */
+.erp-field-wide { grid-column: span 2; }
+.erp-checkbox-group-spaced { margin-top: 12px; }
+
+
+.erp-auth-status { padding: 10px; margin-top: 10px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; font-size: 14px; }
+
