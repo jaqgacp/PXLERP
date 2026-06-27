@@ -24,20 +24,22 @@ CREATE TABLE public.customers (
     
     -- Financial Defaults
     currency_id UUID REFERENCES public.currencies(id),
-    payment_term_id UUID, -- REFERENCES payment_terms(id)
-    default_ar_account_id UUID, -- REFERENCES chart_of_accounts(id)
-    default_sales_account_id UUID, -- REFERENCES chart_of_accounts(id)
-    tax_code_id UUID, -- REFERENCES tax_codes(id)
+    default_ar_account_id UUID REFERENCES public.chart_of_accounts(id),
+    default_sales_account_id UUID REFERENCES public.chart_of_accounts(id),
+    
+    -- DEFERRED TO LATER PHASES (Tables do not exist yet)
+    -- payment_term_id UUID REFERENCES public.payment_terms(id),
+    -- tax_code_id UUID REFERENCES public.tax_codes(id),
+    -- customer_group_id UUID REFERENCES public.customer_groups(id),
+    -- industry_id UUID REFERENCES public.industries(id),
+    -- salesperson_id UUID REFERENCES public.employees(id),
     
     -- Credit Management
     credit_limit NUMERIC(15,5) DEFAULT 0,
     credit_hold BOOLEAN DEFAULT false,
     
-    -- Organizational
-    customer_group_id UUID, -- REFERENCES customer_groups(id)
-    industry_id UUID, -- REFERENCES industries(id)
-    salesperson_id UUID, -- REFERENCES employees(id)
-    
+    -- System & Audit
+    import_batch_id UUID,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by UUID NOT NULL REFERENCES public.profiles(id),
