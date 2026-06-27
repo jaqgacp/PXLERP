@@ -78,7 +78,6 @@ export class ErpImportHelper {
       } catch (err) {
         console.error("Import Framework Error:", err);
         Toast.error("Import failed: " + err.message);
-        alert("Import Framework Error: " + err.message);
       } finally {
         if (this.fileInput) {
           this.fileInput.value = '';
@@ -198,14 +197,7 @@ export class ErpImportHelper {
         }
       }
 
-      // Temporary Lifecycle Trace Log (First Row Only)
-      if (i === 0) {
-         console.log("--- ERP Import Framework Lifecycle Trace (Row 1) ---");
-         console.log("1. CSV Raw / Parsed:", csvRow);
-         console.log("2. Mapped:", dbRow);
-         console.log("3. Normalized:", normalizedRow);
-         console.log("4. Errors:", errors);
-      }
+      // Trace removed for production
 
       tempParsed.push({
         index: i + 1,
@@ -402,9 +394,7 @@ export class ErpImportHelper {
         return payload;
       });
 
-      if (payloads.length > 0) {
-        console.log(`5. Final DB Payload (Row 1 for Batch ${batchNo}):`, payloads[0]);
-      }
+      // Payload trace removed
 
       // 3. Insert Valid Rows
       if (payloads.length > 0) {
@@ -416,8 +406,6 @@ export class ErpImportHelper {
         if (error) {
           throw error;
         }
-        
-        console.log("6. Database Response (First Row Inserted):", data && data.length > 0 ? data[0] : null);
       }
 
       const durationMs = Math.round(performance.now() - startTime);

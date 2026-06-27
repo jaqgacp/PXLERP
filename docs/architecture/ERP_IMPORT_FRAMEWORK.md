@@ -53,30 +53,38 @@ A shared import modal/screen acts as the gatekeeper:
 2. Highlights valid vs. invalid rows.
 3. Provides a final "Confirm Import" button that only inserts the valid rows.
 
-## 8. Rollback Strategy
-Since PostgREST via Supabase JS does not natively support long-running client-side transactions with rollback capabilities, we will rely on:
-- **Batch Inserts**: `.insert([...validRows])` acts as a single atomic operation in Supabase. If one row fails at the database level, the entire batch fails and rolls back automatically.
-- **Idempotency**: Because we perform extensive pre-flight duplication checks, the batch is highly likely to succeed.
+## 8. Import Batch Lifecycle
+Every import becomes a tracked business event via an `import_batches` table.
+1. Download Template -> Fill CSV -> Upload -> Parse -> Normalize -> Validate -> Preview.
+2. User clicks Confirm.
+3. **Create Batch**: The framework generates an `import_batches` record (Status: `pending`), capturing metadata like `original_filename` and `total_rows`.
+4. **Insert Data**: The payload is augmented with `import_batch_id` and inserted into the target table.
+5. **Update Batch**: If successful, status changes to `completed` with duration metrics. If failed, status changes to `failed` with an `error_summary`.
 
-## 9. Audit Trail Expectations
+## 9. Rollback Strategy
+The framework supports safe rollbacks mapped via a secure internal registry (`entity_name` -> `table_name` -> `rollback_strategy`), never trusting client-provided table names.
+- **Production Mode (Soft Delete)**: The preferred strategy. Executes an `UPDATE target_table SET deleted_at = now(), deleted_by = current_user WHERE import_batch_id = ? AND deleted_at IS NULL`.
+- **Development Mode (Hard Delete)**: Executes `DELETE FROM target_table WHERE import_batch_id = ?`. This requires explicit config override and UI confirmation.
+- **Audit Preservation**: Rollbacks update the batch status to `rolled_back` and track `rollback_at`, `rollback_by`, and `rollback_reason`. The `import_batches` ledger is never deleted.
+
+## 10. Audit Trail Expectations
 All imported records will follow standard entity audit rules:
-- `created_at` and `updated_at` timestamps are handled automatically.
-- `created_by` and `updated_by` are appended via the authenticated user's ID at runtime.
-- `company_id` is automatically injected at runtime.
-- Bulk imports could optionally log an entry in a system-wide `import_logs` table for tracking large data movements.
+- `import_batches` serves as an immutable ledger documenting *who* imported *what*, *when*, and the outcome (valid/invalid counts, errors).
+- This ledger enables future AI analysis of data ingestion velocity and error rates.
+- Row-Level Security ensures users can only view batches for companies they have access to. Global imports require Admin/Super Admin privileges.
 
-## 10. Security/RLS Expectations
-- **Row Level Security (RLS)**: The standard Supabase RLS policies remain in effect. Bulk inserts are executed under the authenticated user's context. 
-- **Spoofing Prevention**: The `company_id` and `created_by` are strictly injected by the `ErpImportHelper` on the frontend before submitting to the Supabase client. The CSV must not provide these.
+## 11. Security/RLS Expectations
+- **Row Level Security (RLS)**: Standard Supabase RLS policies govern inserts. `import_batches` enforces strict viewing rights based on `company_id`.
+- **Spoofing Prevention**: The `company_id`, `created_by`, and `import_batch_id` are strictly injected by the `ErpImportHelper` on the frontend before submitting to the Supabase client. The CSV must not provide these.
 
-## 11. Active Company Context
+## 12. Active Company Context
 If a module requires an active company context (e.g., Branch):
 - The `ErpImportHelper` will read `authManager.getActiveCompanyId()`.
 - If missing, the import UI blocks completely.
 - When transforming valid rows for insertion, `company_id` is automatically appended to each row's payload.
 
-## 12. Module-Specific Import Configs
-Each module defines an import config object, passed to the framework:
+## 13. Module-Specific Import Configs
+Each module defines an import config object, passed to the framework. Modules must contain ZERO custom import logic beyond defining this schema:
 ```javascript
 {
   entityName: 'Branch',
@@ -92,10 +100,6 @@ Each module defines an import config object, passed to the framework:
   },
   validators: {
     'code': (val) => /^[A-Z0-9]+$/.test(val) || 'Code must be alphanumeric uppercase'
-  },
-  transformRow: (row) => {
-    // any custom transformations not handled by the default boolean/date parser
-    return row;
   }
 }
 ```
