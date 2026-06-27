@@ -2,34 +2,38 @@
 // PXL ERP - Cost Center List JS
 // -----------------------------------------------------------------------------
 
-import { supabase, SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
+import { ErpListHelper, escapeHTML } from '../shared/erp-list-helper.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const helper = new SetupListHelper({
+export async function init() {
+  const helper = new ErpListHelper({
     tableId: '#costcenter-grid-body',
-    entityName: 'cost centers',
-    colSpan: 6,
-    fetchData: async () => {
-      const { data, error } = await supabase
-        .from('cost_centers')
-        .select('code, name, department_id, is_active, created_at')
-        .order('code', { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-    renderRow: (costCenter) => `
-      <td>${escapeHTML(costCenter.code || '')}</td>
-      <td>${escapeHTML(costCenter.name || '')}</td>
-      <td>${escapeHTML(costCenter.department_id || '')}</td>
-      <td>${costCenter.is_active ? 'Yes' : 'No'}</td>
-      <td>${costCenter.created_at ? new Date(costCenter.created_at).toLocaleDateString() : ''}</td>
-      <td>
-        <a href="#" onclick="alert('View placeholder'); return false;">View</a> |
-        <a href="#" onclick="alert('Edit placeholder'); return false;">Edit</a> |
-        <a href="#" onclick="alert('Audit Trail placeholder'); return false;">Audit Trail</a>
-      </td>
+    tableName: 'cost_centers',
+    entityName: 'cost_centers',
+    searchInputId: '#costcenter-search',
+    requireActiveCompany: true,
+    activeCompanyMessage: 'Please select a company to view its cost centers.',
+    columns: [
+      { key: 'code', label: 'Code', sortable: true, searchable: true },
+      { key: 'name', label: 'Name', sortable: true, searchable: true },
+      { key: 'department_id', label: 'Department ID', sortable: true, searchable: true },
+      { key: 'is_active', label: 'Active', sortable: true, searchable: false, renderer: val => {
+          return val 
+            ? '<span class="erp-badge erp-badge-success">Active</span>'
+            : '<span class="erp-badge erp-badge-inactive">Inactive</span>';
+      }},
+      { key: 'created_at', label: 'Created At', sortable: true, searchable: false, renderer: val => val ? new Date(val).toLocaleDateString() : '' }
+    ],
+    rowActions: (cc) => `
+      <a href="#/setup/cost-center-setup/view?id=${cc.id}" class="erp-action-btn erp-action-btn-view" title="View Details">View</a>
+      <a href="#/setup/cost-center-setup/edit?id=${cc.id}" class="erp-action-btn erp-action-btn-edit" title="Edit Cost Center">Edit</a>
     `
   });
 
-  helper.load();
-});
+  await helper.load();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

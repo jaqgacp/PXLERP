@@ -2,35 +2,39 @@
 // PXL ERP - Department List JS
 // -----------------------------------------------------------------------------
 
-import { supabase, SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
+import { ErpListHelper, escapeHTML } from '../shared/erp-list-helper.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const helper = new SetupListHelper({
+export async function init() {
+  const helper = new ErpListHelper({
     tableId: '#department-grid-body',
+    tableName: 'departments',
     entityName: 'departments',
-    colSpan: 7,
-    fetchData: async () => {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('code, name, branch_id, parent_department_id, is_active, created_at')
-        .order('code', { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-    renderRow: (department) => `
-      <td>${escapeHTML(department.code || '')}</td>
-      <td>${escapeHTML(department.name || '')}</td>
-      <td>${escapeHTML(department.branch_id || '')}</td>
-      <td>${escapeHTML(department.parent_department_id || '')}</td>
-      <td>${department.is_active ? 'Yes' : 'No'}</td>
-      <td>${department.created_at ? new Date(department.created_at).toLocaleDateString() : ''}</td>
-      <td>
-        <a href="#" onclick="alert('View placeholder'); return false;">View</a> |
-        <a href="#" onclick="alert('Edit placeholder'); return false;">Edit</a> |
-        <a href="#" onclick="alert('Audit Trail placeholder'); return false;">Audit Trail</a>
-      </td>
+    searchInputId: '#department-search',
+    requireActiveCompany: true,
+    activeCompanyMessage: 'Please select a company to view its departments.',
+    columns: [
+      { key: 'code', label: 'Code', sortable: true, searchable: true },
+      { key: 'name', label: 'Name', sortable: true, searchable: true },
+      { key: 'branch_id', label: 'Branch ID', sortable: true, searchable: true },
+      { key: 'parent_department_id', label: 'Parent Dept ID', sortable: true, searchable: false },
+      { key: 'is_active', label: 'Active', sortable: true, searchable: false, renderer: val => {
+          return val 
+            ? '<span class="erp-badge erp-badge-success">Active</span>'
+            : '<span class="erp-badge erp-badge-inactive">Inactive</span>';
+      }},
+      { key: 'created_at', label: 'Created At', sortable: true, searchable: false, renderer: val => val ? new Date(val).toLocaleDateString() : '' }
+    ],
+    rowActions: (dept) => `
+      <a href="#/setup/department-setup/view?id=${dept.id}" class="erp-action-btn erp-action-btn-view" title="View Details">View</a>
+      <a href="#/setup/department-setup/edit?id=${dept.id}" class="erp-action-btn erp-action-btn-edit" title="Edit Department">Edit</a>
     `
   });
 
-  helper.load();
-});
+  await helper.load();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
