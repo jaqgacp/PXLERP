@@ -11,20 +11,21 @@
       <legend>General Information</legend>
       <div class="erp-grid">
         <div class="erp-field">
-          <label>Customer Code</label>
-          <input type="text" id="code" name="code" readonly>
+          <label class="erp-required">Customer Code</label>
+          <input type="text" id="code" name="code" required>
         </div>
         <div class="erp-field">
-          <label>Registered Name</label>
-          <input type="text" id="registered_name" name="registered_name" readonly>
+          <label class="erp-required">Registered Name</label>
+          <input type="text" id="registered_name" name="registered_name" required>
         </div>
         <div class="erp-field">
           <label>Trade Name</label>
-          <input type="text" id="trade_name" name="trade_name" readonly>
+          <input type="text" id="trade_name" name="trade_name">
         </div>
         <div class="erp-field">
-          <label>Entity Type</label>
-          <select id="entity_type" name="entity_type" disabled>
+          <label class="erp-required">Entity Type</label>
+          <select id="entity_type" name="entity_type" required>
+            <option value="">Select...</option>
             <option value="corporation">Corporation</option>
             <option value="individual">Individual</option>
             <option value="government">Government</option>
@@ -33,12 +34,12 @@
         </div>
         <div class="erp-field">
           <label>Customer Type</label>
-          <input type="text" id="customer_type" name="customer_type" readonly>
+          <input type="text" id="customer_type" name="customer_type">
         </div>
         <div class="erp-field erp-field-wide">
           <div class="erp-checkbox-group erp-checkbox-group-spaced">
             <label class="erp-checkbox-item">
-              <input type="checkbox" id="is_active" name="is_active" disabled> Is Active
+              <input type="checkbox" id="is_active" name="is_active" checked> Is Active
             </label>
           </div>
         </div>
@@ -51,19 +52,20 @@
       <div class="erp-grid">
         <div class="erp-field">
           <label>TIN</label>
-          <input type="text" id="tin" name="tin" readonly>
+          <input type="text" id="tin" name="tin">
         </div>
         <div class="erp-field">
           <label>TIN Branch Code</label>
-          <input type="text" id="tin_branch_code" name="tin_branch_code" readonly>
+          <input type="text" id="tin_branch_code" name="tin_branch_code">
         </div>
         <div class="erp-field">
           <label>Full TIN</label>
-          <input type="text" id="full_tin" name="full_tin" readonly class="erp-readonly-bg">
+          <input type="text" id="full_tin" name="full_tin" readonly class="erp-readonly-bg" placeholder="Auto-computed">
         </div>
         <div class="erp-field">
-          <label>Tax Type</label>
-          <select id="tax_type" name="tax_type" disabled>
+          <label class="erp-required">Tax Type</label>
+          <select id="tax_type" name="tax_type" required>
+            <option value="">Select...</option>
             <option value="vat">VAT</option>
             <option value="non_vat">Non-VAT</option>
             <option value="exempt">Exempt</option>
@@ -74,22 +76,22 @@
         <div class="erp-field erp-field-wide">
           <div class="erp-checkbox-group erp-checkbox-group-spaced">
             <label class="erp-checkbox-item">
-              <input type="checkbox" id="is_government" name="is_government" disabled> Government Customer
+              <input type="checkbox" id="is_government" name="is_government"> Government Customer
             </label>
             <label class="erp-checkbox-item">
-              <input type="checkbox" id="is_peza" name="is_peza" disabled> PEZA Customer
+              <input type="checkbox" id="is_peza" name="is_peza"> PEZA Customer
             </label>
             <label class="erp-checkbox-item">
-              <input type="checkbox" id="is_boi" name="is_boi" disabled> BOI Customer
+              <input type="checkbox" id="is_boi" name="is_boi"> BOI Customer
             </label>
             <label class="erp-checkbox-item">
-              <input type="checkbox" id="is_foreign" name="is_foreign" disabled> Foreign Customer
+              <input type="checkbox" id="is_foreign" name="is_foreign"> Foreign Customer
             </label>
           </div>
         </div>
         <div class="erp-field erp-field-wide">
           <label>BIR Registered Address</label>
-          <textarea id="bir_registered_address" name="bir_registered_address" rows="2" readonly></textarea>
+          <textarea id="bir_registered_address" name="bir_registered_address" rows="2"></textarea>
         </div>
       </div>
     </fieldset>
@@ -100,25 +102,26 @@
       <div class="erp-grid">
         <div class="erp-field">
           <label>Default Currency</label>
-          <!-- Using lookup framework standard text field for view mode -->
-          <input type="text" id="default_currency_display" name="default_currency_display" readonly class="erp-readonly-bg">
+          <input type="hidden" id="default_currency_id" name="default_currency_id">
+          <input type="text" id="default_currency_display" name="default_currency_display" placeholder="Select currency..." readonly>
         </div>
         <div class="erp-field">
           <label>Default Branch</label>
-          <input type="text" id="default_branch_display" name="default_branch_display" readonly class="erp-readonly-bg">
+          <input type="hidden" id="default_branch_id" name="default_branch_id">
+          <input type="text" id="default_branch_display" name="default_branch_display" placeholder="Select branch..." readonly>
         </div>
         <div class="erp-field">
           <label>Credit Limit</label>
-          <input type="number" step="0.01" id="credit_limit" name="credit_limit" readonly>
+          <input type="number" step="0.01" id="credit_limit" name="credit_limit" min="0">
         </div>
         <div class="erp-field">
           <label>Payment Terms</label>
-          <input type="text" id="payment_terms_text" name="payment_terms_text" readonly>
+          <input type="text" id="payment_terms_text" name="payment_terms_text">
         </div>
         <div class="erp-field erp-field-wide">
           <div class="erp-checkbox-group erp-checkbox-group-spaced">
             <label class="erp-checkbox-item">
-              <input type="checkbox" id="credit_hold" name="credit_hold" disabled> Credit Hold
+              <input type="checkbox" id="credit_hold" name="credit_hold"> Credit Hold
             </label>
           </div>
         </div>
