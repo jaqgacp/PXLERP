@@ -4,6 +4,7 @@
 
 import { authManager } from '../auth/auth-manager.js';
 import { ErpFormHelper, Toast } from '../shared/erp-form-helper.js';
+import { ErpLookupHelper } from '../shared/erp-lookup-helper.js';
 
 const supabase = authManager.supabase;
 let currentRecordId = null;
@@ -16,7 +17,38 @@ export async function init() {
     moduleName: 'Company',
     listRoute: '#/setup/company-setup',
     onInit: async (mode) => {
-      await loadCurrencies();
+      // Initialize Functional Currency Lookup
+      new ErpLookupHelper({
+        inputId: 'functional_currency_display',
+        hiddenInputId: 'functional_currency_id',
+        tableName: 'currencies',
+        valueField: 'id',
+        displayField: 'code',
+        searchColumns: ['code', 'name'],
+        columns: [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Name' }
+        ],
+        pageSize: 10,
+        requireActiveCompany: false, // Currencies are universal
+        staticFilters: [
+          { col: 'is_active', op: 'eq', val: true }
+        ]
+      });
+
+      // Disable lookup modal in view mode
+      if (mode === 'view') {
+        const displayInput = document.getElementById('functional_currency_display');
+        if (displayInput) {
+          // Clone and replace to remove event listeners added by lookup helper
+          const clone = displayInput.cloneNode(true);
+          displayInput.parentNode.replaceChild(clone, displayInput);
+          
+          // Hide clear button
+          const clearBtn = clone.parentNode.querySelector('.erp-lookup-clear-btn');
+          if (clearBtn) clearBtn.style.display = 'none';
+        }
+      }
 
       // Live update for Full TIN
       const baseTinInput = document.getElementById('base_tin');
@@ -42,7 +74,7 @@ export async function init() {
 
       const { data, error } = await supabase
         .from('companies')
-        .select('*')
+        .select('*, currencies:functional_currency_id(code, name)')
         .eq('id', currentRecordId)
         .single();
 
@@ -96,6 +128,9 @@ export async function init() {
       document.getElementById('inventory_costing_method').value = data.inventory_costing_method || 'Weighted Average';
 
       document.getElementById('functional_currency_id').value = data.functional_currency_id || '';
+      if (data.currencies) {
+        document.getElementById('functional_currency_display').value = data.currencies.code || '';
+      }
       document.getElementById('fiscal_year_start_month').value = data.fiscal_year_start_month || '';
       document.getElementById('is_active').checked = data.is_active;
     },
@@ -201,33 +236,4 @@ export async function init() {
   await helper.init();
 }
 
-async function loadCurrencies() {
-  const select = document.getElementById('functional_currency_id');
-  try {
-    const { data, error } = await supabase
-      .from('currencies')
-      .select('id, code, name')
-      .eq('is_active', true)
-      .order('code', { ascending: true });
 
-    if (error) throw error;
-    
-    if (!data || data.length === 0) {
-      Toast.warning('Create or seed Currency first before creating Company.');
-      select.innerHTML = '<option value="">No currencies found</option>';
-      return;
-    }
-
-    select.innerHTML = '<option value="">Select...</option>';
-    data.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = `${c.code} - ${c.name}`;
-      select.appendChild(opt);
-    });
-  } catch (err) {
-    console.error('Failed to load currencies', err);
-    select.innerHTML = '<option value="">Error loading currencies</option>';
-    Toast.error('Failed to load currencies: ' + err.message);
-  }
-}
