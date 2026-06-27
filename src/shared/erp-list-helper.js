@@ -32,8 +32,8 @@ export class ErpListHelper {
     this.searchInputId = config.searchInputId || '#currency-search'; // default fallback for compatibility
     if (config.searchInputId) this.searchInputId = config.searchInputId;
 
-    this.prevBtnId = config.prevBtnId || '.pagination button:first-child';
-    this.nextBtnId = config.nextBtnId || '.pagination button:last-child';
+    this.prevBtnId = config.prevBtnId || '.pagination button:first-child, .erp-list-pagination-controls button:first-child';
+    this.nextBtnId = config.nextBtnId || '.pagination button:last-child, .erp-list-pagination-controls button:last-child';
     this.pageInfoId = config.pageInfoId || '#pg-info';
 
     this.pageSize = config.pageSize || 10;
