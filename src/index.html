@@ -459,12 +459,6 @@
           <div class="flyout-cat active" data-panel="md-panel-parties" onmouseenter="activateCat(this,'md')">
             <span class="cat-icon">👥</span> Parties <span class="cat-arrow">▶</span>
           </div>
-          <div class="flyout-cat" data-panel="md-panel-cust" onmouseenter="activateCat(this,'md')">
-            <span class="cat-icon">🏬</span> Customer Profile <span class="cat-arrow">▶</span>
-          </div>
-          <div class="flyout-cat" data-panel="md-panel-supp" onmouseenter="activateCat(this,'md')">
-            <span class="cat-icon">🏭</span> Supplier Profile <span class="cat-arrow">▶</span>
-          </div>
           <div class="flyout-cat" data-panel="md-panel-items" onmouseenter="activateCat(this,'md')">
             <span class="cat-icon">📦</span> Items &amp; Services <span class="cat-arrow">▶</span>
           </div>
@@ -481,20 +475,6 @@
             <a class="dd-item" href="#/master-data/customers"><span class="dot"></span>Customers</a>
             <a class="dd-item" href="#/master-data/suppliers"><span class="dot"></span>Suppliers</a>
             <a class="dd-item" href="#/master-data/personnel"><span class="dot"></span>Personnel / Employees Lite</a>
-          </div>
-          <div class="flyout-panel" id="md-panel-cust">
-            <div class="fp-head">🏬 Customer Profile</div>
-            <a class="dd-item" href="#/master-data/customer-addresses"><span class="dot"></span>Customer Addresses</a>
-            <a class="dd-item" href="#/master-data/customer-contacts"><span class="dot"></span>Customer Contacts</a>
-            <a class="dd-item" href="#/master-data/customer-tax-profiles"><span class="dot"></span>Customer Tax Profiles</a>
-            <a class="dd-item" href="#/master-data/customer-credit-profiles"><span class="dot"></span>Customer Credit Profiles</a>
-          </div>
-          <div class="flyout-panel" id="md-panel-supp">
-            <div class="fp-head">🏭 Supplier Profile</div>
-            <a class="dd-item" href="#/master-data/supplier-addresses"><span class="dot"></span>Supplier Addresses</a>
-            <a class="dd-item" href="#/master-data/supplier-contacts"><span class="dot"></span>Supplier Contacts</a>
-            <a class="dd-item" href="#/master-data/supplier-tax-profiles"><span class="dot"></span>Supplier Tax Profiles</a>
-            <a class="dd-item" href="#/master-data/supplier-bank-details"><span class="dot"></span>Supplier Bank Details</a>
           </div>
           <div class="flyout-panel" id="md-panel-items">
             <div class="fp-head">📦 Items &amp; Services</div>
@@ -1429,6 +1409,13 @@ async function loadModuleHtml(path, contentEl, page) {
         if (parts[2] === 'new') action = 'create';
         else if (parts[2] === 'view') action = 'view';
         else if (parts[2] === 'edit') action = 'edit';
+      } else if (parts[0] === 'master-data') {
+        folder = parts[1]; // e.g. customers
+        if (folder && folder.endsWith('s')) folder = folder.slice(0, -1); // 'customers' -> 'customer'
+        action = 'list';
+        if (parts[2] === 'new') action = 'create';
+        else if (parts[2] === 'view') action = 'view';
+        else if (parts[2] === 'edit') action = 'edit';
       } else if (parts[0] === 'auth') {
         folder = 'auth';
         action = parts[1]; // 'login'
@@ -1439,7 +1426,7 @@ async function loadModuleHtml(path, contentEl, page) {
     }
 
     let jsUrl;
-    if (parts[0] === 'setup') {
+    if (parts[0] === 'setup' || parts[0] === 'master-data') {
       jsUrl = `./${folder}/${folder}-${action}.js`;
     } else {
       jsUrl = `./${folder}/${action}.js`;
