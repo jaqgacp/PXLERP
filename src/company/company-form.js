@@ -162,18 +162,19 @@ export async function init() {
       if (!user) throw new Error("Cannot save company because no authenticated user is available.");
 
       if (isNew) {
-        // Transactional Insert via RPC securely bootstraps the new tenant and user_company_access
-        const { data: newCompanyId, error } = await supabase.rpc('create_company', { payload });
+        // Transactional Bootstrap via RPC securely creates the tenant, user_company_access, and Head Office
+        const { data: newCompanyId, error } = await supabase.rpc('bootstrap_company', { payload });
         
-        if (error) throw new Error(error.message);
-        if (!newCompanyId) throw new Error("Company creation failed: No ID returned.");
+        if (error) throw error;
+        Toast.success("Company securely bootstrapped");
 
-        currentRecordId = newCompanyId;
-
-        // Auto-set as active company if none was selected
+        // Immediately update session context if not set yet
         if (!authManager.getActiveCompanyId()) {
           authManager.setActiveCompany(newCompanyId);
         }
+        
+        // Redirect to company view page
+        window.location.hash = `#company-view?id=${newCompanyId}`;
       } else {
         payload.updated_at = new Date().toISOString();
 
