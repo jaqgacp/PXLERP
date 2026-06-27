@@ -162,8 +162,6 @@ export async function init() {
       if (!user) throw new Error("Cannot save company because no authenticated user is available.");
 
       if (isNew) {
-        payload.created_by = user.id;
-
         // Transactional Insert via RPC securely bootstraps the new tenant and user_company_access
         const { data: newCompanyId, error } = await supabase.rpc('create_company', { payload });
         
@@ -177,7 +175,6 @@ export async function init() {
           authManager.setActiveCompany(newCompanyId);
         }
       } else {
-        payload.updated_by = user.id;
         payload.updated_at = new Date().toISOString();
 
         const { error } = await supabase
