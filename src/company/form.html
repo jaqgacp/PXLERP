@@ -180,9 +180,8 @@
     <div class="erp-grid">
       <div class="erp-field">
         <label class="erp-required">Functional Currency</label>
-        <select id="functional_currency_id" required>
-          <option value="">Loading currencies...</option>
-        </select>
+        <input type="hidden" id="functional_currency_id" required>
+        <input type="text" id="functional_currency_display" placeholder="Select currency..." readonly>
       </div>
       <div class="erp-field">
         <label class="erp-required">Fiscal Year Start Month</label>
