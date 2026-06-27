@@ -615,47 +615,23 @@
     </div>
   </div>
 
-  <!-- ASSETS (2-level flyout) -->
-  <div class="nav-item" data-module="assets">
-    <div class="nav-label" onclick="go('assets')">💼 Assets <span class="arrow">▼</span></div>
+  <!-- INVENTORY -->
+  <div class="nav-item" data-module="inventory">
+    <div class="nav-label" onclick="go('inventory')">📦 Inventory <span class="arrow">▼</span></div>
     <div class="mega-dd" style="left:0">
       <div class="flyout-wrap">
-        <!-- Category list -->
-        <div class="flyout-cats" id="assets-cats">
-          <div class="flyout-cat active" data-panel="assets-panel-cash" onmouseenter="activateCat(this,'assets')">
-            <span class="cat-icon">💵</span> Cash Management <span class="cat-arrow">▶</span>
+        <div class="flyout-cats" id="inv-cats">
+          <div class="flyout-cat active" data-panel="inv-panel-ops" onmouseenter="activateCat(this,'inv')">
+            <span class="cat-icon">🔄</span> Operations <span class="cat-arrow">▶</span>
           </div>
-          <div class="flyout-cat" data-panel="assets-panel-inv" onmouseenter="activateCat(this,'assets')">
-            <span class="cat-icon">📦</span> Inventory <span class="cat-arrow">▶</span>
-          </div>
-          <div class="flyout-cat" data-panel="assets-panel-fa" onmouseenter="activateCat(this,'assets')">
-            <span class="cat-icon">🏗️</span> Fixed Assets <span class="cat-arrow">▶</span>
+          <div class="flyout-cat" data-panel="inv-panel-md" onmouseenter="activateCat(this,'inv')">
+            <span class="cat-icon">🗂️</span> Master Data <span class="cat-arrow">▶</span>
           </div>
         </div>
-        <!-- Panels -->
         <div class="flyout-panels">
-          <!-- Cash Management -->
-          <div class="flyout-panel active" id="assets-panel-cash">
-            <div class="fp-head">💵 Cash Management</div>
-            <div class="dd-sub-head">Petty Cash</div>
-            <a class="dd-item" href="#/assets/cash-management/petty-cash-funds"><span class="dot"></span>Petty Cash Fund Setup</a>
-            <a class="dd-item" href="#/assets/cash-management/petty-cash-vouchers"><span class="dot"></span>Petty Cash Vouchers</a>
-            <a class="dd-item" href="#/assets/cash-management/petty-cash-replenishment"><span class="dot"></span>Petty Cash Replenishment</a>
-            <a class="dd-item" href="#/assets/cash-management/cash-count-sheet"><span class="dot"></span>Cash Count Sheet</a>
-            <div class="dd-sub-head">Bank</div>
-            <a class="dd-item" href="#/assets/cash-management/fund-transfers"><span class="dot"></span>Fund Transfers</a>
-            <a class="dd-item" href="#/assets/cash-management/inter-branch-transfers"><span class="dot"></span>Inter-Branch Transfers</a>
-            <a class="dd-item" href="#/assets/cash-management/bank-adjustments"><span class="dot"></span>Bank Adjustments</a>
-            <a class="dd-item" href="#/assets/cash-management/bank-reconciliation"><span class="dot"></span>Bank Reconciliation</a>
-            <a class="dd-item" href="#/assets/cash-management/outstanding-checks"><span class="dot"></span>Outstanding Checks</a>
-            <a class="dd-item" href="#/assets/cash-management/deposits-in-transit"><span class="dot"></span>Deposits in Transit</a>
-          </div>
-          <!-- Inventory -->
-          <div class="flyout-panel" id="assets-panel-inv">
-            <div class="fp-head">📦 Inventory</div>
+          <div class="flyout-panel active" id="inv-panel-ops">
+            <div class="fp-head">🔄 Operations</div>
             <a class="dd-item" href="#/assets/inventory"><span class="dot"></span>Inventory Dashboard</a>
-            <a class="dd-item" href="#/master-data/items"><span class="dot"></span>Items</a>
-            <a class="dd-item" href="#/master-data/warehouses"><span class="dot"></span>Warehouses</a>
             <a class="dd-item" href="#/assets/inventory/stock-adjustments"><span class="dot"></span>Stock Adjustment</a>
             <a class="dd-item" href="#/assets/inventory/stock-transfers"><span class="dot"></span>Stock Transfer</a>
             <a class="dd-item" href="#/assets/inventory/goods-issues"><span class="dot"></span>Goods Issue</a>
@@ -663,9 +639,67 @@
             <a class="dd-item" href="#/assets/inventory/inventory-movements"><span class="dot"></span>Inventory Movements</a>
             <a class="dd-item" href="#/assets/inventory/inventory-valuation"><span class="dot"></span>Inventory Valuation</a>
           </div>
-          <!-- Fixed Assets -->
-          <div class="flyout-panel" id="assets-panel-fa">
-            <div class="fp-head">🏗️ Fixed Assets</div>
+          <div class="flyout-panel" id="inv-panel-md">
+            <div class="fp-head">🗂️ Master Data</div>
+            <a class="dd-item" href="#/master-data/items"><span class="dot"></span>Items</a>
+            <a class="dd-item" href="#/master-data/warehouses"><span class="dot"></span>Warehouses</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANKING & TREASURY -->
+  <div class="nav-item" data-module="banking">
+    <div class="nav-label" onclick="go('banking')">🏦 Banking &amp; Treasury <span class="arrow">▼</span></div>
+    <div class="mega-dd" style="left:0">
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="bank-cats">
+          <div class="flyout-cat active" data-panel="bank-panel-cash" onmouseenter="activateCat(this,'bank')">
+            <span class="cat-icon">💵</span> Petty Cash <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="bank-panel-bank" onmouseenter="activateCat(this,'bank')">
+            <span class="cat-icon">🏦</span> Bank Operations <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="bank-panel-cash">
+            <div class="fp-head">💵 Petty Cash</div>
+            <a class="dd-item" href="#/assets/cash-management/petty-cash-funds"><span class="dot"></span>Petty Cash Fund Setup</a>
+            <a class="dd-item" href="#/assets/cash-management/petty-cash-vouchers"><span class="dot"></span>Petty Cash Vouchers</a>
+            <a class="dd-item" href="#/assets/cash-management/petty-cash-replenishment"><span class="dot"></span>Petty Cash Replenishment</a>
+            <a class="dd-item" href="#/assets/cash-management/cash-count-sheet"><span class="dot"></span>Cash Count Sheet</a>
+          </div>
+          <div class="flyout-panel" id="bank-panel-bank">
+            <div class="fp-head">🏦 Bank Operations</div>
+            <a class="dd-item" href="#/assets/cash-management/fund-transfers"><span class="dot"></span>Fund Transfers</a>
+            <a class="dd-item" href="#/assets/cash-management/inter-branch-transfers"><span class="dot"></span>Inter-Branch Transfers</a>
+            <a class="dd-item" href="#/assets/cash-management/bank-adjustments"><span class="dot"></span>Bank Adjustments</a>
+            <a class="dd-item" href="#/assets/cash-management/bank-reconciliation"><span class="dot"></span>Bank Reconciliation</a>
+            <a class="dd-item" href="#/assets/cash-management/outstanding-checks"><span class="dot"></span>Outstanding Checks</a>
+            <a class="dd-item" href="#/assets/cash-management/deposits-in-transit"><span class="dot"></span>Deposits in Transit</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIXED ASSETS -->
+  <div class="nav-item" data-module="fixed-assets">
+    <div class="nav-label" onclick="go('fixed-assets')">🏗️ Fixed Assets <span class="arrow">▼</span></div>
+    <div class="mega-dd" style="left:0">
+      <div class="flyout-wrap">
+        <div class="flyout-cats" id="fa-cats">
+          <div class="flyout-cat active" data-panel="fa-panel-ops" onmouseenter="activateCat(this,'fa')">
+            <span class="cat-icon">⚙️</span> Operations <span class="cat-arrow">▶</span>
+          </div>
+          <div class="flyout-cat" data-panel="fa-panel-setup" onmouseenter="activateCat(this,'fa')">
+            <span class="cat-icon">🔧</span> Setup <span class="cat-arrow">▶</span>
+          </div>
+        </div>
+        <div class="flyout-panels">
+          <div class="flyout-panel active" id="fa-panel-ops">
+            <div class="fp-head">⚙️ Operations</div>
             <a class="dd-item" href="#/assets/fixed-assets"><span class="dot"></span>Fixed Asset Dashboard</a>
             <a class="dd-item" href="#/assets/fixed-assets/register"><span class="dot"></span>Asset Register</a>
             <a class="dd-item" href="#/assets/fixed-assets/acquisitions"><span class="dot"></span>Asset Acquisition</a>
@@ -673,7 +707,9 @@
             <a class="dd-item" href="#/assets/fixed-assets/disposals"><span class="dot"></span>Disposal</a>
             <a class="dd-item" href="#/assets/fixed-assets/transfers"><span class="dot"></span>Transfer</a>
             <a class="dd-item" href="#/assets/fixed-assets/impairments"><span class="dot"></span>Impairment</a>
-            <div class="dd-sub-head">Setup</div>
+          </div>
+          <div class="flyout-panel" id="fa-panel-setup">
+            <div class="fp-head">🔧 Setup</div>
             <a class="dd-item" href="#/assets/fixed-assets/categories"><span class="dot"></span>Asset Categories</a>
             <a class="dd-item" href="#/assets/fixed-assets/depreciation-profiles"><span class="dot"></span>Depreciation Profiles</a>
           </div>

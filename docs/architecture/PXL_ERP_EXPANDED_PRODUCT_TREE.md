@@ -360,9 +360,9 @@ This is exactly how the global top navigation sidebar (`src/index.html`) must ul
 | **Master Data** (Supplier Addresses/Contacts) | `[ARCH]` | No | Global Link | **NO** (`[HIDDEN]`) | Must be child records inside Supplier Form. |
 | **Sales** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | |
 | **Purchasing** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | |
-| **Inventory** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | Must be split from legacy "Assets" tab. |
-| **Banking & Treasury** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | Must be split from legacy "Assets" tab. |
-| **Fixed Assets** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | Must be split from legacy "Assets" tab. |
+| **Inventory** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | Successfully split from legacy Assets tab. |
+| **Banking & Treasury** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | Successfully split from legacy Assets tab. |
+| **Fixed Assets** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | Successfully split from legacy Assets tab. |
 | **Accounting** | `[ARCH]` | Yes (Core tables)| Placeholder | **Yes** (as roadmap) | Posting engine logic documented heavily. |
 | **Compliance** | `[ARCH]` | No | Placeholder | **Yes** (as roadmap) | Unmatched theoretical depth. Awaiting engine. |
 | **Reports** | `[ROADMAP]` | No | Placeholder | **Yes** (as roadmap) | |
