@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Customer View</title>
+</head>
+<body>
+  <template id="erp-form-template">
+    <!-- SECTION 1: General Information -->
+    <fieldset class="erp-section">
+      <legend>General Information</legend>
+      <div class="erp-grid">
+        <div class="erp-field">
+          <label>Customer Code</label>
+          <input type="text" id="code" name="code" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Registered Name</label>
+          <input type="text" id="registered_name" name="registered_name" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Trade Name</label>
+          <input type="text" id="trade_name" name="trade_name" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Entity Type</label>
+          <select id="entity_type" name="entity_type" disabled>
+            <option value="corporation">Corporation</option>
+            <option value="individual">Individual</option>
+            <option value="government">Government</option>
+            <option value="foreign">Foreign</option>
+          </select>
+        </div>
+        <div class="erp-field">
+          <label>Customer Type</label>
+          <input type="text" id="customer_type" name="customer_type" readonly>
+        </div>
+        <div class="erp-field erp-field-wide">
+          <div class="erp-checkbox-group erp-checkbox-group-spaced">
+            <label class="erp-checkbox-item">
+              <input type="checkbox" id="is_active" name="is_active" disabled> Is Active
+            </label>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SECTION 2: Tax & Compliance -->
+    <fieldset class="erp-section">
+      <legend>Tax & Compliance</legend>
+      <div class="erp-grid">
+        <div class="erp-field">
+          <label>TIN</label>
+          <input type="text" id="tin" name="tin" readonly>
+        </div>
+        <div class="erp-field">
+          <label>TIN Branch Code</label>
+          <input type="text" id="tin_branch_code" name="tin_branch_code" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Full TIN</label>
+          <input type="text" id="full_tin" name="full_tin" readonly class="erp-readonly-bg">
+        </div>
+        <div class="erp-field">
+          <label>Tax Type</label>
+          <select id="tax_type" name="tax_type" disabled>
+            <option value="vat">VAT</option>
+            <option value="non_vat">Non-VAT</option>
+            <option value="exempt">Exempt</option>
+            <option value="zero_rated">Zero Rated</option>
+            <option value="foreign">Foreign</option>
+          </select>
+        </div>
+        <div class="erp-field erp-field-wide">
+          <div class="erp-checkbox-group erp-checkbox-group-spaced">
+            <label class="erp-checkbox-item">
+              <input type="checkbox" id="is_government" name="is_government" disabled> Government Customer
+            </label>
+            <label class="erp-checkbox-item">
+              <input type="checkbox" id="is_peza" name="is_peza" disabled> PEZA Customer
+            </label>
+            <label class="erp-checkbox-item">
+              <input type="checkbox" id="is_boi" name="is_boi" disabled> BOI Customer
+            </label>
+            <label class="erp-checkbox-item">
+              <input type="checkbox" id="is_foreign" name="is_foreign" disabled> Foreign Customer
+            </label>
+          </div>
+        </div>
+        <div class="erp-field erp-field-wide">
+          <label>BIR Registered Address</label>
+          <textarea id="bir_registered_address" name="bir_registered_address" rows="2" readonly></textarea>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SECTION 3: Commercial Defaults -->
+    <fieldset class="erp-section">
+      <legend>Commercial Defaults</legend>
+      <div class="erp-grid">
+        <div class="erp-field">
+          <label>Default Currency</label>
+          <!-- Using lookup framework standard text field for view mode -->
+          <input type="text" id="default_currency_display" name="default_currency_display" readonly class="erp-readonly-bg">
+        </div>
+        <div class="erp-field">
+          <label>Default Branch</label>
+          <input type="text" id="default_branch_display" name="default_branch_display" readonly class="erp-readonly-bg">
+        </div>
+        <div class="erp-field">
+          <label>Credit Limit</label>
+          <input type="number" step="0.01" id="credit_limit" name="credit_limit" readonly>
+        </div>
+        <div class="erp-field">
+          <label>Payment Terms</label>
+          <input type="text" id="payment_terms_text" name="payment_terms_text" readonly>
+        </div>
+        <div class="erp-field erp-field-wide">
+          <div class="erp-checkbox-group erp-checkbox-group-spaced">
+            <label class="erp-checkbox-item" style="color: var(--ns-danger)">
+              <input type="checkbox" id="credit_hold" name="credit_hold" disabled> Credit Hold
+            </label>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- SECTION 4: System Information -->
+    <fieldset class="erp-section">
+      <legend>System Information</legend>
+      <div class="erp-grid">
+        <div class="erp-field">
+          <label>Created At</label>
+          <input type="text" id="created_at" name="created_at" readonly class="erp-readonly-bg">
+        </div>
+        <div class="erp-field">
+          <label>Created By</label>
+          <input type="text" id="created_by" name="created_by" readonly class="erp-readonly-bg">
+        </div>
+        <div class="erp-field">
+          <label>Updated At</label>
+          <input type="text" id="updated_at" name="updated_at" readonly class="erp-readonly-bg">
+        </div>
+        <div class="erp-field">
+          <label>Updated By</label>
+          <input type="text" id="updated_by" name="updated_by" readonly class="erp-readonly-bg">
+        </div>
+      </div>
+    </fieldset>
+
+  </template>
+
+  <!-- We will load the customer-form.js logic dynamically via the router -->
+  <script type="module" src="customer-form.js"></script>
+</body>
+</html>
