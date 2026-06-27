@@ -50,6 +50,7 @@ Verify the implementation and robust behavior of the read-only Customer View pag
 - [x] Currency List still works.
 - [x] Company Functional Currency lookup still works.
 - [x] Navigation child-record cleanup remains intact.
+- [x] New Inventory / Banking & Treasury / Fixed Assets navigation remains intact.
 - [x] Compliance navigation remains intact.
 - [x] No console errors.
 
