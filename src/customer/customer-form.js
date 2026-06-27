@@ -3,7 +3,8 @@
 // -----------------------------------------------------------------------------
 
 import { authManager } from '../auth/auth-manager.js';
-import { ErpFormHelper } from '../shared/erp-form-helper.js';
+import { ErpFormHelper, Toast } from '../shared/erp-form-helper.js';
+import { ErpLookupHelper } from '../shared/erp-lookup-helper.js';
 
 const supabase = authManager.supabase;
 let currentRecordId = null;
@@ -18,44 +19,93 @@ export async function init() {
     listRoute: '#/master-data/customers',
     
     onInit: async (mode) => {
-      // Phase 5D constraint: Block anything other than View mode
-      if (mode !== 'view') {
-        const formFields = document.getElementById('erp-form-fields');
-        if (formFields) {
-          formFields.innerHTML = `
-            <div class="erp-error-state">
-              <h3>Not Available</h3>
-              <p>Customer Create and Edit functionalities are not yet available (Phase 5D restriction).</p>
-            </div>
-          `;
-        }
-        if (document.getElementById('btn-save')) document.getElementById('btn-save').style.display = 'none';
-        if (document.getElementById('btn-save-new')) document.getElementById('btn-save-new').style.display = 'none';
-        return;
-      }
-      
-      if (!currentRecordId) {
-        const formFields = document.getElementById('erp-form-fields');
-        if (formFields) {
-          formFields.innerHTML = `
-            <div class="erp-error-state">
-              <h3>Error</h3>
-              <p>Customer ID is required.</p>
-            </div>
-          `;
-        }
-        return;
-      }
+      // Lookups
+      new ErpLookupHelper({
+        inputId: 'default_currency_display',
+        hiddenInputId: 'default_currency_id',
+        tableName: 'currencies',
+        valueField: 'id',
+        displayField: 'code',
+        searchColumns: ['code', 'name'],
+        columns: [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Name' }
+        ],
+        pageSize: 10,
+        requireActiveCompany: false,
+        staticFilters: [
+          { col: 'is_active', op: 'eq', val: true }
+        ]
+      });
 
-      // Add Print button dynamically if in view mode
-      const toolbar = document.querySelector('.erp-form-toolbar');
-      if (toolbar && !document.getElementById('btn-print')) {
-        const btnPrint = document.createElement('button');
-        btnPrint.id = 'btn-print';
-        btnPrint.className = 'btn';
-        btnPrint.textContent = 'Print';
-        btnPrint.onclick = () => window.print();
-        toolbar.appendChild(btnPrint);
+      new ErpLookupHelper({
+        inputId: 'default_branch_display',
+        hiddenInputId: 'default_branch_id',
+        tableName: 'branches',
+        valueField: 'id',
+        displayField: 'code',
+        searchColumns: ['code', 'name'],
+        columns: [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Name' }
+        ],
+        pageSize: 10,
+        requireActiveCompany: true,
+        staticFilters: [
+          { col: 'is_active', op: 'eq', val: true }
+        ]
+      });
+
+      // Live TIN formatting
+      const tinInput = document.getElementById('tin');
+      const branchCodeInput = document.getElementById('tin_branch_code');
+      const fullTinInput = document.getElementById('full_tin');
+
+      const updateFullTin = () => {
+        if (!tinInput || !branchCodeInput || !fullTinInput) return;
+        const base = tinInput.value.trim();
+        const branch = branchCodeInput.value.trim();
+        if (base) {
+          fullTinInput.value = base + '-' + (branch || '00000');
+        } else {
+          fullTinInput.value = '';
+        }
+      };
+
+      if (tinInput) tinInput.addEventListener('input', updateFullTin);
+      if (branchCodeInput) branchCodeInput.addEventListener('input', updateFullTin);
+
+      if (mode === 'view') {
+        // Disable lookup clears
+        ['default_currency_display', 'default_branch_display'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            const clone = el.cloneNode(true);
+            el.parentNode.replaceChild(clone, el);
+            const clearBtn = clone.parentNode.querySelector('.erp-lookup-clear-btn');
+            if (clearBtn) clearBtn.style.display = 'none';
+          }
+        });
+
+        // Add Print button dynamically if in view mode
+        const toolbar = document.querySelector('.erp-form-toolbar');
+        if (toolbar && !document.getElementById('btn-print')) {
+          const btnPrint = document.createElement('button');
+          btnPrint.id = 'btn-print';
+          btnPrint.className = 'btn';
+          btnPrint.textContent = 'Print';
+          btnPrint.onclick = () => window.print();
+          toolbar.appendChild(btnPrint);
+        }
+      } else if (mode === 'new') {
+        // Hide System Info
+        const fieldsets = document.querySelectorAll('.erp-section');
+        fieldsets.forEach(fs => {
+          const legend = fs.querySelector('legend');
+          if (legend && legend.textContent.includes('System Information')) {
+            fs.style.display = 'none';
+          }
+        });
       }
     },
 
@@ -123,9 +173,80 @@ export async function init() {
       return displayData;
     },
 
-    onSave: async (formData) => {
-      // Blocked by Phase 5D constraints
-      throw new Error("Saving is currently disabled for Phase 5D.");
+    buildPayload: () => {
+      const code = document.getElementById('code').value.trim();
+      const registeredName = document.getElementById('registered_name').value.trim();
+      if (!code || !registeredName) {
+        throw new Error('Customer Code and Registered Name are required.');
+      }
+      
+      const payload = {
+        code: code,
+        registered_name: registeredName,
+        trade_name: document.getElementById('trade_name').value.trim() || null,
+        entity_type: document.getElementById('entity_type').value,
+        customer_type: document.getElementById('customer_type').value.trim() || null,
+        is_active: document.getElementById('is_active').checked,
+
+        tin: document.getElementById('tin').value.trim() || null,
+        tin_branch_code: document.getElementById('tin_branch_code').value.trim() || '00000',
+        full_tin: document.getElementById('full_tin').value.trim() || null,
+        tax_type: document.getElementById('tax_type').value,
+        is_government: document.getElementById('is_government').checked,
+        is_peza: document.getElementById('is_peza').checked,
+        is_boi: document.getElementById('is_boi').checked,
+        is_foreign: document.getElementById('is_foreign').checked,
+        bir_registered_address: document.getElementById('bir_registered_address').value.trim() || null,
+
+        default_currency_id: document.getElementById('default_currency_id').value || null,
+        default_branch_id: document.getElementById('default_branch_id').value || null,
+        credit_limit: parseFloat(document.getElementById('credit_limit').value) || 0,
+        payment_terms_text: document.getElementById('payment_terms_text').value.trim() || null,
+        credit_hold: document.getElementById('credit_hold').checked
+      };
+
+      if (!payload.entity_type) throw new Error('Entity Type is required.');
+      if (!payload.tax_type) throw new Error('Tax Type is required.');
+
+      return payload;
+    },
+
+    onSave: async (payload, isNew) => {
+      const activeCompanyId = authManager.getActiveCompanyId();
+      if (!activeCompanyId) throw new Error("Please select an active company first.");
+
+      if (isNew) {
+        payload.company_id = activeCompanyId;
+        
+        const { data, error } = await supabase
+          .from('customers')
+          .insert(payload)
+          .select('id')
+          .single();
+          
+        if (error) {
+          if (error.code === '23505') throw new Error("A customer with this Code already exists.");
+          throw error;
+        }
+        
+        Toast.success("Customer created successfully.");
+        window.location.hash = `#/master-data/customers/view?id=${data.id}`;
+      } else {
+        const { error } = await supabase
+          .from('customers')
+          .update(payload)
+          .eq('id', currentRecordId)
+          .eq('company_id', activeCompanyId);
+          
+        if (error) {
+          if (error.code === '23505') throw new Error("A customer with this Code already exists.");
+          throw error;
+        }
+        
+        Toast.success("Customer updated successfully.");
+        window.location.hash = `#/master-data/customers/view?id=${currentRecordId}`;
+      }
+      return true;
     }
   });
 

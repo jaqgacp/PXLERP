@@ -16,6 +16,7 @@ export async function init() {
     tableName: 'customers',
     entityName: 'customers',
     searchInputId: '#customer-search',
+    newRoute: '#/master-data/customers/new',
     requireActiveCompany: true,
     activeCompanyMessage: 'Please select a company to view customers.',
     extraSelectFields: [],
