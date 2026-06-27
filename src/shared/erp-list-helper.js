@@ -24,6 +24,7 @@ export class ErpListHelper {
     
     // [{ key: 'code', label: 'Code', sortable: true, searchable: true, renderer: (val, row) => val }]
     this.columns = config.columns || []; 
+    this.extraSelectFields = config.extraSelectFields || [];
     
     this.requireActiveCompany = config.requireActiveCompany || false;
     this.activeCompanyMessage = config.activeCompanyMessage || 'Please select a company to view these records.';
@@ -176,6 +177,13 @@ export class ErpListHelper {
       let selectFields = this.columns.map(c => c.key);
       if (!selectFields.includes('id')) {
         selectFields.push('id');
+      }
+      if (this.extraSelectFields) {
+        this.extraSelectFields.forEach(field => {
+          if (!selectFields.includes(field)) {
+            selectFields.push(field);
+          }
+        });
       }
 
       let query = supabase
