@@ -2,33 +2,44 @@
 // PXL ERP - Currency List JS
 // -----------------------------------------------------------------------------
 
-import { supabase, SetupListHelper, escapeHTML } from '../shared/setup-list-helper.js';
+import { ErpListHelper, escapeHTML } from '../shared/erp-list-helper.js';
 
 export async function init() {
-  const helper = new SetupListHelper({
+  const helper = new ErpListHelper({
     tableId: '#currency-grid-body',
+    tableName: 'currencies',
     entityName: 'currencies',
-    colSpan: 7,
-    fetchData: async () => {
-      const { data, error } = await supabase
-        .from('currencies')
-        .select('code, name, symbol, is_base_currency, is_active, created_at')
-        .order('code', { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-    renderRow: (currency) => `
-      <td>${escapeHTML(currency.code || '')}</td>
-      <td>${escapeHTML(currency.name || '')}</td>
-      <td>${escapeHTML(currency.symbol || '')}</td>
-      <td>${currency.is_base_currency ? 'Yes' : 'No'}</td>
-      <td>${currency.is_active ? 'Yes' : 'No'}</td>
-      <td>${currency.created_at ? new Date(currency.created_at).toLocaleDateString() : ''}</td>
-      <td>
-        <a href="#" onclick="alert('View placeholder'); return false;">View</a> |
-        <a href="#" onclick="alert('Edit placeholder'); return false;">Edit</a> |
-        <a href="#" onclick="alert('Audit Trail placeholder'); return false;">Audit Trail</a>
-      </td>
+    requireActiveCompany: false,
+    columns: [
+      { key: 'code', label: 'Code', sortable: true, searchable: true },
+      { key: 'name', label: 'Name', sortable: true, searchable: true },
+      { key: 'symbol', label: 'Symbol', sortable: false, searchable: false },
+      { 
+        key: 'is_base_currency', 
+        label: 'Base Currency', 
+        sortable: true, 
+        searchable: false,
+        renderer: (val) => val ? 'Yes' : 'No'
+      },
+      { 
+        key: 'is_active', 
+        label: 'Active', 
+        sortable: true, 
+        searchable: false,
+        renderer: (val) => val ? 'Yes' : 'No'
+      },
+      { 
+        key: 'created_at', 
+        label: 'Created At', 
+        sortable: true, 
+        searchable: false,
+        renderer: (val) => val ? new Date(val).toLocaleDateString() : ''
+      }
+    ],
+    rowActions: (currency) => `
+      <a href="#/setup/currency-setup/view?id=${currency.id}">View</a> |
+      <a href="#/setup/currency-setup/edit?id=${currency.id}">Edit</a> |
+      <a href="#" onclick="alert('Audit Trail placeholder'); return false;">Audit Trail</a>
     `
   });
 
