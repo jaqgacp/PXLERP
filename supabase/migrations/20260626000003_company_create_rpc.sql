@@ -19,8 +19,8 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  -- 2. Force created_by to be the authenticated user
-  payload := payload || jsonb_build_object('created_by', v_uid);
+  -- 2. Remove audit fields from payload so frontend cannot spoof them
+  payload := payload - 'created_by' - 'updated_by' - 'created_at' - 'updated_at';
 
   -- 3. Insert into companies explicitly defining columns to avoid generated columns like full_tin
   INSERT INTO public.companies (
@@ -43,7 +43,7 @@ BEGIN
     is_peza_registered, is_boi_registered, is_bmbes_registered, signatory_name, 
     signatory_title, signatory_tin, ptu_cas_no, ptu_cas_date_issued, 
     accounting_method, inventory_costing_method, functional_currency_id, 
-    fiscal_year_start_month, is_active, created_by, logo_url
+    fiscal_year_start_month, is_active, v_uid, logo_url
   FROM jsonb_populate_record(null::public.companies, payload)
   RETURNING id INTO v_new_company_id;
 
