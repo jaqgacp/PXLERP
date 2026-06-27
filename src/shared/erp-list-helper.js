@@ -25,6 +25,7 @@ export class ErpListHelper {
     // [{ key: 'code', label: 'Code', sortable: true, searchable: true, renderer: (val, row) => val }]
     this.columns = config.columns || []; 
     this.extraSelectFields = config.extraSelectFields || [];
+    this.staticFilters = config.staticFilters || [];
     
     this.requireActiveCompany = config.requireActiveCompany || false;
     this.activeCompanyMessage = config.activeCompanyMessage || 'Please select a company to view these records.';
@@ -192,6 +193,12 @@ export class ErpListHelper {
 
       if (this.requireActiveCompany && activeCompanyId) {
         query = query.eq('company_id', activeCompanyId);
+      }
+
+      if (this.staticFilters && this.staticFilters.length > 0) {
+        this.staticFilters.forEach(f => {
+          if (f.op === 'eq') query = query.eq(f.col, f.val);
+        });
       }
 
       if (this.searchTerm) {
