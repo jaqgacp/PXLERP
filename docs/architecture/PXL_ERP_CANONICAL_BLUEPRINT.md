@@ -2,85 +2,88 @@
 
 **Date:** June 27, 2026
 
-## 1. Purpose
-This document reconciles the proposed "Whole ERP Blueprint" against the current PXL ERP repository, database schema, established documentation (including the Master Data Canonical Blueprint), and user interface navigation. It establishes a single, comprehensive source of truth for the entire product architecture, guiding future development while adhering to the core principle of building a serious, Philippine-compliance-first ERP platform.
+## 1. Product Identity
+PXL ERP is **not** a generic ERP with optional Philippine localization.
+PXL ERP is a **Philippine Compliance-First Accounting ERP**.
 
-## 2. Product Philosophy
-1. **Compliance First:** Philippine tax and CAS compliance are foundational, not bolted on. Features like 2307s, VAT Relief, and Audit Trails dictate how the core ledger is structured.
-2. **Tenant Isolation:** Every operational record is strictly isolated by `company_id` via Row Level Security (RLS).
-3. **Framework Driven:** All UI must be driven by standard components (`ErpListHelper`, `ErpFormHelper`, `ErpLookupHelper`) to ensure stability and rapid development.
-4. **Clean Navigation:** Users must only see modules that are implemented or intentionally shown as roadmap placeholders. No fake buttons, no dead routes.
+Accounting, posting, audit trail, and Philippine statutory compliance are first-class architecture concerns.
+Every transaction must eventually support downstream accounting, tax, books of accounts, audit trail, and BIR compliance output.
 
-## 3. Conflict Analysis (Proposed Blueprint vs. Current Architecture)
+## 2. PXL Non-Negotiable Architecture Principles
+1. **Philippine compliance is first-class.**
+2. **Every transaction must trace to journal, ledger, tax impact, audit trail, and compliance output.**
+3. **Books of Accounts are legal outputs, not ordinary reports.**
+4. **Tax codes are compliance architecture, not merely dropdown values.**
+5. **Percentage Tax must not be removed or hidden.**
+6. **BIR CAS readiness must influence design from day one.**
+7. **Setup defines rules; transactions generate facts; posting records accounting; compliance validates and exports.**
+8. **No generic ERP simplification may override Philippine requirements.**
+9. **UI must be clean and must not expose fake actions.**
+10. **Documentation must remain one source of truth.**
 
-| Area | Conflict Detected | Canonical Resolution & Ownership |
-| --- | --- | --- |
-| **Foundation / Platform** | None. | **Adopted.** These are non-navigable architectural layers (Auth, RLS, Frameworks, Audit) underpinning the system. |
-| **Setup vs Master Data** | Proposed places `Department`, `Cost Center`, `Tax Codes` in Master Data or Compliance. | **Modified.** PXL ERP maintains a rigid line: `Setup` covers all prerequisites (Company, Branch, Dept, Fiscal, Taxes, Currencies). `Master Data` strictly covers transactional actors/items (Customers, Suppliers, Items). |
-| **Document Numbering** | Proposed splits Numbering into Setup and Document Control. | **Unified.** Number Series and Validation Rules belong together under `Setup > Document Controls`. |
-| **Compliance vs Reports** | Proposed separates Compliance and Reports. | **Adopted.** Standard financial reports (P&L, Balance Sheet) live in `Reports`. BIR-mandated exports and tax reports (QAP, SAWT, 2550Q) live strictly in `Compliance`. |
-| **Workflow / Controls** | Proposed lists it as a standalone module. | **Deferred/Merged.** Approval matrices and period locking are backend configurations managed under `Setup` and `Compliance`, not an independent user module. |
+## 3. Final Canonical Whole ERP Blueprint
 
-## 4. Final Canonical Whole ERP Blueprint
+### Layer 0 — Platform Foundation
+- Authentication, RLS, multi-company, active company, framework helpers, audit logging, import framework, lookup framework, list framework, form framework.
 
-This blueprint reflects both the architectural boundaries and the target navigation structure of the application.
+### Layer 1 — Setup & Configuration
+- Company Setup, Branch Setup, Fiscal Calendar, Currencies, Exchange Rates, Number Series, Users/Roles, Approval Matrix, Validation Rules, Document Templates, System Parameters.
 
-### Layer 0: Platform Foundation (Invisible/Backend)
-- Authentication & Supabase RLS
-- Multi-company / Multi-tenant Context (`activeCompanyId`)
-- Core Frameworks (`ErpListHelper`, `ErpFormHelper`, `ErpLookupHelper`, `ErpImportHelper`)
-- Immutable Audit Logging & CAS Security
+### Layer 2 — Master Data
+- Customers, Suppliers, Items, Chart of Accounts, Warehouses, Banks, Projects, Departments, Cost Centers, and other business reference entities.
 
-### Layer 1: Setup & Configuration (Prerequisites)
-- **Organization:** Company, Branch, Department, Cost Center
-- **Accounting Setup:** Fiscal Years, Fiscal Periods, Currencies, Exchange Rates
-- **Tax & Compliance Setup:** VAT Codes, EWT/FWT/ATC Codes, BIR Forms, RDO Codes
-- **Document Controls:** Number Series, Approval Matrix, Validation Rules
+### Layer 3 — Transactions
+- Sales, Purchasing, Inventory, Banking/Treasury, General Ledger, Fixed Assets.
 
-### Layer 2: Master Data (Trade Entities)
-- **Parties:** Customers, Suppliers, Employees (Basic Profile), Salespersons, Payment Terms
-- **Inventory Base:** Items, Item Categories, UOM, Warehouses, Bin Locations
-- **Banking Base:** Company Bank Accounts, Payment Methods
+### Layer 4 — Posting & Accounting Core
+- Posting Engine, Journal Entries, General Ledger, Subsidiary Ledgers, Trial Balance, Closing Entries, Retained Earnings, Financial Statements.
 
-### Layer 3: Transactional Core (The Engines)
-- **Sales / AR:** Quotations, Orders, Deliveries, Sales Invoices, AR Collections
-- **Purchasing / AP:** Purchase Requests, Purchase Orders, Receiving, Vendor Bills, Payment Vouchers
-- **Inventory:** Stock Receipts, Issues, Transfers, Adjustments, Costing/Valuation
-- **Banking / Treasury:** Cash Receipts, Disbursements, Bank Reconciliations
-- **General Ledger:** Journal Entries, Posting Engine (Deferred Double-Entry), Month-End Closing
-- **Fixed Assets:** Acquisition, Depreciation Runs, Disposals
+### Layer 5 — Philippine Compliance Engine
+*This is first-class. It is not merely reports or setup. It covers the full lifecycle of tax and audit generation.*
 
-### Layer 4: Reporting & Compliance (The Outputs)
-- **Philippine Compliance:** VAT Reports (2550Q, SLSP), WHT Reports (2307, 1601EQ, QAP, SAWT), Statutory Books of Accounts, BIR DAT File Exports.
-- **Management Reports:** Financial Statements (Balance Sheet, P&L, Trial Balance), AR/AP Aging, Subsidiary Ledgers, Inventory Movement.
+#### Percentage Tax
+- Percentage Tax setup, Percentage Tax codes, Percentage Tax working papers, 2551Q, Percentage Tax reconciliation, Percentage Tax summary register, 8% / Non-VAT taxpayer considerations for future.
 
-### Layer 5: Future Modules (Deferred)
-- Payroll & HRIS
-- Point of Sale (POS)
-- CRM
-- Advanced AI Assistant
+#### VAT
+- VAT setup, VAT codes, VAT dashboard, VAT working papers, Output VAT summary, Input VAT summary, VAT reconciliation, 2550Q, SLS, SLP, SLSP export, RELIEF / DAT export if applicable.
+
+#### Withholding Tax
+- EWT codes, FWT codes, ATC codes, EWT working papers, EWT payable, EWT receivable, ATC summary, 1601EQ, 1601FQ, QAP, SAWT, 2307 issued, 2307 received, 2306, Final withholding tax schedules.
+
+#### Income Tax
+- Taxable income computation, Book-to-tax reconciliation, OSD computation, NOLCO schedule, Tax credits schedule, 1701Q / 1701, 1702Q / 1702RT, MCIT computation.
+
+#### Books of Accounts
+- General Journal, General Ledger Book, Cash Receipts Book, Cash Disbursements Book, Sales Journal, Cash Sales Journal, Purchase Journal, Cash Purchases Journal, AR Subsidiary Ledger, AP Subsidiary Ledger, Inventory Subsidiary Ledger, Fixed Asset Register.
+
+#### CAS / Audit
+- Transaction Audit Log, Master Data Change Log, System Parameter Logs, User Activity Log, Attachment Register, Void Register, ATP Usage Log, DAT File Generation, CAS Audit Report, Export History.
+
+### Layer 6 — Reports & Analytics
+- Management reports, operational reports, dashboards, financial analytics.
+
+### Layer 7 — Future Extensions
+- Payroll Compliance, POS integration, CRM, portals, AI assistant, OCR, mobile app.
+
+## 4. Tax Code Ownership
+Tax codes may be configured from the UI under `Setup > Tax Setup`, but architecturally they belong to the **Philippine Compliance Engine**.
+
+**Required Relationship:**
+- Setup defines tax rules.
+- Sales and Purchasing produce tax data.
+- Posting Engine records tax/accounting impact.
+- Compliance Engine validates, reconciles, and exports.
+- Reports display results.
 
 ## 5. Navigation Principles (UI Alignment)
-Reviewing `src/index.html` against this blueprint reveals that the current navigation is relatively clean, but some future roadmap cards are visible (e.g., Sales, Purchasing). 
+- Implemented pages may be normal clickable pages.
+- Roadmap pages may exist only if clearly treated as roadmap/placeholder.
+- No fake action buttons.
+- No fake transactional workflows.
+- No UI pretending unimplemented compliance outputs are already working.
 
-**Rules for Navigation:**
-1. **No Dead Ends:** If a module is visible in the sidebar or a landing page but is not yet implemented (Phase 5+), it must clearly display a "Coming Soon" or "Roadmap" state upon clicking, or safely block navigation. It must not result in an empty screen or a 404.
-2. **Current Alignment:** `src/index.html` currently shows `Sales` and `Purchasing` as roadmap landing pages. This is acceptable for blueprinting purposes, provided individual transactional links do not break the app.
-
-## 6. Philippine Compliance Alignment
-The proposed compliance module is fully aligned with PXL ERP's vision. The architecture specifically decouples standard financial reporting from BIR compliance to ensure changes in BIR requirements (like CAS or SLSP formatting) do not compromise the integrity of the General Ledger or IFRS reports.
-
-## 7. Notes on Master Data
-As established in `MASTER_DATA_CANONICAL_BLUEPRINT.md`, Customer and Supplier records will absorb their respective Contacts and Addresses as encapsulated sub-tables (not root entities).
-
-## 8. Final Recommendation
-**Is the proposed Whole ERP Blueprint aligned with PXL ERP?**
-**[ PARTIALLY ]**
-
-**Actions Taken:**
-- **Adopted:** The comprehensive module breakdown for Sales, Purchasing, Inventory, Banking, and Compliance.
-- **Modified:** Re-aligned Setup and Master Data boundaries to strictly match our database constraints and UI frameworks. Grouped "Workflow" back into Setup.
-- **Deferred:** Payroll, POS, and CRM remain strictly off the critical path for Phase 1 MVP.
-
-**Conclusion:**
-This canonical blueprint stands as the singular map for the entire PXL ERP system. All future architectural decisions, phase planning, and UI routing must adhere to this document. Existing architecture documents (like Database Architecture Overview) remain accurate at a technical schema level, while this document serves as the product-level map. No code or UI changes are necessary at this moment.
+## 6. Implementation Status (Reconciliation with Database)
+- **Implemented / Foundation:** Layer 0 and Setup entities (Company, Branch, Dept, Cost Center, Currency, Fiscal Setup).
+- **In Progress (Phase 5):** Master Data (Customers, Suppliers, Items).
+- **Architecture Designed but Unimplemented:** Layer 4 (Posting Core), Layer 5 (Compliance Engine full pipeline).
+- **Future / Deferred:** Layer 3 (Transactions), Layer 6, Layer 7.

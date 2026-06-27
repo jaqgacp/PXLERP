@@ -78,6 +78,7 @@ The blueprint is strictly partitioned into **System Setup & Configuration** (pre
 2. **Sub-table Encapsulation:** `customer_addresses` and `customer_contacts` must be managed exclusively through the Customer module. They will not have standalone list pages.
 3. **Golden Dependency Chain:** You cannot build a Customer without first having Payment Terms and Currencies. You cannot build a Chart of Accounts without first establishing Tax Codes and Cost Centers.
 4. **Philippine Compliance First:** TINs, Branch Codes, Tax Types (VAT/Non-VAT), and Government/PEZA flags are mandatory attributes on Party masters, not optional extensions.
+5. **Tax Code Ownership:** Tax codes (VAT, EWT, FWT, ATC) are NOT generic accounting master data. They are compliance architecture. They belong to the Philippine Compliance Engine, even though they are referenced by customers/suppliers and configured in Setup.
 
 ## 6. Build Order Adjustments
 The existing `MASTER_DATA_BUILD_ORDER.md` remains the **authoritative sequence** for development. The canonical blueprint above categorizes the modules, but the *build execution* must follow the established sequential dependency graph to guarantee RLS and foreign key integrity.
