@@ -17,26 +17,26 @@ The Customer Master UI must utilize a **Tabbed Interface** inside the `ErpFormHe
 - Entity Type (Radio: Corporate / Individual)
 - Registered Name
 - Trade Name (DBA)
-- Customer Group (Lookup)
-- Industry (Lookup)
+- *(Deferred: Customer Group Lookup)*
+- *(Deferred: Industry Lookup)*
 
 #### Tab 2: Tax & Compliance
 - TIN (Format: 000-000-000)
 - TIN Suffix (Format: 00000)
 - Tax Type (Select: VAT, Non-VAT, Zero-Rated, Exempt)
 - Classification (Select: Regular, PEZA, BOI, Government)
-- Default Tax Code (Lookup)
+- *(Deferred: Default Tax Code Lookup)*
 
 #### Tab 3: Financial & Accounting
 - Default Currency (Lookup)
-- Payment Terms (Lookup)
 - Default AR Account (Lookup - COA)
 - Default Sales Account (Lookup - COA)
+- *(Deferred: Payment Terms Lookup)*
 
 #### Tab 4: Credit & Sales
-- Salesperson (Lookup - Employee)
 - Credit Limit (Numeric)
 - Credit Hold (Checkbox)
+- *(Deferred: Salesperson Lookup)*
 
 #### Tab 5: Addresses (Sub-Grid)
 - An inline `ErpListHelper` table showing addresses.
