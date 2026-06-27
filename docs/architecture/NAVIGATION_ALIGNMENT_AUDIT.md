@@ -70,7 +70,14 @@ The current monolithic `Assets` tab contains three entirely separate operational
 - *Move to new `Fixed Assets` tab:*
   - Assets > Fixed Assets > Fixed Asset Dashboard, Register, Acquisitions, Depreciation, Disposals, Transfers, Impairments.
 
-*Note: This split is deferred to a future UI refactor phase because moving this many route handlers and mega-menu divs carries high regression risk during an architecture freeze.*
+*Note: This split was successfully executed in Phase 5A.4. The monolithic Assets tab was safely removed and replaced with three independent top-level navigation tabs.*
+
+## 5.5 Actual Navigation Refactor Completed
+In a subsequent pass (Phase 5A.4), the deferred UI refactoring was aggressively executed:
+- The legacy `Assets` tab was completely deleted from `src/index.html`.
+- Three new root nodes (`Inventory`, `Banking & Treasury`, `Fixed Assets`) were correctly inserted into the DOM.
+- All original route handler paths (`#/assets/inventory/*`, `#/assets/cash-management/*`, `#/assets/fixed-assets/*`) were meticulously preserved to ensure no application logic or links broke.
+- The global navigation now exactly matches the canonical blueprint.
 
 ## 6. Master Data Child-Record Findings
 - **Finding:** The Master Data mega-menu exposed `Customer Addresses`, `Customer Contacts`, `Supplier Addresses`, and `Supplier Contacts` as standalone global links.
@@ -100,9 +107,8 @@ The current monolithic `Assets` tab contains three entirely separate operational
 1. **Master Data Cleanup:** Deleted `md-panel-cust` and `md-panel-supp` flyout panels and categories from `src/index.html`. Child records (Addresses/Contacts) are officially hidden from global navigation.
 
 ## 11. Deferred Navigation Cleanup
-1. **The Assets Split:** Breaking the `Assets` mega-menu into three distinct top-level tabs (Inventory, Banking, Fixed Assets) requires careful refactoring of HTML divs, JavaScript hover events, and router mappings. This is deferred.
-2. **Dashboard / Administration:** Adding these new root tabs is deferred.
-3. **Coming Soon Catcher:** Implementing a robust fallback screen for roadmap routes is deferred.
+1. **Dashboard / Administration:** Adding these new root tabs is deferred.
+2. **Coming Soon Catcher:** Implementing a robust fallback screen for roadmap routes is deferred.
 
 ## 12. Final Recommendation
 The current UI navigation is highly aligned with the canonical architecture, with the exception of the legacy `Assets` tab. By applying the safe Master Data child-record cleanup, we successfully eliminated the biggest encapsulation violation. The remaining discrepancies (Assets split, missing Admin tab) are strictly cosmetic/routing issues and do not compromise the database or compliance architecture. PXL ERP retains its unapologetic Philippine Compliance-First identity.
